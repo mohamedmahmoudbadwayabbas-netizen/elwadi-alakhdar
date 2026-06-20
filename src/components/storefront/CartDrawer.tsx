@@ -1,5 +1,5 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useCart } from "@/lib/cart-context";
+import { useCart, lineSubtotal } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,24 +13,27 @@ const checkoutSchema = z.object({
   customer_name: z.string().trim().min(2, "الاسم قصير جداً").max(80),
   phone: z.string().trim().regex(/^[0-9+\-\s]{8,20}$/, "رقم هاتف غير صحيح"),
   address: z.string().trim().min(5, "أدخل عنوان واضح").max(300),
+  notes: z.string().trim().max(500).optional(),
 });
 
 export function CartDrawer() {
   const { isOpen, setOpen, items, updateQuantity, removeItem, totalPrice, clear } = useCart();
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
-  const [form, setForm] = useState({ customer_name: "", phone: "", address: "" });
+  const [form, setForm] = useState({ customer_name: "", phone: "", address: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     const parsed = checkoutSchema.safeParse(form);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "بيانات غير صحيحة");
-      return;
-    }
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "بيانات غير صحيحة"); return; }
     if (items.length === 0) return;
     setSubmitting(true);
+    const ref = (() => { try { return sessionStorage.getItem("alwadi_ref"); } catch { return null; } })();
     const payload = {
-      ...parsed.data,
+      customer_name: parsed.data.customer_name,
+      phone: parsed.data.phone,
+      address: parsed.data.address,
+      notes: parsed.data.notes || null,
+      ref_source: ref,
       total_price: +totalPrice.toFixed(2),
       items: items.map((i) => ({
         id: i.product.id,
@@ -39,19 +42,16 @@ export function CartDrawer() {
         is_by_weight: i.product.is_by_weight,
         price_per_unit: i.product.price_per_unit,
         quantity: i.quantity,
-        subtotal: +(i.product.price_per_unit * i.quantity).toFixed(2),
+        subtotal: +lineSubtotal(i.product, i.quantity).toFixed(2),
       })),
     };
     const { error } = await supabase.from("orders").insert(payload);
     setSubmitting(false);
-    if (error) {
-      toast.error("تعذّر إرسال الطلب", { description: error.message });
-      return;
-    }
-    toast.success("تم استلام طلبك! سنتواصل معك قريباً.");
+    if (error) { toast.error("تعذّر إرسال الطلب", { description: error.message }); return; }
+    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
     clear();
     setStage("cart");
-    setForm({ customer_name: "", phone: "", address: "" });
+    setForm({ customer_name: "", phone: "", address: "", notes: "" });
     setOpen(false);
   };
 
@@ -89,7 +89,7 @@ export function CartDrawer() {
                       {it.product.image_url ? (
                         <img src={it.product.image_url} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="grid h-full w-full place-items-center text-2xl">🛍️</div>
+                        <div className="grid h-full w-full place-items-center text-2xl">🌿</div>
                       )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -102,23 +102,23 @@ export function CartDrawer() {
                       <div className="mt-auto flex items-center justify-between">
                         <div className="flex items-center gap-0.5 rounded-full border border-border bg-secondary/40 p-0.5">
                           <button
-                            onClick={() => updateQuantity(it.product.id, +(it.quantity - (it.product.is_by_weight ? 0.25 : 1)).toFixed(2))}
+                            onClick={() => updateQuantity(it.product.id, +(it.quantity - (it.product.is_by_weight ? 0.25 : 1)).toFixed(3))}
                             className="grid h-7 w-7 place-items-center rounded-full hover:bg-background"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
-                          <span className="min-w-10 text-center text-xs font-black">
-                            {it.quantity}{it.product.is_by_weight ? " كجم" : ""}
+                          <span className="min-w-12 text-center text-xs font-black">
+                            {it.product.is_by_weight ? (it.quantity >= 1 ? `${it.quantity}كجم` : `${it.quantity * 1000}جم`) : it.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(it.product.id, +(it.quantity + (it.product.is_by_weight ? 0.25 : 1)).toFixed(2))}
+                            onClick={() => updateQuantity(it.product.id, +(it.quantity + (it.product.is_by_weight ? 0.25 : 1)).toFixed(3))}
                             className="grid h-7 w-7 place-items-center rounded-full hover:bg-background"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
                         <div className="text-sm font-black text-primary">
-                          {(it.product.price_per_unit * it.quantity).toFixed(2)} ج.م
+                          {lineSubtotal(it.product, it.quantity).toFixed(2)} ج.م
                         </div>
                       </div>
                     </div>
@@ -129,7 +129,7 @@ export function CartDrawer() {
             <div className="border-t bg-card p-4 shadow-lift">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">الإجمالي</span>
-                <span className="text-2xl font-black text-primary">{totalPrice.toFixed(2)} ج.م</span>
+                <span className="font-display text-2xl font-bold text-primary">{totalPrice.toFixed(2)} ج.م</span>
               </div>
               <Button onClick={() => setStage("checkout")} className="h-12 w-full rounded-2xl hero-gradient text-base font-black text-primary-foreground shadow-card">
                 إتمام الطلب
@@ -147,6 +147,9 @@ export function CartDrawer() {
               </Field>
               <Field label="عنوان التوصيل">
                 <Textarea rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="المحافظة، المنطقة، الشارع، رقم العقار" />
+              </Field>
+              <Field label="ملاحظات (اختياري)">
+                <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="أي ملاحظات للطلب" />
               </Field>
               <div className="rounded-2xl border border-border bg-secondary/40 p-3 text-xs">
                 <div className="flex items-center justify-between font-bold">

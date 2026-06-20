@@ -33,58 +33,94 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-display: "Cairo", "Tajawal", system-ui, sans-serif;
-  --font-sans: "Cairo", "Tajawal", system-ui, sans-serif;
-  --shadow-card: 0 4px 16px -4px oklch(0.4 0.1 150 / 0.12);
-  --shadow-lift: 0 12px 32px -8px oklch(0.4 0.1 150 / 0.18);
-  --gradient-hero: linear-gradient(135deg, oklch(0.62 0.16 145) 0%, oklch(0.55 0.18 155) 100%);
-  --gradient-sale: linear-gradient(135deg, oklch(0.65 0.22 30) 0%, oklch(0.58 0.24 20) 100%);
+
+  /* Sidebar tokens (shadcn) */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Fonts: Tajawal للنصوص، Amiri (Serif) للعناوين */
+  --font-sans: "Tajawal", "Cairo", system-ui, sans-serif;
+  --font-display: "Amiri", "Tajawal", serif;
+
+  --shadow-card: 0 4px 16px -4px oklch(0.40 0.12 150 / 0.10);
+  --shadow-lift: 0 14px 36px -10px oklch(0.40 0.14 150 / 0.18);
+  --shadow-elegant: 0 20px 50px -12px oklch(0.40 0.14 150 / 0.22);
+
+  /* Brand gradients — Emerald → Deep Emerald */
+  --gradient-hero: linear-gradient(135deg, oklch(0.45 0.13 152) 0%, oklch(0.38 0.14 156) 100%);
+  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, oklch(0.38 0.14 156) 100%);
+  --gradient-sale: linear-gradient(135deg, oklch(0.66 0.20 45) 0%, oklch(0.58 0.22 35) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--accent) 0%, oklch(0.58 0.22 35) 100%);
 }
 
 :root {
   --radius: 0.875rem;
-  --background: oklch(0.99 0.005 100);
-  --foreground: oklch(0.20 0.02 150);
+  /* Backgrounds — warm off-white for premium feel */
+  --background: oklch(0.985 0.005 95);
+  --foreground: oklch(0.18 0.02 155);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.20 0.02 150);
+  --card-foreground: oklch(0.18 0.02 155);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.20 0.02 150);
-  --primary: oklch(0.55 0.16 150);
-  --primary-foreground: oklch(0.99 0.005 100);
-  --secondary: oklch(0.96 0.02 145);
-  --secondary-foreground: oklch(0.30 0.06 150);
+  --popover-foreground: oklch(0.18 0.02 155);
+
+  /* Primary: #166534 Emerald Green */
+  --primary: oklch(0.45 0.13 152);
+  --primary-foreground: oklch(0.985 0.005 95);
+
+  --secondary: oklch(0.96 0.015 140);
+  --secondary-foreground: oklch(0.28 0.05 150);
+
   --muted: oklch(0.96 0.01 120);
-  --muted-foreground: oklch(0.50 0.02 150);
-  --accent: oklch(0.92 0.08 80);
-  --accent-foreground: oklch(0.30 0.10 60);
-  --destructive: oklch(0.60 0.22 25);
+  --muted-foreground: oklch(0.48 0.02 150);
+
+  /* Accent: #ea580c Warm Orange */
+  --accent: oklch(0.68 0.20 45);
+  --accent-foreground: oklch(0.99 0.005 90);
+
+  --destructive: oklch(0.58 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.62 0.16 145);
+
+  --success: oklch(0.55 0.15 150);
   --success-foreground: oklch(0.99 0 0);
-  --sale: oklch(0.62 0.22 30);
+
+  --sale: oklch(0.66 0.20 45);
   --sale-foreground: oklch(0.99 0 0);
-  --border: oklch(0.90 0.01 145);
-  --input: oklch(0.92 0.01 145);
-  --ring: oklch(0.55 0.16 150);
+
+  --border: oklch(0.90 0.008 145);
+  --input: oklch(0.93 0.008 145);
+  --ring: oklch(0.45 0.13 152);
+
+  /* Sidebar tokens */
+  --sidebar: oklch(0.99 0.005 95);
+  --sidebar-foreground: oklch(0.22 0.02 155);
+  --sidebar-primary: oklch(0.45 0.13 152);
+  --sidebar-primary-foreground: oklch(0.985 0.005 95);
+  --sidebar-accent: oklch(0.95 0.02 145);
+  --sidebar-accent-foreground: oklch(0.28 0.05 150);
+  --sidebar-border: oklch(0.90 0.008 145);
+  --sidebar-ring: oklch(0.45 0.13 152);
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-  html {
-    font-family: var(--font-sans);
-  }
+  * { border-color: var(--color-border); }
+  html { font-family: var(--font-sans); }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.005em;
   }
 }
 
@@ -99,4 +135,23 @@
 
 @utility sale-gradient {
   background: var(--gradient-sale);
+}
+
+@utility accent-gradient {
+  background: var(--gradient-accent);
+}
+
+@utility shadow-elegant {
+  box-shadow: var(--shadow-elegant);
+}
+
+/* Thermal receipt printing (80mm) */
+@media print {
+  body * { visibility: hidden; }
+  .receipt-print, .receipt-print * { visibility: visible; }
+  .receipt-print {
+    position: absolute; inset: 0;
+    width: 80mm; margin: 0; padding: 4mm;
+    font-family: "Tajawal", sans-serif; color: #000;
+  }
 }
