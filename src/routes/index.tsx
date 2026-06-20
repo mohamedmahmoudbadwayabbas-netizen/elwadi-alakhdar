@@ -7,16 +7,17 @@ import { CategoryGrid } from "@/components/storefront/CategoryGrid";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { ProductModal } from "@/components/storefront/ProductModal";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
+import { WhatsAppFloat } from "@/components/storefront/WhatsAppFloat";
 import type { Product } from "@/lib/cart-context";
-import { Flame } from "lucide-react";
+import { Flame, Leaf } from "lucide-react";
 
 type Category = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "بَركة - سوبر ماركت وعطارة أونلاين" },
-      { name: "description", content: "تسوّق منتجات السوبر ماركت والعطارة الطازجة بأسعار مميزة وتوصيل سريع." },
+      { title: "الوادي الأخضر — سوبر ماركت وعطارة أونلاين" },
+      { name: "description", content: "تسوّق منتجات السوبر ماركت والعطارة الطازجة بأسعار مميزة وتوصيل سريع من الوادي الأخضر." },
     ],
   }),
   component: Index,
@@ -27,8 +28,14 @@ function Index() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [openProduct, setOpenProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 280);
+    return () => clearTimeout(t);
+  }, [query]);
 
   useEffect(() => {
     (async () => {
@@ -48,20 +55,36 @@ function Index() {
         if (data) setProducts(data as Product[]);
       })
       .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      if (activeCat && p.category_id !== activeCat) return false;
-      if (query && !p.name.includes(query.trim())) return false;
-      return true;
-    });
-  }, [products, activeCat, query]);
+  // ilike fuzzy search across name + description
+  const [searchResults, setSearchResults] = useState<Product[] | null>(null);
+  useEffect(() => {
+    if (!debounced) { setSearchResults(null); return; }
+    let cancelled = false;
+    (async () => {
+      const term = `%${debounced}%`;
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .or(`name.ilike.${term},description.ilike.${term}`)
+        .order("is_featured", { ascending: false })
+        .limit(60);
+      if (!cancelled) setSearchResults((data ?? []) as Product[]);
+    })();
+    return () => { cancelled = true; };
+  }, [debounced]);
 
-  const popular = useMemo(() => products.filter((p) => p.is_popular).slice(0, 8), [products]);
+  const filtered = useMemo(() => {
+    const base = searchResults ?? products;
+    return activeCat ? base.filter((p) => p.category_id === activeCat) : base;
+  }, [products, searchResults, activeCat]);
+
+  const featured = useMemo(
+    () => products.filter((p) => p.is_featured || p.is_popular).slice(0, 8),
+    [products],
+  );
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -69,27 +92,28 @@ function Index() {
       <HeroCarousel />
       <CategoryGrid categories={categories} active={activeCat} onSelect={setActiveCat} />
 
-      {!activeCat && !query && popular.length > 0 && (
-        <section className="mx-auto max-w-6xl px-3 pt-8 sm:px-6">
-          <div className="mb-3 flex items-center gap-2">
-            <Flame className="h-5 w-5 text-sale" />
-            <h3 className="text-lg font-black sm:text-xl">الأكثر مبيعاً</h3>
+      {!activeCat && !debounced && featured.length > 0 && (
+        <section className="mx-auto max-w-6xl px-3 pt-10 sm:px-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Flame className="h-5 w-5 text-accent" />
+            <h3 className="font-display text-xl font-bold sm:text-2xl">الأكثر مبيعاً</h3>
           </div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {popular.map((p) => (
-              <ProductCard key={p.id} product={p} onOpen={setOpenProduct} />
-            ))}
+            {featured.map((p) => <ProductCard key={p.id} product={p} onOpen={setOpenProduct} />)}
           </div>
         </section>
       )}
 
-      <section className="mx-auto max-w-6xl px-3 pt-8 sm:px-6">
-        <h3 className="mb-3 text-lg font-black sm:text-xl">
-          {query ? `نتائج البحث (${filtered.length})` : activeCat ? "منتجات القسم" : "كل المنتجات"}
-        </h3>
+      <section id="all-products" className="mx-auto max-w-6xl px-3 pt-10 sm:px-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Leaf className="h-5 w-5 text-primary" />
+          <h3 className="font-display text-xl font-bold sm:text-2xl">
+            {debounced ? `نتائج البحث "${debounced}" (${filtered.length})` : activeCat ? "منتجات القسم" : "كل المنتجات"}
+          </h3>
+        </div>
         {loading ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-64 animate-pulse rounded-2xl bg-secondary" />
             ))}
           </div>
@@ -101,19 +125,20 @@ function Index() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {filtered.map((p) => (
-              <ProductCard key={p.id} product={p} onOpen={setOpenProduct} />
-            ))}
+            {filtered.map((p) => <ProductCard key={p.id} product={p} onOpen={setOpenProduct} />)}
           </div>
         )}
       </section>
 
-      <footer className="mx-auto mt-12 max-w-6xl px-3 pb-8 text-center text-xs text-muted-foreground sm:px-6">
-        © {new Date().getFullYear()} بَركة — سوبر ماركت وعطارة. كل الحقوق محفوظة.
+      <footer className="mx-auto mt-16 max-w-6xl border-t border-border/50 px-3 pb-8 pt-8 text-center text-xs text-muted-foreground sm:px-6">
+        <div className="font-display text-lg font-bold text-foreground">الوادي الأخضر</div>
+        <div className="mt-1">سوبر ماركت وعطارة — جودة أصيلة وتوصيل سريع</div>
+        <div className="mt-3">© {new Date().getFullYear()} جميع الحقوق محفوظة.</div>
       </footer>
 
       <ProductModal product={openProduct} onClose={() => setOpenProduct(null)} />
       <CartDrawer />
+      <WhatsAppFloat />
     </div>
   );
 }
