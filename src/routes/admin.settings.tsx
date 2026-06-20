@@ -73,6 +73,11 @@ function SettingsPage() {
           <Field label="خط العرض (Latitude)"><Input type="number" step="0.000001" value={s.store_lat ?? ""} onChange={(e) => setS({ ...s, store_lat: e.target.value ? +e.target.value : null })} /></Field>
           <Field label="خط الطول (Longitude)"><Input type="number" step="0.000001" value={s.store_lng ?? ""} onChange={(e) => setS({ ...s, store_lng: e.target.value ? +e.target.value : null })} /></Field>
         </div>
+        <StoreMapPicker
+          lat={s.store_lat}
+          lng={s.store_lng}
+          onChange={(lat, lng) => setS({ ...s, store_lat: lat, store_lng: lng })}
+        />
         {s.store_lat && s.store_lng && (
           <a
             href={`https://www.google.com/maps?q=${s.store_lat},${s.store_lng}`}
@@ -82,9 +87,7 @@ function SettingsPage() {
             عرض على Google Maps ↗
           </a>
         )}
-        <p className="text-[11px] text-muted-foreground">
-          لتفعيل خريطة تفاعلية داخل لوحة التحكم، يلزم ربط موصّل <b>Google Maps Platform</b> — اطلب ذلك في الدردشة.
-        </p>
+        <p className="text-[11px] text-muted-foreground">انقر على الخريطة أو اسحب الدبوس لتحديد موقع المتجر بدقة.</p>
       </section>
 
       <Button onClick={save} disabled={saving} className="gap-2 rounded-full hero-gradient text-primary-foreground">
