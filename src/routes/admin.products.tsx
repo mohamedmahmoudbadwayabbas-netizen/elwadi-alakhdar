@@ -19,7 +19,10 @@ type Product = {
 };
 type Category = { id: string; name: string };
 
-export const Route = createFileRoute("/admin/products")({ component: ProductsPage });
+export const Route = createFileRoute("/admin/products")({
+  head: () => ({ meta: [{ title: "المنتجات — لوحة التحكم" }, { name: "robots", content: "noindex,nofollow" }] }),
+  component: ProductsPage,
+});
 
 const empty: Partial<Product> = {
   name: "", description: "", category_id: null, price_per_unit: 0, old_price: null,
