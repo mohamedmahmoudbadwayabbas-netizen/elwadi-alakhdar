@@ -7,7 +7,7 @@ import { Leaf, LogIn } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/login")({
-  head: () => ({ meta: [{ title: "تسجيل دخول الإدارة — الوادي الأخضر" }] }),
+  head: () => ({ meta: [{ title: "تسجيل دخول الإدارة — الوادي الأخضر" }, { name: "robots", content: "noindex,nofollow" }] }),
   component: AdminLogin,
 });
 
