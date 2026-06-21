@@ -12,7 +12,7 @@ export function CategoryGrid({
   return (
     <section className="mx-auto max-w-6xl px-3 pt-6 sm:px-6">
       <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-lg font-black text-foreground sm:text-xl">تسوّق حسب القسم</h3>
+        <h2 className="text-lg font-black text-foreground sm:text-xl">تسوّق حسب القسم</h2>
         {active && (
           <button onClick={() => onSelect(null)} className="text-xs font-bold text-primary">
             عرض الكل
