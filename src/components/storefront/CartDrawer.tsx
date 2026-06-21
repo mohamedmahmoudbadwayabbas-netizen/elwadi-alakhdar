@@ -61,7 +61,7 @@ export function CartDrawer() {
         <SheetHeader className="border-b px-5 py-4 text-start">
           <SheetTitle className="flex items-center gap-2 text-lg font-black">
             {stage === "checkout" && (
-              <button onClick={() => setStage("cart")} className="grid h-8 w-8 place-items-center rounded-full hover:bg-secondary">
+              <button aria-label="العودة للسلة" onClick={() => setStage("cart")} className="grid h-8 w-8 place-items-center rounded-full hover:bg-secondary">
                 <ArrowLeft className="h-4 w-4 rotate-180" />
               </button>
             )}
