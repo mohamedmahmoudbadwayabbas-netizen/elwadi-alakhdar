@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
@@ -13,10 +13,15 @@ export const Route = createFileRoute("/admin")({
 function AdminLayout() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isLoginRoute = pathname === "/admin/login";
 
   useEffect(() => {
-    if (!loading && !user) router.history.push("/auth");
-  }, [user, loading, router]);
+    if (isLoginRoute) return;
+    if (!loading && !user) router.history.push("/admin/login");
+  }, [user, loading, router, isLoginRoute]);
+
+  if (isLoginRoute) return <Outlet />;
 
   if (loading) {
     return (
@@ -37,7 +42,7 @@ function AdminLayout() {
           </div>
           <h2 className="mt-4 font-display text-lg font-bold">وصول مرفوض</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            حسابك غير مخوّل بالوصول إلى لوحة التحكم. اطلب من المسؤول منحك صلاحية أدمن.
+            حسابك غير مخوّل بالوصول إلى لوحة التحكم.
           </p>
         </div>
       </div>

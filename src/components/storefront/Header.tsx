@@ -1,4 +1,4 @@
-import { Search, ShoppingBag, LayoutDashboard, LogIn, Leaf } from "lucide-react";
+import { Search, ShoppingBag, LayoutDashboard, Leaf } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "@tanstack/react-router";
@@ -33,21 +33,14 @@ export function Header({ onSearch, query }: { onSearch: (q: string) => void; que
           />
         </div>
 
-        {isAdmin ? (
+        {isAdmin && (
           <Link to="/admin" className="hidden md:block">
             <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-full text-xs">
               <LayoutDashboard className="h-4 w-4" />
               لوحة التحكم
             </Button>
           </Link>
-        ) : !user ? (
-          <Link to="/auth" className="hidden md:block">
-            <Button variant="ghost" size="sm" className="h-10 gap-1.5 rounded-full text-xs">
-              <LogIn className="h-4 w-4" />
-              دخول
-            </Button>
-          </Link>
-        ) : null}
+        )}
 
         <Button
           variant="ghost"
@@ -65,19 +58,12 @@ export function Header({ onSearch, query }: { onSearch: (q: string) => void; que
         </Button>
       </div>
 
-      {(isAdmin || !user) && (
+      {isAdmin && (
         <div className="flex items-center justify-end gap-3 border-t border-border/40 bg-muted/30 px-3 py-1.5 md:hidden">
-          {isAdmin ? (
-            <Link to="/admin" className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
-              <LayoutDashboard className="h-3 w-3" />
-              لوحة التحكم
-            </Link>
-          ) : (
-            <Link to="/auth" className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
-              <LogIn className="h-3 w-3" />
-              تسجيل دخول الأدمن
-            </Link>
-          )}
+          <Link to="/admin" className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
+            <LayoutDashboard className="h-3 w-3" />
+            لوحة التحكم
+          </Link>
         </div>
       )}
     </header>
