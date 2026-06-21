@@ -61,7 +61,7 @@ export function CartDrawer() {
         <SheetHeader className="border-b px-5 py-4 text-start">
           <SheetTitle className="flex items-center gap-2 text-lg font-black">
             {stage === "checkout" && (
-              <button onClick={() => setStage("cart")} className="grid h-8 w-8 place-items-center rounded-full hover:bg-secondary">
+              <button aria-label="العودة للسلة" onClick={() => setStage("cart")} className="grid h-8 w-8 place-items-center rounded-full hover:bg-secondary">
                 <ArrowLeft className="h-4 w-4 rotate-180" />
               </button>
             )}
@@ -95,13 +95,14 @@ export function CartDrawer() {
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex items-start justify-between gap-2">
                         <h5 className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{it.product.name}</h5>
-                        <button onClick={() => removeItem(it.product.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                        <button aria-label="حذف المنتج" onClick={() => removeItem(it.product.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       <div className="mt-auto flex items-center justify-between">
                         <div className="flex items-center gap-0.5 rounded-full border border-border bg-secondary/40 p-0.5">
                           <button
+                            aria-label="تقليل الكمية"
                             onClick={() => updateQuantity(it.product.id, +(it.quantity - (it.product.is_by_weight ? 0.25 : 1)).toFixed(3))}
                             className="grid h-7 w-7 place-items-center rounded-full hover:bg-background"
                           >
@@ -111,6 +112,7 @@ export function CartDrawer() {
                             {it.product.is_by_weight ? (it.quantity >= 1 ? `${it.quantity}كجم` : `${it.quantity * 1000}جم`) : it.quantity}
                           </span>
                           <button
+                            aria-label="زيادة الكمية"
                             onClick={() => updateQuantity(it.product.id, +(it.quantity + (it.product.is_by_weight ? 0.25 : 1)).toFixed(3))}
                             className="grid h-7 w-7 place-items-center rounded-full hover:bg-background"
                           >

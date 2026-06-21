@@ -9,7 +9,10 @@ import { toast } from "sonner";
 
 type Cat = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
 
-export const Route = createFileRoute("/admin/categories")({ component: CategoriesPage });
+export const Route = createFileRoute("/admin/categories")({
+  head: () => ({ meta: [{ title: "التصنيفات — لوحة التحكم" }, { name: "robots", content: "noindex,nofollow" }] }),
+  component: CategoriesPage,
+});
 
 function CategoriesPage() {
   const [rows, setRows] = useState<Cat[]>([]);

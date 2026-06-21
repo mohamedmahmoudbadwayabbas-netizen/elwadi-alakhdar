@@ -16,7 +16,10 @@ type Settings = {
   store_address: string | null; store_lat: number | null; store_lng: number | null;
 };
 
-export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
+export const Route = createFileRoute("/admin/settings")({
+  head: () => ({ meta: [{ title: "إعدادات المتجر — لوحة التحكم" }, { name: "robots", content: "noindex,nofollow" }] }),
+  component: SettingsPage,
+});
 
 function SettingsPage() {
   const [s, setS] = useState<Settings | null>(null);

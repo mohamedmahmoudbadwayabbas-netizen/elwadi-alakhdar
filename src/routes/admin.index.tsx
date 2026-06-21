@@ -10,6 +10,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/admin/")({
+  head: () => ({ meta: [{ title: "نظرة عامة — لوحة التحكم" }, { name: "robots", content: "noindex,nofollow" }] }),
   component: OverviewPage,
 });
 

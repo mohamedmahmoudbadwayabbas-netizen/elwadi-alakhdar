@@ -71,12 +71,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "الوادي الأخضر — سوبر ماركت وعطارة أونلاين" },
-      { name: "description", content: "الوادي الأخضر: سوبر ماركت وعطارة بجودة أصيلة وتوصيل سريع. تسوّق منتجاتك المفضلة بسهولة." },
-      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت وعطارة" },
-      { property: "og:description", content: "جودة أصيلة، أسعار مميزة، وتوصيل سريع لباب البيت." },
+      { property: "og:site_name", content: "الوادي الأخضر" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

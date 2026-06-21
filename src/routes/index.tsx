@@ -13,11 +13,42 @@ import { Flame, Leaf } from "lucide-react";
 
 type Category = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
 
+const SITE_URL = "https://arab-market-flow.lovable.app";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "الوادي الأخضر — سوبر ماركت وعطارة أونلاين" },
       { name: "description", content: "تسوّق منتجات السوبر ماركت والعطارة الطازجة بأسعار مميزة وتوصيل سريع من الوادي الأخضر." },
+      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت وعطارة أونلاين" },
+      { property: "og:description", content: "تسوّق منتجات السوبر ماركت والعطارة الطازجة بأسعار مميزة وتوصيل سريع." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/` },
+    ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          name: "الوادي الأخضر",
+          description: "سوبر ماركت وعطارة أونلاين — جودة أصيلة وتوصيل سريع.",
+          url: `${SITE_URL}/`,
+          image: `${SITE_URL}/favicon.ico`,
+          priceRange: "$$",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "الوادي الأخضر",
+          url: `${SITE_URL}/`,
+          inLanguage: "ar",
+        }),
+      },
     ],
   }),
   component: Index,
@@ -89,6 +120,7 @@ function Index() {
   return (
     <div className="min-h-screen bg-background pb-16">
       <Header onSearch={setQuery} query={query} />
+      <h1 className="sr-only">الوادي الأخضر — سوبر ماركت وعطارة أونلاين</h1>
       <HeroCarousel />
       <CategoryGrid categories={categories} active={activeCat} onSelect={setActiveCat} />
 
@@ -96,7 +128,7 @@ function Index() {
         <section className="mx-auto max-w-6xl px-3 pt-10 sm:px-6">
           <div className="mb-4 flex items-center gap-2">
             <Flame className="h-5 w-5 text-accent" />
-            <h3 className="font-display text-xl font-bold sm:text-2xl">الأكثر مبيعاً</h3>
+            <h2 className="font-display text-xl font-bold sm:text-2xl">الأكثر مبيعاً</h2>
           </div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {featured.map((p) => <ProductCard key={p.id} product={p} onOpen={setOpenProduct} />)}
@@ -107,9 +139,9 @@ function Index() {
       <section id="all-products" className="mx-auto max-w-6xl px-3 pt-10 sm:px-6">
         <div className="mb-4 flex items-center gap-2">
           <Leaf className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-xl font-bold sm:text-2xl">
+          <h2 className="font-display text-xl font-bold sm:text-2xl">
             {debounced ? `نتائج البحث "${debounced}" (${filtered.length})` : activeCat ? "منتجات القسم" : "كل المنتجات"}
-          </h3>
+          </h2>
         </div>
         {loading ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
