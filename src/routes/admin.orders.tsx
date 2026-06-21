@@ -23,7 +23,10 @@ const STATUSES = [
   { key: "cancelled", label: "ملغي", next: null },
 ] as const;
 
-export const Route = createFileRoute("/admin/orders")({ component: OrdersPage });
+export const Route = createFileRoute("/admin/orders")({
+  head: () => ({ meta: [{ title: "الطلبات — لوحة التحكم" }, { name: "robots", content: "noindex,nofollow" }] }),
+  component: OrdersPage,
+});
 
 function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
