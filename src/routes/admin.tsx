@@ -6,7 +6,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ShieldAlert, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "لوحة التحكم — الوادي الأخضر" }] }),
+  head: () => ({ meta: [{ title: "لوحة التحكم — الوادي الأخضر" }, { name: "robots", content: "noindex,nofollow" }] }),
   component: AdminLayout,
 });
 
