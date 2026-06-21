@@ -81,14 +81,14 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
             </div>
 
             <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/40 p-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"
+              <Button aria-label="تقليل الكمية" variant="ghost" size="icon" className="h-8 w-8 rounded-full"
                 onClick={() => setQty((q) => Math.max(min, +(q - step).toFixed(3)))}>
                 <Minus className="h-4 w-4" />
               </Button>
               <span className="min-w-14 text-center text-sm font-black">
                 {product.is_by_weight ? (qty >= 1 ? `${qty} كجم` : `${qty * 1000}جم`) : qty}
               </span>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"
+              <Button aria-label="زيادة الكمية" variant="ghost" size="icon" className="h-8 w-8 rounded-full"
                 onClick={() => setQty((q) => +(q + step).toFixed(3))}>
                 <Plus className="h-4 w-4" />
               </Button>
