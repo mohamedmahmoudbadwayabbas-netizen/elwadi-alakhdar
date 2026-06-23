@@ -177,6 +177,38 @@ export function CartDrawer() {
               <Field label="ملاحظات (اختياري)">
                 <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="أي ملاحظات للطلب" />
               </Field>
+
+              <div className="space-y-2">
+                <span className="block text-xs font-bold text-foreground">طريقة الدفع</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <PayOption icon={<Banknote className="h-4 w-4" />} label="عند الاستلام" active={form.payment_method === "cod"} onClick={() => setForm({ ...form, payment_method: "cod", payment_reference: "" })} />
+                  <PayOption icon={<Smartphone className="h-4 w-4" />} label="إنستاباي" active={form.payment_method === "instapay"} onClick={() => setForm({ ...form, payment_method: "instapay" })} disabled={!pay.instapay_handle} />
+                  <PayOption icon={<Building2 className="h-4 w-4" />} label="تحويل بنكي" active={form.payment_method === "bank"} onClick={() => setForm({ ...form, payment_method: "bank" })} disabled={!pay.bank_account_info} />
+                </div>
+
+                {form.payment_method === "instapay" && pay.instapay_handle && (
+                  <div className="space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="font-bold text-foreground">حوّل المبلغ <span className="text-primary">{totalPrice.toFixed(2)} ج.م</span> على InstaPay:</div>
+                    <button type="button" onClick={() => copy(pay.instapay_handle!)} className="flex w-full items-center justify-between rounded-xl bg-background px-3 py-2 font-mono font-bold hover:bg-secondary">
+                      <span>{pay.instapay_handle}</span><Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <Input value={form.payment_reference} onChange={(e) => setForm({ ...form, payment_reference: e.target.value })} placeholder="رقم/مرجع التحويل" />
+                  </div>
+                )}
+
+                {form.payment_method === "bank" && pay.bank_account_info && (
+                  <div className="space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="font-bold text-foreground">حوّل المبلغ <span className="text-primary">{totalPrice.toFixed(2)} ج.م</span> إلى الحساب التالي:</div>
+                    <pre className="whitespace-pre-wrap rounded-xl bg-background p-3 font-sans leading-relaxed">{pay.bank_account_info}</pre>
+                    <Input value={form.payment_reference} onChange={(e) => setForm({ ...form, payment_reference: e.target.value })} placeholder="رقم/مرجع التحويل" />
+                  </div>
+                )}
+
+                {form.payment_method === "cod" && (
+                  <p className="text-[11px] text-muted-foreground">ستدفع نقداً عند استلام الطلب من المندوب.</p>
+                )}
+              </div>
+
               <div className="rounded-2xl border border-border bg-secondary/40 p-3 text-xs">
                 <div className="flex items-center justify-between font-bold">
                   <span>{items.length} منتج</span>
