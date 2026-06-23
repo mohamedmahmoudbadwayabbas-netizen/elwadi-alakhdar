@@ -6,7 +6,7 @@ import type { Product } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductCard } from "@/components/storefront/ProductCard";
 import {
   Minus, Plus, ShoppingBag, Star, Send, Flame, Award,
   Package, ChevronLeft, Heart, Share2, Truck, ShieldCheck,
@@ -428,7 +428,7 @@ function ProductPage() {
             <h3 className="text-sm font-bold px-1">منتجات قد تعجبك</h3>
             <div className="grid grid-cols-2 gap-4">
               {similar.map((prod) => (
-                <ProductCard key={prod.id} product={prod} onOpen={(p) => navigate({ to: "/products/$productId", params: { productId: p.id } })} />
+                <ProductCard key={prod.id} product={prod} onOpen={(p: Product) => navigate({ to: "/products/$productId", params: { productId: p.id } })} />
               ))}
             </div>
           </div>
