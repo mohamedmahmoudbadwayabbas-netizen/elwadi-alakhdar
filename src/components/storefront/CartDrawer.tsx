@@ -23,13 +23,27 @@ const checkoutSchema = z.object({
 export function CartDrawer() {
   const { isOpen, setOpen, items, updateQuantity, removeItem, totalPrice, clear } = useCart();
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
-  const [form, setForm] = useState({ customer_name: "", phone: "", address: "", notes: "" });
+  const [form, setForm] = useState({
+    customer_name: "", phone: "", address: "", notes: "",
+    payment_method: "cod" as PaymentMethod, payment_reference: "",
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [pay, setPay] = useState<{ instapay_handle: string | null; bank_account_info: string | null }>({ instapay_handle: null, bank_account_info: null });
+
+  useEffect(() => {
+    if (stage !== "checkout") return;
+    supabase.from("store_settings").select("instapay_handle,bank_account_info").limit(1).maybeSingle()
+      .then(({ data }) => { if (data) setPay(data as typeof pay); });
+  }, [stage]);
 
   const handleSubmit = async () => {
     const parsed = checkoutSchema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "بيانات غير صحيحة"); return; }
     if (items.length === 0) return;
+    if ((parsed.data.payment_method === "instapay" || parsed.data.payment_method === "bank") && !parsed.data.payment_reference?.trim()) {
+      toast.error("أدخل رقم/مرجع التحويل بعد إتمام الدفع");
+      return;
+    }
     setSubmitting(true);
     const ref = (() => { try { return sessionStorage.getItem("alwadi_ref"); } catch { return null; } })();
     const payload = {
@@ -39,6 +53,8 @@ export function CartDrawer() {
       notes: parsed.data.notes || null,
       ref_source: ref,
       total_price: +totalPrice.toFixed(2),
+      payment_method: parsed.data.payment_method,
+      payment_reference: parsed.data.payment_reference?.trim() || null,
       items: items.map((i) => ({
         id: i.product.id,
         name: i.product.name,
@@ -55,8 +71,12 @@ export function CartDrawer() {
     toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
     clear();
     setStage("cart");
-    setForm({ customer_name: "", phone: "", address: "", notes: "" });
+    setForm({ customer_name: "", phone: "", address: "", notes: "", payment_method: "cod", payment_reference: "" });
     setOpen(false);
+  };
+
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("تم النسخ"));
   };
 
   return (
