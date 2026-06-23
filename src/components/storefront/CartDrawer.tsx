@@ -3,17 +3,21 @@ import { useCart, lineSubtotal } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Banknote, Smartphone, Building2, Copy } from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+
+type PaymentMethod = "cod" | "instapay" | "bank";
 
 const checkoutSchema = z.object({
   customer_name: z.string().trim().min(2, "الاسم قصير جداً").max(80),
   phone: z.string().trim().regex(/^[0-9+\-\s]{8,20}$/, "رقم هاتف غير صحيح"),
   address: z.string().trim().min(5, "أدخل عنوان واضح").max(300),
   notes: z.string().trim().max(500).optional(),
+  payment_method: z.enum(["cod", "instapay", "bank"]),
+  payment_reference: z.string().trim().max(120).optional(),
 });
 
 export function CartDrawer() {
