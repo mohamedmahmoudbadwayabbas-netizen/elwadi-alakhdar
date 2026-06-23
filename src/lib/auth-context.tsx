@@ -62,12 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return error ? { error: error.message } : {};
     },
     signOut: async () => { await supabase.auth.signOut(); setIsAdmin(false); },
-    claimAdmin: async () => {
-      const { data, error } = await supabase.rpc("claim_admin_if_none");
-      if (error) return false;
-      if (data) await fetchRole(session?.user.id);
-      return !!data;
-    },
+    claimAdmin: async () => false,
     refreshRole: async () => { await fetchRole(session?.user.id); },
   }), [session, isAdmin, loading]);
 
