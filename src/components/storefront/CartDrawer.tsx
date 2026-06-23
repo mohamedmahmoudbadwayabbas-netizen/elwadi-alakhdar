@@ -236,3 +236,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+function PayOption({ icon, label, active, onClick, disabled }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-bold transition ${
+        active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:bg-secondary"
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
