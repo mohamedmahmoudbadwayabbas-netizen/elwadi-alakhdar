@@ -181,18 +181,26 @@ function ProductPage() {
   }, [product]);
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
       setLoading(true);
+      // تنظيف البيانات السابقة لتجنب ظهور تعليقات المنتج القديم مؤقتاً
+      setReviews([]);
+      
       const [{ data: prod }, { data: revs }] = await Promise.all([
         supabase.from("products").select("*").eq("id", productId).single(),
         supabase.from("reviews").select("*").eq("product_id", productId).order("created_at", { ascending: false }),
       ]);
+      
+      if (!isMounted) return;
+
       if (prod) {
         const p = prod as Product;
         setProduct(p);
         setQty(p.is_by_weight ? 0.5 : 1);
         const imgs = p.image_url ? [p.image_url] : [];
         setImages(imgs);
+        setActiveImg(0);
 
         // جلب منتجات مشابهة
         if (p.category_id) {
@@ -201,12 +209,18 @@ function ProductPage() {
             .eq("category_id", p.category_id)
             .neq("id", productId)
             .limit(6);
-          setSimilar((sim ?? []) as Product[]);
+          if (isMounted) setSimilar((sim ?? []) as Product[]);
         }
       }
-      setReviews((revs ?? []) as Review[]);
-      setLoading(false);
+      if (isMounted) {
+        setReviews((revs ?? []) as Review[]);
+        setLoading(false);
+      }
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [productId]);
 
   if (loading) return <Skeleton />;
@@ -356,7 +370,7 @@ function ProductPage() {
             <div className="flex items-center gap-2">
               <Stars value={avgRating} size="sm" />
               <span className="text-sm font-bold text-amber-600">{avgRating.toFixed(1)}</span>
-              <span className="text-xs text-muted-foreground underline cursor-pointer" onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })}>
+              <span className="text-xs text-muted-foreground underline cursor-pointer" onClick={() => document.getElementById("reviews-section")?.scrollIntoView({ behavior: "smooth" })}>
                 ({reviews.length} تقييم)
               </span>
             </div>
@@ -444,4 +458,124 @@ function ProductPage() {
           )}
 
           <div className="flex gap-3">
-            <Button disabl
+            <Button
+              disabled={outOfStock}
+              onClick={() => {
+                addItem(product, qty);
+                toast.success("تمت الإضافة للسلة", { description: `${product.name} (${qty})` });
+              }}
+              className="flex-1 h-12 rounded-xl hero-gradient font-bold text-sm shadow-md"
+            >
+              <ShoppingBag className="me-2 h-4 w-4" />
+              {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
+            </Button>
+          </div>
+        </div>
+
+        {/* ─── قسم التقييمات والتعليقات المصلح ─── */}
+        <div id="reviews-section" className="space-y-4 pt-4">
+          <RatingSummary reviews={reviews} />
+
+          {/* كتابة تعليق جديد */}
+          <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm space-y-4">
+            <h3 className="text-base font-bold">شاركنا رأيك بالمنتج</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold mb-1">الاسم</label>
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="اكتب اسمك الكريم"
+                  className="w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">التقييم</label>
+                <Stars value={rating} interactive={true} size="lg" onChange={setRating} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">التعليق</label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="اكتب تجربتك مع هذا المنتج هنا..."
+                  rows={3}
+                  className="w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                />
+              </div>
+              <Button
+                onClick={submitReview}
+                disabled={submitting}
+                className="w-full h-10 rounded-xl font-bold text-xs"
+              >
+                <Send className="me-2 h-3.5 w-3.5" />
+                {submitting ? "جاري الإرسال..." : "إرسال التقييم"}
+              </Button>
+            </div>
+          </div>
+
+          {/* عرض قائمة التعليقات */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold px-1">التعليقات القديمة ({reviews.length})</h3>
+            {reviews.length > 0 ? (
+              reviews.map((rev) => (
+                <div key={rev.id} className="rounded-2xl border border-border/40 bg-card p-4 shadow-sm space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">{rev.author_name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(rev.created_at).toLocaleDateString("ar-EG")}
+                    </span>
+                  </div>
+                  <Stars value={rev.rating} size="sm" />
+                  <p className="text-xs leading-relaxed text-muted-foreground/90 pt-1">{rev.comment}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-6">لا توجد تعليقات لهذا المنتج بعد. كن أول من يضيف تعليقاً! 🌿</p>
+            )}
+          </div>
+        </div>
+
+        {/* ─── منتجات مشابهة ─── */}
+        {similar.length > 0 && (
+          <div className="space-y-3 pt-4">
+            <h3 className="text-base font-bold">منتجات قد تعجبك</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {similar.map((prod) => (
+                <SimilarCard key={prod.id} product={prod} />
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* ─── Sticky Bar السفلي المتنقل عند النزول ─── */}
+      {showSticky && (
+        <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/95 p-3 backdrop-blur-md shadow-[0_-8px_30px_rgb(0_0_0_/_0.08)] animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-bold line-clamp-1">{product.name}</div>
+              <div className="font-display text-lg font-black text-primary">
+                {totalCost} <span className="text-xs font-bold text-muted-foreground">ج.م</span>
+              </div>
+            </div>
+            <Button
+              disabled={outOfStock}
+              onClick={() => {
+                addItem(product, qty);
+                toast.success("تمت الإضافة للسلة");
+              }}
+              className="h-11 rounded-xl hero-gradient font-bold text-xs px-6 shadow-md"
+            >
+              <ShoppingBag className="me-1.5 h-4 w-4" />
+              إضافة سريعة ({qty})
+            </Button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
