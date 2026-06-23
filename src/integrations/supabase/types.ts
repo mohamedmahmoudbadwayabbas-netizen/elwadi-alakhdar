@@ -52,6 +52,8 @@ export type Database = {
           id: string
           items: Json
           notes: string | null
+          payment_method: string
+          payment_reference: string | null
           phone: string
           ref_source: string | null
           status: string
@@ -65,6 +67,8 @@ export type Database = {
           id?: string
           items?: Json
           notes?: string | null
+          payment_method?: string
+          payment_reference?: string | null
           phone: string
           ref_source?: string | null
           status?: string
@@ -78,6 +82,8 @@ export type Database = {
           id?: string
           items?: Json
           notes?: string | null
+          payment_method?: string
+          payment_reference?: string | null
           phone?: string
           ref_source?: string | null
           status?: string
@@ -151,14 +157,51 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          author_name: string
+          comment: string
+          created_at: string
+          id: string
+          product_id: string
+          rating: number
+        }
+        Insert: {
+          author_name: string
+          comment: string
+          created_at?: string
+          id?: string
+          product_id: string
+          rating: number
+        }
+        Update: {
+          author_name?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_settings: {
         Row: {
+          bank_account_info: string | null
           created_at: string
           hero_cta_text: string
           hero_image_url: string | null
           hero_subtitle: string
           hero_title: string
           id: string
+          instapay_handle: string | null
           store_address: string | null
           store_lat: number | null
           store_lng: number | null
@@ -166,12 +209,14 @@ export type Database = {
           whatsapp_number: string | null
         }
         Insert: {
+          bank_account_info?: string | null
           created_at?: string
           hero_cta_text?: string
           hero_image_url?: string | null
           hero_subtitle?: string
           hero_title?: string
           id?: string
+          instapay_handle?: string | null
           store_address?: string | null
           store_lat?: number | null
           store_lng?: number | null
@@ -179,12 +224,14 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Update: {
+          bank_account_info?: string | null
           created_at?: string
           hero_cta_text?: string
           hero_image_url?: string | null
           hero_subtitle?: string
           hero_title?: string
           id?: string
+          instapay_handle?: string | null
           store_address?: string | null
           store_lat?: number | null
           store_lng?: number | null

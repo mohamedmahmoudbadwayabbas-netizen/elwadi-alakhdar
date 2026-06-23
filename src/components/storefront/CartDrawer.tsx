@@ -3,29 +3,47 @@ import { useCart, lineSubtotal } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Banknote, Smartphone, Building2, Copy } from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+
+type PaymentMethod = "cod" | "instapay" | "bank";
 
 const checkoutSchema = z.object({
   customer_name: z.string().trim().min(2, "الاسم قصير جداً").max(80),
   phone: z.string().trim().regex(/^[0-9+\-\s]{8,20}$/, "رقم هاتف غير صحيح"),
   address: z.string().trim().min(5, "أدخل عنوان واضح").max(300),
   notes: z.string().trim().max(500).optional(),
+  payment_method: z.enum(["cod", "instapay", "bank"]),
+  payment_reference: z.string().trim().max(120).optional(),
 });
 
 export function CartDrawer() {
   const { isOpen, setOpen, items, updateQuantity, removeItem, totalPrice, clear } = useCart();
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
-  const [form, setForm] = useState({ customer_name: "", phone: "", address: "", notes: "" });
+  const [form, setForm] = useState({
+    customer_name: "", phone: "", address: "", notes: "",
+    payment_method: "cod" as PaymentMethod, payment_reference: "",
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [pay, setPay] = useState<{ instapay_handle: string | null; bank_account_info: string | null }>({ instapay_handle: null, bank_account_info: null });
+
+  useEffect(() => {
+    if (stage !== "checkout") return;
+    supabase.from("store_settings").select("instapay_handle,bank_account_info").limit(1).maybeSingle()
+      .then(({ data }) => { if (data) setPay(data as typeof pay); });
+  }, [stage]);
 
   const handleSubmit = async () => {
     const parsed = checkoutSchema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "بيانات غير صحيحة"); return; }
     if (items.length === 0) return;
+    if ((parsed.data.payment_method === "instapay" || parsed.data.payment_method === "bank") && !parsed.data.payment_reference?.trim()) {
+      toast.error("أدخل رقم/مرجع التحويل بعد إتمام الدفع");
+      return;
+    }
     setSubmitting(true);
     const ref = (() => { try { return sessionStorage.getItem("alwadi_ref"); } catch { return null; } })();
     const payload = {
@@ -35,6 +53,8 @@ export function CartDrawer() {
       notes: parsed.data.notes || null,
       ref_source: ref,
       total_price: +totalPrice.toFixed(2),
+      payment_method: parsed.data.payment_method,
+      payment_reference: parsed.data.payment_reference?.trim() || null,
       items: items.map((i) => ({
         id: i.product.id,
         name: i.product.name,
@@ -51,8 +71,12 @@ export function CartDrawer() {
     toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
     clear();
     setStage("cart");
-    setForm({ customer_name: "", phone: "", address: "", notes: "" });
+    setForm({ customer_name: "", phone: "", address: "", notes: "", payment_method: "cod", payment_reference: "" });
     setOpen(false);
+  };
+
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("تم النسخ"));
   };
 
   return (
@@ -153,6 +177,38 @@ export function CartDrawer() {
               <Field label="ملاحظات (اختياري)">
                 <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="أي ملاحظات للطلب" />
               </Field>
+
+              <div className="space-y-2">
+                <span className="block text-xs font-bold text-foreground">طريقة الدفع</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <PayOption icon={<Banknote className="h-4 w-4" />} label="عند الاستلام" active={form.payment_method === "cod"} onClick={() => setForm({ ...form, payment_method: "cod", payment_reference: "" })} />
+                  <PayOption icon={<Smartphone className="h-4 w-4" />} label="إنستاباي" active={form.payment_method === "instapay"} onClick={() => setForm({ ...form, payment_method: "instapay" })} disabled={!pay.instapay_handle} />
+                  <PayOption icon={<Building2 className="h-4 w-4" />} label="تحويل بنكي" active={form.payment_method === "bank"} onClick={() => setForm({ ...form, payment_method: "bank" })} disabled={!pay.bank_account_info} />
+                </div>
+
+                {form.payment_method === "instapay" && pay.instapay_handle && (
+                  <div className="space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="font-bold text-foreground">حوّل المبلغ <span className="text-primary">{totalPrice.toFixed(2)} ج.م</span> على InstaPay:</div>
+                    <button type="button" onClick={() => copy(pay.instapay_handle!)} className="flex w-full items-center justify-between rounded-xl bg-background px-3 py-2 font-mono font-bold hover:bg-secondary">
+                      <span>{pay.instapay_handle}</span><Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <Input value={form.payment_reference} onChange={(e) => setForm({ ...form, payment_reference: e.target.value })} placeholder="رقم/مرجع التحويل" />
+                  </div>
+                )}
+
+                {form.payment_method === "bank" && pay.bank_account_info && (
+                  <div className="space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="font-bold text-foreground">حوّل المبلغ <span className="text-primary">{totalPrice.toFixed(2)} ج.م</span> إلى الحساب التالي:</div>
+                    <pre className="whitespace-pre-wrap rounded-xl bg-background p-3 font-sans leading-relaxed">{pay.bank_account_info}</pre>
+                    <Input value={form.payment_reference} onChange={(e) => setForm({ ...form, payment_reference: e.target.value })} placeholder="رقم/مرجع التحويل" />
+                  </div>
+                )}
+
+                {form.payment_method === "cod" && (
+                  <p className="text-[11px] text-muted-foreground">ستدفع نقداً عند استلام الطلب من المندوب.</p>
+                )}
+              </div>
+
               <div className="rounded-2xl border border-border bg-secondary/40 p-3 text-xs">
                 <div className="flex items-center justify-between font-bold">
                   <span>{items.length} منتج</span>
