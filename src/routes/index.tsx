@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
@@ -25,7 +25,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "price_desc", label: "السعر: الأعلى" },
 ];
 
-// ─── Skeleton بطاقة المنتج (من Doc 1) ───────────────────────────────────────
 function ProductSkeleton() {
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border/40 bg-card p-2 shadow-sm">
@@ -40,22 +39,17 @@ function ProductSkeleton() {
   );
 }
 
-// ─── الصفحة الرئيسية المدمجة ─────────────────────────────────────────────────
 function HomePage() {
-  const navigate = useNavigate();
-
   const [products, setProducts]           = useState<Product[]>([]);
   const [categories, setCategories]       = useState<Category[]>([]);
   const [loading, setLoading]             = useState(true);
 
-  // فلترة وترتيب
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [search, setSearch]               = useState("");
   const [sortKey, setSortKey]             = useState<SortKey>("default");
   const [showSort, setShowSort]           = useState(false);
   const sortRef                           = useRef<HTMLDivElement>(null);
 
-  // إغلاق الـ dropdown لما المستخدم يضغط برّاه
   useEffect(() => {
     if (!showSort) return;
     const handler = (e: MouseEvent) => {
@@ -67,12 +61,9 @@ function HomePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showSort]);
 
-  // وقت توصيل ديناميكي
   const [deliveryTime, setDeliveryTime]   = useState("30 – 45 دقيقة ⚡");
 
-  // ─── جلب البيانات وإعداد الحالة الأولية ──────────────────────────────────
   useEffect(() => {
-    // وقت التوصيل الديناميكي بناءً على اختيار العميل السابق
     const method = localStorage.getItem("delivery_method");
     if (method === "gps") {
       const dist = parseFloat(localStorage.getItem("calculated_distance") ?? "0");
@@ -86,7 +77,6 @@ function HomePage() {
       if (zone === "far")    setDeliveryTime("2 – 3 ساعات 🚚");
     }
 
-    // جلب المنتجات والفئات معاً
     (async () => {
       setLoading(true);
       const [{ data: prods }, { data: cats }] = await Promise.all([
@@ -99,7 +89,6 @@ function HomePage() {
     })();
   }, []);
 
-  // ─── فلترة وترتيب المنتجات بـ useMemo (Doc 1 – أداء أفضل) ───────────────
   const filtered = useMemo(() => {
     let list = [...products];
 
@@ -129,15 +118,12 @@ function HomePage() {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
 
-      {/* ── شريط الإعلانات (Doc 1) ── */}
       <AnnouncementBar />
 
       <main className="mx-auto max-w-2xl space-y-6 px-4 pb-32 pt-4">
 
-        {/* ── الكاروسيل (Doc 1 – أفضل من البانر الثابت) ── */}
         <HeroCarousel />
 
-        {/* ── شريط التوصيل الديناميكي (Doc 2) ── */}
         <div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-xs font-bold text-emerald-800">
           <div className="flex items-center gap-1.5">
             <MapPin className="h-3.5 w-3.5 animate-bounce text-emerald-600" />
@@ -148,16 +134,13 @@ function HomePage() {
           </span>
         </div>
 
-        {/* ── شبكة الفئات (Doc 1 – مرونة من Supabase) ── */}
         <CategoryGrid
           categories={categories}
           activeId={activeCategoryId}
           onSelect={setActiveCategoryId}
         />
 
-        {/* ── شريط البحث + الترتيب (Doc 1 – أكثر ميزات) ── */}
         <div className="flex gap-2">
-          {/* حقل البحث مع زر المسح */}
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -177,7 +160,6 @@ function HomePage() {
             )}
           </div>
 
-          {/* قائمة الترتيب */}
           <div className="relative" ref={sortRef}>
             <button
               onClick={() => setShowSort(v => !v)}
@@ -214,7 +196,6 @@ function HomePage() {
           </div>
         </div>
 
-        {/* ── شارات الفلاتر النشطة مع مسح فردي (Doc 1) ── */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2">
             {activeCategoryId && (
@@ -250,7 +231,6 @@ function HomePage() {
           </div>
         )}
 
-        {/* ── عداد النتائج مع أيقونة حسب الترتيب (Doc 1) ── */}
         {!loading && (
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{filtered.length} منتج</span>
@@ -267,14 +247,11 @@ function HomePage() {
           </div>
         )}
 
-        {/* ── شبكة المنتجات ── */}
         {loading ? (
-          // Skeleton (Doc 1)
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)}
           </div>
         ) : filtered.length === 0 ? (
-          // حالة الفراغ (Doc 1)
           <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border bg-card py-16 text-center">
             <div className="text-5xl">🔍</div>
             <p className="font-bold text-foreground">لا توجد منتجات</p>
@@ -287,19 +264,16 @@ function HomePage() {
             </button>
           </div>
         ) : (
-          // ProductCard الحقيقي مع navigate لصفحة المنتج
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {filtered.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
-                onOpen={() => navigate({ to: "/products/$productId", params: { productId: product.id } })}
               />
             ))}
           </div>
         )}
 
-        {/* ── الفوتر (Doc 2) ── */}
         <div className="border-t border-border/60 pb-4 pt-6 text-center">
           <p className="text-sm font-black text-foreground">الوادي الأخضر</p>
           <p className="text-[10px] font-medium text-muted-foreground">
@@ -312,7 +286,6 @@ function HomePage() {
 
       </main>
 
-      {/* ── شريط السلة الثابت (Doc 1) ── */}
       <StickyCartBar />
     </div>
   );
