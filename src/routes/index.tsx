@@ -1,17 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCart } from "@/lib/cart-context";
-import type { Product } from "@/lib/cart-context";
-import { toast } from "sonner";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
 import { CategoryGrid } from "@/components/storefront/CategoryGrid";
-import { ProductModal } from "@/components/storefront/ProductModal";
+import { ProductCard } from "@/components/storefront/ProductCard";
 import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
 import { StickyCartBar } from "@/components/storefront/StickyCartBar";
 import {
   Search, SlidersHorizontal, X, Flame, Tag,
-  Heart, MapPin, Plus,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,123 +40,15 @@ function ProductSkeleton() {
   );
 }
 
-// ─── بطاقة المنتج المدمجة ─────────────────────────────────────────────────────
-// تجمع: شارات FOMO + نسبة الخصم + زر القلب (Doc 2) + فتح Modal (Doc 1)
-interface ProductCardProps {
-  product: Product;
-  isWished: boolean;
-  onToggleWish: (e: React.MouseEvent) => void;
-  onOpen: () => void;
-  onAddToCart: (e: React.MouseEvent) => void;
-}
-
-function ProductCard({ product, isWished, onToggleWish, onOpen, onAddToCart }: ProductCardProps) {
-  const hasDiscount =
-    product.old_price != null && product.old_price > product.price_per_unit;
-  const discountPercent = hasDiscount
-    ? Math.round(((product.old_price! - product.price_per_unit) / product.old_price!) * 100)
-    : null;
-
-  return (
-    <div
-      onClick={onOpen}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer"
-    >
-      {/* ── شارات FOMO (Doc 2) ── */}
-      <div className="absolute start-2 top-2 z-10 flex flex-col gap-1">
-        {product.is_popular && (
-          <span className="flex items-center gap-0.5 rounded-md bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm">
-            🔥 الأكثر مبيعاً
-          </span>
-        )}
-        {discountPercent && (
-          <span className="w-fit rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm animate-pulse">
-            خصم {discountPercent}%
-          </span>
-        )}
-        {product.is_on_sale && !discountPercent && (
-          <span className="w-fit rounded-md bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm">
-            🏷️ عرض
-          </span>
-        )}
-      </div>
-
-      {/* ── زر القلب مع LocalStorage (Doc 2) ── */}
-      <button
-        onClick={onToggleWish}
-        className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm transition-transform active:scale-125"
-        aria-label={isWished ? "إزالة من المفضلة" : "إضافة للمفضلة"}
-      >
-        <Heart
-          className={cn(
-            "h-3.5 w-3.5 transition-colors",
-            isWished ? "fill-red-500 text-red-500" : "text-slate-400",
-          )}
-        />
-      </button>
-
-      {/* ── صورة المنتج مع Hover Scale (Doc 2) ── */}
-      <div className="aspect-square w-full overflow-hidden bg-secondary/30">
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-4xl">🌿</div>
-        )}
-      </div>
-
-      {/* ── تفاصيل البطاقة ── */}
-      <div className="flex flex-1 flex-col justify-between space-y-1.5 p-3 text-right">
-        <div className="space-y-0.5">
-          <h4 className="line-clamp-1 text-xs font-black text-foreground">
-            {product.name}
-          </h4>
-          <p className="text-[10px] font-bold text-muted-foreground">
-            {product.is_by_weight ? "وزن تقريبي 500 جرام" : product.unit_label || "1 قطعة"}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between pt-1">
-          {/* ── السعر الحالي + القديم مشطوب (Doc 2) ── */}
-          <div className="flex flex-col">
-            <span className="text-sm font-black text-emerald-600">
-              {product.price_per_unit.toFixed(2)}{" "}
-              <span className="text-[9px] font-bold text-muted-foreground">ج.م</span>
-            </span>
-            {hasDiscount && product.old_price && (
-              <span className="text-[10px] font-bold text-muted-foreground line-through">
-                {product.old_price.toFixed(2)} ج.م
-              </span>
-            )}
-          </div>
-
-          {/* ── زر إضافة سريعة + Toast (Doc 2) ── */}
-          <button
-            onClick={onAddToCart}
-            className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform hover:bg-primary/90 active:scale-90"
-            aria-label={`أضف ${product.name} للسلة`}
-          >
-            <Plus className="h-4 w-4 stroke-[3]" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── الصفحة الرئيسية المدمجة ─────────────────────────────────────────────────
 function HomePage() {
-  const { addItem } = useCart();
+  const navigate = useNavigate();
 
   const [products, setProducts]           = useState<Product[]>([]);
   const [categories, setCategories]       = useState<Category[]>([]);
   const [loading, setLoading]             = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // فلترة وترتيب (Doc 1)
+  // فلترة وترتيب
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [search, setSearch]               = useState("");
   const [sortKey, setSortKey]             = useState<SortKey>("default");
@@ -178,24 +67,12 @@ function HomePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showSort]);
 
-  // مفضلة + وقت توصيل ديناميكي (Doc 2)
-  const [wishlist, setWishlist]           = useState<Record<string, boolean>>({});
+  // وقت توصيل ديناميكي
   const [deliveryTime, setDeliveryTime]   = useState("30 – 45 دقيقة ⚡");
 
   // ─── جلب البيانات وإعداد الحالة الأولية ──────────────────────────────────
   useEffect(() => {
-    // 1. تحميل المفضلة من localStorage
-    const savedWish: Record<string, boolean> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("wishlist_")) {
-        const pId = key.replace("wishlist_", "");
-        savedWish[pId] = localStorage.getItem(key) === "true";
-      }
-    }
-    setWishlist(savedWish);
-
-    // 2. وقت التوصيل الديناميكي بناءً على اختيار العميل السابق
+    // وقت التوصيل الديناميكي بناءً على اختيار العميل السابق
     const method = localStorage.getItem("delivery_method");
     if (method === "gps") {
       const dist = parseFloat(localStorage.getItem("calculated_distance") ?? "0");
@@ -209,7 +86,7 @@ function HomePage() {
       if (zone === "far")    setDeliveryTime("2 – 3 ساعات 🚚");
     }
 
-    // 3. جلب المنتجات والفئات معاً (Doc 1 – Promise.all)
+    // جلب المنتجات والفئات معاً
     (async () => {
       setLoading(true);
       const [{ data: prods }, { data: cats }] = await Promise.all([
@@ -221,15 +98,6 @@ function HomePage() {
       setLoading(false);
     })();
   }, []);
-
-  // ─── تبديل المفضلة مع حفظ فوري (Doc 2) ──────────────────────────────────
-  const toggleWish = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const next = !wishlist[id];
-    setWishlist(prev => ({ ...prev, [id]: next }));
-    localStorage.setItem(`wishlist_${id}`, String(next));
-    next ? toast.success("أضيف للمفضلة ❤️") : toast.info("أُزيل من المفضلة");
-  };
 
   // ─── فلترة وترتيب المنتجات بـ useMemo (Doc 1 – أداء أفضل) ───────────────
   const filtered = useMemo(() => {
@@ -419,20 +287,13 @@ function HomePage() {
             </button>
           </div>
         ) : (
-          // البطاقات المدمجة (Doc 1 Modal + Doc 2 wishlist/badges/discount)
+          // ProductCard الحقيقي مع navigate لصفحة المنتج
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {filtered.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
-                isWished={!!wishlist[product.id]}
-                onToggleWish={e => toggleWish(e, product.id)}
-                onOpen={() => setSelectedProduct(product)}
-                onAddToCart={e => {
-                  e.stopPropagation();
-                  addItem(product, product.is_by_weight ? 0.5 : 1);
-                  toast.success(`تمت إضافة ${product.name} للسلة 🛒`);
-                }}
+                onOpen={() => navigate({ to: "/products/$productId", params: { productId: product.id } })}
               />
             ))}
           </div>
@@ -450,14 +311,6 @@ function HomePage() {
         </div>
 
       </main>
-
-      {/* ── Modal تفاصيل المنتج (Doc 1) ── */}
-      {selectedProduct && (
-        <ProductModal
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
 
       {/* ── شريط السلة الثابت (Doc 1) ── */}
       <StickyCartBar />
