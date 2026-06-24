@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p: Product) => void }) {
+export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [isClicking, setIsClicking] = useState(false);
 
@@ -22,11 +22,10 @@ export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p:
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     setIsClicking(true);
     addItem(product, product.is_by_weight ? 0.5 : 1);
     toast.success("تمت الإضافة للسلة", { description: product.name });
-    
-    // إعادة إنيميشن الزر بعد انتهاء الحركة
     setTimeout(() => setIsClicking(false), 300);
   };
 
@@ -40,10 +39,11 @@ export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p:
       "active:scale-[0.99]",
     )}>
       
-      {/* منطقة الصورة العلوية */}
-      <button 
-        onClick={() => onOpen(product)} 
-        className="relative aspect-square overflow-hidden bg-secondary/50" 
+      {/* منطقة الصورة — Link لصفحة المنتج */}
+      <Link
+        to="/products/$productId"
+        params={{ productId: product.id }}
+        className="relative aspect-square overflow-hidden bg-secondary/50 block"
         aria-label={`عرض ${product.name}`}
       >
         {product.image_url ? (
@@ -70,7 +70,7 @@ export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p:
           </div>
         </div>
 
-        {/* الشارات والخصومات المستديرة مع حركة نبض خفيفة */}
+        {/* الشارات والخصومات */}
         <div className="absolute top-2.5 inset-x-2.5 flex justify-between items-start pointer-events-none z-20">
           {discount > 0 ? (
             <span className="rounded-full sale-gradient px-2.5 py-1 text-[10px] font-black text-sale-foreground shadow-sm animate-pulse">
@@ -92,15 +92,14 @@ export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p:
             <span className="rounded-full bg-destructive/90 px-4 py-1.5 text-xs font-black text-destructive-foreground shadow-md uppercase tracking-wider">نفدت الكمية</span>
           </div>
         )}
-      </button>
+      </Link>
 
       {/* تفاصيل المنتج السفلي */}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <Link 
           to="/products/$productId" 
           params={{ productId: product.id }} 
-          className="text-start block group/link" 
-          onClick={(e) => e.stopPropagation()}
+          className="text-start block group/link"
         >
           <h4 className="line-clamp-2 text-sm font-bold leading-snug text-foreground transition-colors group-hover/link:text-primary group-hover:text-primary/90">
             {product.name}
