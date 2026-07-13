@@ -63,7 +63,7 @@ INSERT INTO public.products (name, category_id, description, price_per_unit, old
 SELECT 'صدور دجاج طازجة', id, 'صدور دجاج بلدي طازجة بدون عظم', 180.00, 220.00, 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=600', true, '1 كجم', true, true FROM public.categories WHERE slug='poultry';
 
 INSERT INTO public.products (name, category_id, description, price_per_unit, image_url, is_by_weight, unit_label, is_popular)
-SELECT 'لحم بقري مفرووم', id, 'لحم بقري بلدي مفروم طازج', 360.00, 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=600', true, '1 كجم', true FROM public.categories WHERE slug='meat';
+SELECT 'لحم بقري مفروم', id, 'لحم بقري بلدي مفروم طازج', 360.00, 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=600', true, '1 كجم', true FROM public.categories WHERE slug='meat';
 
 INSERT INTO public.products (name, category_id, description, price_per_unit, image_url, is_by_weight, unit_label, is_on_sale, old_price)
 SELECT 'كمون مطحون فاخر', id, 'كمون مطحون درجة أولى', 45.00, 'https://images.unsplash.com/photo-1599909533730-3781aff20889?w=600', true, '100 جرام', true, 60.00 FROM public.categories WHERE slug='spices';

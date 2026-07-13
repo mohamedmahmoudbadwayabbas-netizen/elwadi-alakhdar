@@ -1,292 +1,368 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { HeroCarousel } from "@/components/storefront/HeroCarousel";
-import { CategoryGrid } from "@/components/storefront/CategoryGrid";
-import { ProductCard } from "@/components/storefront/ProductCard";
-import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
-import { StickyCartBar } from "@/components/storefront/StickyCartBar";
-import {
-  Search, SlidersHorizontal, X, Flame, Tag,
-  MapPin,
-} from "lucide-react";
+import { useCart } from "@/lib/cart-context";
+import { useSettings } from "@/lib/settings-context";
+import { useAuth } from "@/lib/auth-context";
+import { useSearch } from "@/lib/search-context";
+import type { Product } from "@/lib/cart-context";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Plus, Heart, MapPin, Truck, Sparkles,
+} from "lucide-react";
 
-export const Route = createFileRoute("/")({ component: HomePage });
+export const Route = createFileRoute("/")({
+  component: HomePage,
+});
 
-type Category = { id: string; name: string; icon?: string | null };
-type SortKey = "default" | "price_asc" | "price_desc" | "popular" | "sale";
-
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "default",    label: "الافتراضي" },
-  { key: "popular",    label: "🔥 الأكثر مبيعاً" },
-  { key: "sale",       label: "🏷️ العروض" },
-  { key: "price_asc",  label: "السعر: الأقل" },
-  { key: "price_desc", label: "السعر: الأعلى" },
-];
-
-function ProductSkeleton() {
-  return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/40 bg-card p-2 shadow-sm">
-      <div className="aspect-square w-full animate-pulse rounded-xl bg-secondary" />
-      <div className="h-3.5 w-3/4 animate-pulse rounded-full bg-secondary" />
-      <div className="h-3 w-1/2 animate-pulse rounded-full bg-secondary" />
-      <div className="flex items-center justify-between">
-        <div className="h-4 w-1/3 animate-pulse rounded-full bg-secondary" />
-        <div className="h-8 w-8 animate-pulse rounded-full bg-secondary" />
-      </div>
-    </div>
-  );
-}
+type Category = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
 
 function HomePage() {
-  const [products, setProducts]           = useState<Product[]>([]);
-  const [categories, setCategories]       = useState<Category[]>([]);
-  const [loading, setLoading]             = useState(true);
+  const navigate = useNavigate();
+  const { addItem } = useCart();
+  const settings = useSettings();
+  const { user } = useAuth();
+  const { query: searchQuery } = useSearch();
 
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
-  const [search, setSearch]               = useState("");
-  const [sortKey, setSortKey]             = useState<SortKey>("default");
-  const [showSort, setShowSort]           = useState(false);
-  const sortRef                           = useRef<HTMLDivElement>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
-  useEffect(() => {
-    if (!showSort) return;
-    const handler = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
-        setShowSort(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showSort]);
+  // المفضلة المرتبطة بالحساب (Supabase)
+  const [wishlist, setWishlist] = useState<Record<string, string>>({}); // productId -> wishlist row id
 
-  const [deliveryTime, setDeliveryTime]   = useState("30 – 45 دقيقة ⚡");
+  const [savedDeliveryTime, setSavedDeliveryTime] = useState("30 - 45 دقيقة ⚡");
 
   useEffect(() => {
     const method = localStorage.getItem("delivery_method");
     if (method === "gps") {
-      const dist = parseFloat(localStorage.getItem("calculated_distance") ?? "0");
-      if      (dist <= 3)  setDeliveryTime("20 – 30 دقيقة ⚡ (قريب منك)");
-      else if (dist <= 7)  setDeliveryTime("40 – 50 دقيقة 🚗");
-      else if (dist <= 15) setDeliveryTime("60 – 80 دقيقة 🏎️");
-      else                 setDeliveryTime("90 – 120 دقيقة 🚚");
+      const dist = parseFloat(localStorage.getItem("calculated_distance") || "0");
+      if (dist <= 3) setSavedDeliveryTime("20 - 30 دقيقة ⚡ (قريب منك)");
+      else if (dist <= 7) setSavedDeliveryTime("40 - 50 دقيقة 🚗");
+      else if (dist <= 15) setSavedDeliveryTime("60 - 80 دقيقة 🏎️");
+      else setSavedDeliveryTime("90 - 120 دقيقة 🚚");
     } else {
       const zone = localStorage.getItem("user_delivery_zone");
-      if (zone === "medium") setDeliveryTime("60 – 90 دقيقة 🚗");
-      if (zone === "far")    setDeliveryTime("2 – 3 ساعات 🚚");
+      if (zone === "medium") setSavedDeliveryTime("60 - 90 دقيقة 🚗");
+      if (zone === "far") setSavedDeliveryTime("2 - 3 ساعات 🚚");
     }
 
-    (async () => {
-      setLoading(true);
+    const loadAll = async () => {
       const [{ data: prods }, { data: cats }] = await Promise.all([
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
-        supabase.from("categories").select("*").order("sort_order", { ascending: true }),
+        supabase.from("products").select("*"),
+        supabase.from("categories").select("id,name,slug,icon,sort_order").order("sort_order", { ascending: true }),
       ]);
       setProducts((prods ?? []) as Product[]);
       setCategories((cats ?? []) as Category[]);
       setLoading(false);
-    })();
+    };
+    loadAll();
+
+    const channel = supabase
+      .channel("storefront-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, loadAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, loadAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "flash_offers" }, loadAll)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filtered = useMemo(() => {
-    let list = [...products];
+  // تحميل المفضلة من قاعدة البيانات للمستخدم المسجل
+  useEffect(() => {
+    if (!user) { setWishlist({}); return; }
+    (async () => {
+      const { data } = await supabase.from("wishlists").select("id,product_id").eq("user_id", user.id);
+      const map: Record<string, string> = {};
+      for (const w of data ?? []) map[w.product_id] = w.id;
+      setWishlist(map);
+    })();
+  }, [user]);
 
-    if (activeCategoryId)
-      list = list.filter(p => p.category_id === activeCategoryId);
-
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        p => p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q),
-      );
+  const toggleWish = async (e: React.MouseEvent, productId: string) => {
+    e.stopPropagation();
+    if (!user) {
+      toast.error("سجّل الدخول لإضافة المنتج للمفضلة");
+      navigate({ to: "/auth" });
+      return;
     }
-
-    switch (sortKey) {
-      case "price_asc":  list.sort((a, b) => a.price_per_unit - b.price_per_unit); break;
-      case "price_desc": list.sort((a, b) => b.price_per_unit - a.price_per_unit); break;
-      case "popular":    list.sort((a, b) => (b.is_popular ? 1 : 0) - (a.is_popular ? 1 : 0)); break;
-      case "sale":       list.sort((a, b) => (b.is_on_sale ? 1 : 0) - (a.is_on_sale ? 1 : 0)); break;
+    const existing = wishlist[productId];
+    if (existing) {
+      const { error } = await supabase.from("wishlists").delete().eq("id", existing);
+      if (error) return toast.error(error.message);
+      setWishlist((p) => { const c = { ...p }; delete c[productId]; return c; });
+      toast.info("تمت الإزالة من المفضلة");
+    } else {
+      const { data, error } = await supabase
+        .from("wishlists").insert({ user_id: user.id, product_id: productId }).select("id").single();
+      if (error) return toast.error(error.message);
+      setWishlist((p) => ({ ...p, [productId]: data!.id }));
+      toast.success("تمت الإضافة للمفضلة ❤️");
     }
+  };
 
-    return list;
-  }, [products, activeCategoryId, search, sortKey]);
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory = selectedCategory === "all" || p.category_id === selectedCategory;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q || p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q);
+    return matchesCategory && matchesSearch;
+  });
 
-  const activeSort = SORT_OPTIONS.find(o => o.key === sortKey)!;
-  const hasActiveFilters = !!(activeCategoryId || search || sortKey !== "default");
+  const bestSellers = filteredProducts.slice(0, 4);
+  const latestProducts = filteredProducts.slice(2, 7);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAF9F6]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div className="min-h-screen bg-[#F9FAFB] pb-14 text-right" dir="rtl">
+      
+      {/* شريط البحث موجود في الهيدر — تم إزالة النسخة المكررة */}
 
-      <AnnouncementBar />
+      <div className="mx-auto max-w-md px-5 pt-4 space-y-8">
 
-      <main className="mx-auto max-w-2xl space-y-6 px-4 pb-32 pt-4">
-
-        <HeroCarousel />
-
-        <div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-xs font-bold text-emerald-800">
-          <div className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 animate-bounce text-emerald-600" />
-            <span>وقت التوصيل المتوقع:</span>
-          </div>
-          <span className="rounded-lg bg-white px-2 py-0.5 font-black text-emerald-700 shadow-sm">
-            {deliveryTime}
-          </span>
-        </div>
-
-        <CategoryGrid
-          categories={categories}
-          activeId={activeCategoryId}
-          onSelect={setActiveCategoryId}
-        />
-
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="ابحث عن منتج، عطارة، توابل..."
-              className="w-full rounded-2xl border border-border bg-card py-2.5 pe-10 ps-4 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute start-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-                aria-label="مسح البحث"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="relative" ref={sortRef}>
-            <button
-              onClick={() => setShowSort(v => !v)}
-              className={cn(
-                "flex h-full items-center gap-1.5 rounded-2xl border px-3 text-sm font-bold transition-all",
-                showSort
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground hover:border-primary/40",
-              )}
-              aria-label="ترتيب النتائج"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">ترتيب</span>
-            </button>
-
-            {showSort && (
-              <div className="absolute end-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-                {SORT_OPTIONS.map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => { setSortKey(opt.key); setShowSort(false); }}
-                    className={cn(
-                      "flex w-full items-center px-4 py-2.5 text-sm transition-colors",
-                      sortKey === opt.key
-                        ? "bg-primary/10 font-bold text-primary"
-                        : "hover:bg-secondary",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2">
-            {activeCategoryId && (
-              <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                {categories.find(c => c.id === activeCategoryId)?.name}
-                <button onClick={() => setActiveCategoryId(null)} aria-label="إزالة فلتر الفئة">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {search && (
-              <span className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold">
-                "{search}"
-                <button onClick={() => setSearch("")} aria-label="مسح البحث">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {sortKey !== "default" && (
-              <span className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold">
-                {activeSort.label}
-                <button onClick={() => setSortKey("default")} aria-label="إزالة الترتيب">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            <button
-              onClick={() => { setActiveCategoryId(null); setSearch(""); setSortKey("default"); }}
-              className="rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive"
-            >
-              مسح الكل
-            </button>
-          </div>
-        )}
-
-        {!loading && (
+        
+        {/* ─── البانر الإعلاني الكبير — يقرأ صورة الخلفية من الإعدادات ─── */}
+        <div
+          className="relative overflow-hidden rounded-3xl bg-[#036233] p-5 text-white shadow-lg transition-transform duration-300 hover:shadow-xl"
+          style={
+            settings.hero_bg_image
+              ? {
+                  backgroundImage: `linear-gradient(135deg, rgba(3,98,51,0.85), rgba(3,98,51,0.6)), url(${settings.hero_bg_image})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">{filtered.length} منتج</span>
-            {sortKey === "popular" && (
-              <span className="flex items-center gap-1 text-xs font-bold text-orange-500">
-                <Flame className="h-3.5 w-3.5" /> الأكثر مبيعاً أولاً
+            <div className="space-y-2 max-w-[65%]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                <Truck className="h-3 w-3 text-orange-400" /> أول توصيل سريع
               </span>
-            )}
-            {sortKey === "sale" && (
-              <span className="flex items-center gap-1 text-xs font-bold text-rose-500">
-                <Tag className="h-3.5 w-3.5" /> العروض أولاً
-              </span>
-            )}
+              <h2 className="font-display text-2xl font-black tracking-wide">{settings.hero_title || settings.site_name}</h2>
+              <p className="text-[11px] text-emerald-100 leading-relaxed font-medium">{settings.hero_subtitle || "سوبر ماركت وعطارة - جودة، أصالة وتوصيل سريع مباشر لباب بيتك."}</p>
+              <button
+                onClick={() => setSelectedCategory("all")}
+                className="mt-2 rounded-full bg-[#E55300] px-4 py-1.5 text-xs font-black text-white shadow-md hover:bg-orange-600 active:scale-95 transition-all"
+              >
+                {settings.hero_cta_text || "تسوّق الآن"}
+              </button>
+            </div>
+            {/* أيقونة/صورة عائمة جانبية — تستخدم صورة الإعدادات إن وُجدت */}
+            <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl bg-white/10 backdrop-blur-sm shadow-inner">
+              {settings.floating_element_image ? (
+                <img src={settings.floating_element_image} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Truck className="h-10 w-10 text-emerald-300" />
+              )}
+            </div>
           </div>
-        )}
-
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-border bg-card py-16 text-center">
-            <div className="text-5xl">🔍</div>
-            <p className="font-bold text-foreground">لا توجد منتجات</p>
-            <p className="text-sm text-muted-foreground">جرّب تغيير الفلتر أو البحث</p>
-            <button
-              onClick={() => { setActiveCategoryId(null); setSearch(""); setSortKey("default"); }}
-              className="rounded-full border border-primary px-4 py-1.5 text-sm font-bold text-primary hover:bg-primary/10"
-            >
-              إظهار كل المنتجات
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {filtered.map(product => (
-              <ProductCard
-                key={product.id}
-                product={product}
-              />
-            ))}
-          </div>
-        )}
-
-        <div className="border-t border-border/60 pb-4 pt-6 text-center">
-          <p className="text-sm font-black text-foreground">الوادي الأخضر</p>
-          <p className="text-[10px] font-medium text-muted-foreground">
-            سوبر ماركت وعطارة ومحمصة · جودة أصيلة وتوصيل سريع
-          </p>
-          <p className="pt-2 text-[9px] text-muted-foreground/70" dir="ltr">
-            © 2026 جميع الحقوق محفوظة.
-          </p>
         </div>
 
-      </main>
+        {/* التحديث 7: شريط التوصيل الديناميكي المخصص للزبون أسفل البانر */}
+        <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-2.5 flex items-center justify-between text-xs font-bold text-emerald-800">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-emerald-600 animate-bounce" />
+            <span>التوصيل المتوقع إليك الآن:</span>
+          </div>
+          <span className="bg-white px-2 py-0.5 rounded-lg text-emerald-700 shadow-sm font-black">{savedDeliveryTime}</span>
+        </div>
 
-      <StickyCartBar />
+        {/* ─── التحديث 2 & 6: قسم تسوق حسب القسم التفاعلي ─── */}
+        <div className="space-y-3">
+          <h3 className="text-base font-medium text-primary">تسوّق حسب القسم</h3>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none" dir="rtl">
+            {[{ id: "all", name: "الكل", icon: "✨" }, ...categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon }))].map((cat) => {
+              const isActive = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-xl border p-3 min-w-[80px] transition-all duration-200",
+                    "hover:shadow-sm active:scale-95",
+                    isActive
+                      ? "border-primary bg-primary/5"
+                      : "border-border/60 bg-white",
+                  )}
+                >
+                  <div className={cn(
+                    "grid h-11 w-11 place-items-center rounded-xl text-xl transition-colors",
+                    isActive ? "bg-primary text-white" : "bg-secondary text-primary",
+                  )}>
+                    {cat.icon ? <span aria-hidden>{cat.icon}</span> : <Sparkles className="h-5 w-5" strokeWidth={1.5} />}
+                  </div>
+                  <span className="text-xs font-normal text-foreground">{cat.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+
+        {/* ─── التحديث 1 & 5 & 8: قسم الأكثر مبيعاً ─── */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-medium text-primary flex items-center gap-1">
+              🔥 الأكثر مبيعاً
+            </h3>
+          </div>
+
+          
+          <div className="grid grid-cols-2 gap-3">
+            {bestSellers.map((product) => {
+              const isWished = !!wishlist[product.id];
+              const hasDiscount = product.old_price && product.old_price > product.price_per_unit;
+              const discountPercent = hasDiscount ? Math.round(((product.old_price! - product.price_per_unit) / product.old_price!) * 100) : 0;
+
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => navigate({ to: "/products/$productId", params: { productId: product.id } })}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer"
+                >
+                  {/* شارات الـ FOMO والخصومات الجاذبة فوق الصورة */}
+                  <div className="absolute start-2 top-2 z-10 flex flex-col gap-1">
+                    <span className="rounded-md bg-[#E55300] px-1.5 py-0.5 text-[9px] font-black text-white flex items-center gap-0.5 shadow-sm">
+                      🔥 الأكثر مبيعاً
+                    </span>
+                    {hasDiscount && (
+                      <span className="w-fit rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm animate-pulse">
+                        خصم {discountPercent}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* زر القلب المرتبط محلياً وثابت دائماً */}
+                  <button
+                    onClick={(e) => toggleWish(e, product.id)}
+                    className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm transition-transform active:scale-125"
+                  >
+                    <Heart className={cn("h-3.5 w-3.5 transition-colors", isWished ? "fill-red-500 text-red-500" : "text-slate-400")} />
+                  </button>
+
+                  {/* صورة المنتج */}
+                  <div className="aspect-square w-full bg-slate-50 overflow-hidden">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-3xl">🌿</div>
+                    )}
+                  </div>
+
+                  {/* تفاصيل البطاقة مع التهوية والتنسيق المثالي للخطوط */}
+                  <div className="flex flex-1 flex-col p-3 text-right justify-between space-y-1.5">
+                    <div className="space-y-0.5">
+                      <h4 className="line-clamp-1 text-sm font-normal text-foreground">{product.name}</h4>
+                      <p className="text-[11px] text-muted-foreground font-light">
+                        {product.is_by_weight ? "وزن تقريبي 500 جرام" : product.unit_label || "1 قطعة"}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-primary">
+                          {product.price_per_unit.toFixed(2)} <span className="text-[10px] font-light text-muted-foreground">ج.م</span>
+                        </span>
+                        {hasDiscount && (
+                          <span className="text-[10px] text-muted-foreground line-through font-light">
+                            {product.old_price!.toFixed(2)} ج.م
+                          </span>
+                        )}
+                      </div>
+
+                      {/* زر أضف للسلة — بلون التفاعل البرتقالي */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addItem(product, product.is_by_weight ? 0.5 : 1);
+                          toast.success(`تمت إضافة ${product.name} للسلة 🛒`);
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm hover:opacity-90 active:scale-90 transition-transform"
+                        aria-label="أضف للسلة"
+                      >
+                        <Plus className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+
+        {/* ─── قسم أحدث المنتجات ─── */}
+        <div className="space-y-4 pt-2">
+          <h3 className="text-base font-medium text-primary">أحدث المنتجات</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {latestProducts.map((product) => {
+              const isWished = !!wishlist[product.id];
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => navigate({ to: "/products/$productId", params: { productId: product.id } })}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm transition-all hover:shadow-md cursor-pointer"
+                >
+                  <div className="absolute start-2 top-2 z-10">
+                    <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-normal text-white shadow-sm">
+                      جديد
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => toggleWish(e, product.id)}
+                    className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/80 shadow-sm"
+                    aria-label="المفضلة"
+                  >
+                    <Heart className={cn("h-3.5 w-3.5", isWished ? "fill-accent text-accent" : "text-muted-foreground")} strokeWidth={1.5} />
+                  </button>
+
+                  <div className="aspect-square w-full bg-[#F9FAFB]">
+                    {product.image_url ? <img src={product.image_url} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-3xl">🌿</div>}
+                  </div>
+
+                  <div className="flex flex-1 flex-col p-3 justify-between space-y-1.5">
+                    <div className="space-y-0.5">
+                      <h4 className="line-clamp-1 text-sm font-normal text-foreground">{product.name}</h4>
+                      <p className="text-[11px] text-muted-foreground font-light">{product.unit_label || "1 عبوة"}</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-sm font-medium text-primary">{product.price_per_unit.toFixed(2)} <span className="text-[10px] font-light text-muted-foreground">ج.م</span></span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addItem(product, 1);
+                          toast.success("أضيف للسلة 🛒");
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm hover:opacity-90 active:scale-90 transition-all"
+                        aria-label="أضف للسلة"
+                      >
+                        <Plus className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+
+        {/* ─── الفوتر الأنيق المماثل للصورة ─── */}
+        <div className="border-t border-slate-200/60 pt-6 pb-4 text-center space-y-1">
+          <div className="text-sm font-black text-slate-700">الوادي الأخضر</div>
+          <div className="text-[10px] text-slate-400 font-medium">سوبر ماركت وعطارة ومحمصة - جودة أصيلة وتوصيل سريع</div>
+          <div className="text-[9px] text-slate-400/80 pt-2" dir="ltr">© 2026 جميع الحقوق محفوظة.</div>
+        </div>
+
+      </div>
     </div>
   );
 }

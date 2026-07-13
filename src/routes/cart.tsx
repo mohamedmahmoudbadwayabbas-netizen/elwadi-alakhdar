@@ -1,0 +1,591 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useCart, lineSubtotal } from "@/lib/cart-context";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import {
+  ShoppingBag, Minus, Plus, Trash2, ArrowRight, Banknote, Smartphone, Building2,
+  Copy, Truck, Store, MapPin, Leaf, TicketPercent, X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { z } from "zod";
+import { useTheme } from "@/lib/theme-context";
+import { useSettings } from "@/lib/settings-context";
+import { playSuccessSound } from "@/lib/sounds";
+import { Truck as TruckIcon } from "lucide-react";
+
+export const Route = createFileRoute("/cart")({
+  head: () => ({
+    meta: [
+      { title: "سلة المشتريات — الوادي الأخضر" },
+      { name: "description", content: "أتمم طلبك من متجر الوادي الأخضر مع توصيل سريع لمنطقتك" },
+    ],
+  }),
+  component: CartPage,
+});
+
+type PaymentMethod = "cod" | "instapay" | "bank";
+type DeliveryMethod = "delivery" | "pickup";
+
+type Zone = {
+  id: string;
+  name: string;
+  fee: number;
+  min_order_amount: number | null;
+  estimated_minutes: number | null;
+};
+
+const checkoutSchema = z.object({
+  customer_name: z.string().trim().min(2, "الاسم قصير جداً").max(80),
+  phone: z.string().trim().regex(/^[0-9+\-\s]{8,20}$/, "رقم هاتف غير صحيح"),
+  address: z.string().trim().max(300),
+  notes: z.string().trim().max(500).optional(),
+  payment_method: z.enum(["cod", "instapay", "bank"]),
+  payment_reference: z.string().trim().max(120).optional(),
+});
+
+function CartPage() {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const settings = useSettings();
+  const { items, updateQuantity, removeItem, totalPrice, clear } = useCart();
+
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("delivery");
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [zoneId, setZoneId] = useState<string>("");
+  const [pay, setPay] = useState<{ instapay_handle: string | null; bank_account_info: string | null; store_address: string | null }>({
+    instapay_handle: null, bank_account_info: null, store_address: null,
+  });
+  const [bg, setBg] = useState<{ empty: string | null; floating: string | null }>({ empty: null, floating: null });
+  const [form, setForm] = useState({
+    customer_name: "", phone: "", address: "", notes: "",
+    payment_method: "cod" as PaymentMethod, payment_reference: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  // كوبون الخصم
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ id: string; code: string; discount_type: string; discount_value: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) { toast.error("أدخل كود الخصم"); return; }
+    setCouponLoading(true);
+    const { data, error } = await supabase
+      .from("coupons")
+      .select("id,code,discount_type,discount_value,min_order_amount,max_uses,uses_count,expires_at,is_active")
+      .ilike("code", code)
+      .maybeSingle();
+    setCouponLoading(false);
+    if (error || !data) { toast.error("كود الخصم غير صحيح"); return; }
+    if (!data.is_active) { toast.error("هذا الكود متوقف حالياً"); return; }
+    if (data.expires_at && new Date(data.expires_at) < new Date()) { toast.error("انتهت صلاحية الكود"); return; }
+    if (data.max_uses && (data.uses_count ?? 0) >= data.max_uses) { toast.error("تم استنفاد عدد مرات استخدام الكود"); return; }
+    if (data.min_order_amount && totalPrice < Number(data.min_order_amount)) {
+      toast.error(`الحد الأدنى لاستخدام هذا الكود هو ${data.min_order_amount} ج.م`);
+      return;
+    }
+    setCoupon({ id: data.id, code: data.code, discount_type: data.discount_type, discount_value: Number(data.discount_value) });
+    toast.success(`تم تطبيق الخصم: ${data.code}`);
+  };
+
+  const removeCoupon = () => { setCoupon(null); setCouponInput(""); };
+
+  useEffect(() => {
+    supabase
+      .from("delivery_zones")
+      .select("id,name,fee,min_order_amount,estimated_minutes,is_active,sort_order")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => {
+        const z = (data ?? []) as Zone[];
+        setZones(z);
+        if (z.length > 0 && !zoneId) setZoneId(z[0].id);
+      });
+    supabase.from("store_settings").select("instapay_handle,bank_account_info,store_address,cart_empty_bg,floating_element_image").limit(1).maybeSingle()
+      .then(({ data }) => { if (data) { setPay({
+        instapay_handle: (data as any).instapay_handle ?? null,
+        bank_account_info: (data as any).bank_account_info ?? null,
+        store_address: (data as any).store_address ?? null,
+      }); setBg({ empty: (data as any).cart_empty_bg ?? null, floating: (data as any).floating_element_image ?? null }); } });
+  }, []);
+
+  const zone = useMemo(() => zones.find((z) => z.id === zoneId) ?? null, [zones, zoneId]);
+  const deliveryFee = deliveryMethod === "delivery" ? (zone?.fee ?? 0) : 0;
+  const minOrder = deliveryMethod === "delivery" ? (zone?.min_order_amount ?? 0) : 0;
+  const storeMin = Number(settings.min_order_amount || 0);
+  const freeShipAt = Number(settings.free_shipping_threshold || 0);
+  const effectiveMin = Math.max(minOrder, storeMin);
+  const belowMin = effectiveMin > 0 && totalPrice < effectiveMin;
+  const missingToFreeShip = freeShipAt > 0 ? Math.max(0, freeShipAt - totalPrice) : 0;
+  const freeShipReached = freeShipAt > 0 && totalPrice >= freeShipAt;
+  const progressPct = effectiveMin > 0 || freeShipAt > 0
+    ? Math.min(100, (totalPrice / Math.max(freeShipAt || effectiveMin, effectiveMin || freeShipAt, 1)) * 100)
+    : 0;
+  const discountAmount = useMemo(() => {
+    if (!coupon) return 0;
+    const raw = coupon.discount_type === "percentage"
+      ? totalPrice * (coupon.discount_value / 100)
+      : coupon.discount_value;
+    return +Math.min(raw, totalPrice).toFixed(2);
+  }, [coupon, totalPrice]);
+  const grandTotal = +Math.max(0, totalPrice - discountAmount + Number(deliveryFee || 0)).toFixed(2);
+
+  const handleSubmit = async () => {
+    if (items.length === 0) return;
+    if (deliveryMethod === "delivery" && zones.length > 0 && !zoneId) {
+      toast.error("اختر منطقة التوصيل");
+      return;
+    }
+    if (belowMin) {
+      toast.error(`الحد الأدنى للطلب هو ${effectiveMin} ج.م`);
+      return;
+    }
+
+    const addressToValidate = deliveryMethod === "pickup"
+      ? (pay.store_address || "استلام من الفرع")
+      : form.address;
+
+    const parsed = checkoutSchema.safeParse({ ...form, address: addressToValidate });
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "بيانات غير صحيحة"); return; }
+    if (deliveryMethod === "delivery" && addressToValidate.trim().length < 5) {
+      toast.error("أدخل عنوان واضح للتوصيل");
+      return;
+    }
+    if ((parsed.data.payment_method === "instapay" || parsed.data.payment_method === "bank") && !parsed.data.payment_reference?.trim()) {
+      toast.error("أدخل رقم/مرجع التحويل بعد إتمام الدفع");
+      return;
+    }
+
+    setSubmitting(true);
+    const ref = (() => { try { return sessionStorage.getItem("alwadi_ref"); } catch { return null; } })();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const payload: any = {
+      customer_name: parsed.data.customer_name,
+      phone: parsed.data.phone,
+      address: deliveryMethod === "pickup" ? `[استلام من الفرع] ${pay.store_address ?? ""}`.trim() : parsed.data.address,
+      notes: parsed.data.notes || null,
+      ref_source: ref,
+      user_id: user?.id ?? null,
+      total_price: grandTotal,
+      delivery_fee: deliveryFee || null,
+      delivery_zone_id: deliveryMethod === "delivery" ? (zoneId || null) : null,
+      payment_method: parsed.data.payment_method,
+      payment_reference: parsed.data.payment_reference?.trim() || null,
+      coupon_code: coupon?.code ?? null,
+      discount_amount: discountAmount || null,
+      items: items.map((i) => ({
+        id: i.product.id,
+        name: i.product.name,
+        unit_label: i.product.unit_label,
+        is_by_weight: i.product.is_by_weight,
+        price_per_unit: i.product.price_per_unit,
+        quantity: i.quantity,
+        subtotal: +lineSubtotal(i.product, i.quantity).toFixed(2),
+      })),
+    };
+
+    const { error } = await supabase.from("orders").insert(payload);
+    setSubmitting(false);
+    if (error) { toast.error("تعذّر إرسال الطلب", { description: error.message }); return; }
+    if (coupon) {
+      try {
+        const { data: c } = await supabase.from("coupons").select("uses_count").eq("id", coupon.id).maybeSingle();
+        await supabase.from("coupons").update({ uses_count: (c?.uses_count ?? 0) + 1 }).eq("id", coupon.id);
+      } catch {}
+    }
+    playSuccessSound();
+    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
+    clear();
+    navigate({ to: "/" });
+  };
+
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("تم النسخ"));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background" dir="rtl">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="grid h-9 w-9 place-items-center rounded-xl hero-gradient text-primary-foreground">
+              <Leaf className="h-4 w-4" />
+            </div>
+            <span className="hidden font-display text-base font-bold sm:inline">الوادي الأخضر</span>
+          </Link>
+          <h1 className="flex items-center gap-2 font-display text-base font-bold">
+            <ShoppingBag className="h-4 w-4 text-primary" />
+            سلة المشتريات
+          </h1>
+          <Link to="/" className="text-xs font-bold text-primary hover:underline">
+            <ArrowRight className="me-1 inline h-3.5 w-3.5" />
+            متابعة التسوق
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-5xl px-4 py-6">
+        {items.length === 0 ? (
+          <div className="relative mx-auto max-w-lg overflow-visible">
+            {bg.floating && (
+              <img
+                src={bg.floating}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute -top-12 -left-10 z-10 h-32 w-32 select-none object-contain drop-shadow-2xl -rotate-12"
+              />
+            )}
+            <Card
+              className={`relative flex flex-col items-center gap-3 overflow-hidden p-10 text-center ${(theme.cart_empty_bg_url || bg.empty) ? "border-white/10 bg-cover bg-center text-white" : ""}`}
+              style={{
+                borderRadius: theme.card_radius_px,
+                ...(theme.cart_empty_bg_url || bg.empty
+                  ? { backgroundImage: `url(${theme.cart_empty_bg_url ?? bg.empty})` }
+                  : {}),
+              }}
+            >
+              {(theme.cart_empty_bg_url || bg.empty) && <div className="absolute inset-0 bg-gradient-to-br from-black/75 via-black/55 to-black/75" />}
+              <div className="relative z-10 grid h-24 w-24 place-items-center rounded-3xl bg-white/10 text-5xl backdrop-blur">🛒</div>
+              <p className="relative z-10 font-display text-xl font-bold">السلة فارغة</p>
+              <p className={`relative z-10 text-sm ${bg.empty ? "text-white/80" : "text-muted-foreground"}`}>
+                ابدأ التسوّق وأضف منتجاتك المفضلة من المتجر
+              </p>
+              <Link to="/" className="relative z-10">
+                <Button className="mt-2 rounded-full hero-gradient text-primary-foreground">تصفح المنتجات</Button>
+              </Link>
+            </Card>
+          </div>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+            {/* العمود الأيمن: العناصر + بيانات الطلب */}
+            <div className="space-y-5">
+              <Card className="rounded-3xl border-border p-4 sm:p-5">
+                <h2 className="mb-3 font-display text-base font-bold">المنتجات ({items.length})</h2>
+                {(effectiveMin > 0 || freeShipAt > 0) && (
+                  <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-3">
+                    <div className="mb-2 flex items-center justify-between text-[11px] font-bold">
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <TruckIcon className="h-3.5 w-3.5" />
+                        {freeShipReached ? "🎉 حصلت على شحن مجاني!"
+                          : belowMin ? `أضف بـ ${(effectiveMin - totalPrice).toFixed(2)} ج.م للوصول للحد الأدنى`
+                          : missingToFreeShip > 0 ? `أضف بـ ${missingToFreeShip.toFixed(2)} ج.م للحصول على شحن مجاني`
+                          : "جاهز للطلب"}
+                      </span>
+                      <span className="text-muted-foreground">{totalPrice.toFixed(2)} / {(freeShipAt || effectiveMin).toFixed(2)} ج.م</span>
+                    </div>
+                    <div className="relative h-2 overflow-hidden rounded-full bg-primary/10">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${freeShipReached ? "bg-emerald-500" : "bg-primary"}`}
+                        style={{ width: `${progressPct}%` }}
+                      />
+                      {effectiveMin > 0 && freeShipAt > effectiveMin && (
+                        <div
+                          className="absolute inset-y-0 w-0.5 bg-foreground/40"
+                          style={{ insetInlineStart: `${Math.min(100, (effectiveMin / freeShipAt) * 100)}%` }}
+                          title={`الحد الأدنى ${effectiveMin} ج.م`}
+                        />
+                      )}
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                      {effectiveMin > 0 ? <span>الحد الأدنى: {effectiveMin} ج.م</span> : <span />}
+                      {freeShipAt > 0 && <span>شحن مجاني: {freeShipAt} ج.م</span>}
+                    </div>
+                  </div>
+                )}
+                <ul className="space-y-2.5">
+                  {items.map((it) => (
+                    <li key={it.product.id} className="flex gap-3 rounded-2xl border border-border bg-card p-3">
+                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                        {it.product.image_url ? (
+                          <img src={it.product.image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-2xl">🌿</div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <h5 className="line-clamp-2 text-sm font-bold leading-snug">{it.product.name}</h5>
+                          <button aria-label="حذف" onClick={() => removeItem(it.product.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {it.product.price_per_unit.toFixed(2)} ج.م {it.product.is_by_weight ? "/ كجم" : `/ ${it.product.unit_label}`}
+                        </div>
+                        <div className="mt-auto flex items-center justify-between">
+                          <div className="flex items-center gap-0.5 rounded-full border border-border bg-secondary/40 p-0.5">
+                            <button
+                              aria-label="تقليل"
+                              onClick={() => updateQuantity(it.product.id, +(it.quantity - (it.product.is_by_weight ? 0.25 : 1)).toFixed(3))}
+                              className="grid h-8 w-8 place-items-center rounded-full hover:bg-background"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="min-w-14 text-center text-xs font-black">
+                              {it.product.is_by_weight ? (it.quantity >= 1 ? `${it.quantity} كجم` : `${Math.round(it.quantity * 1000)} جم`) : it.quantity}
+                            </span>
+                            <button
+                              aria-label="زيادة"
+                              onClick={() => updateQuantity(it.product.id, +(it.quantity + (it.product.is_by_weight ? 0.25 : 1)).toFixed(3))}
+                              className="grid h-8 w-8 place-items-center rounded-full hover:bg-background"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="font-display text-sm font-black text-primary">
+                            {lineSubtotal(it.product, it.quantity).toFixed(2)} ج.م
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+
+              <Card className="rounded-3xl border-border p-4 sm:p-5">
+                <h2 className="mb-3 font-display text-base font-bold">طريقة الاستلام</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <MethodOption
+                    icon={<Truck className="h-4 w-4" />}
+                    label="توصيل للمنزل"
+                    active={deliveryMethod === "delivery"}
+                    onClick={() => setDeliveryMethod("delivery")}
+                  />
+                  <MethodOption
+                    icon={<Store className="h-4 w-4" />}
+                    label="استلام من الفرع"
+                    active={deliveryMethod === "pickup"}
+                    onClick={() => setDeliveryMethod("pickup")}
+                  />
+                </div>
+
+                {deliveryMethod === "delivery" && zones.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <span className="block text-xs font-bold">منطقة التوصيل</span>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {zones.map((z) => (
+                        <button
+                          key={z.id}
+                          type="button"
+                          onClick={() => setZoneId(z.id)}
+                          className={`flex items-center justify-between gap-2 rounded-2xl border p-3 text-start text-xs transition ${
+                            zoneId === z.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-secondary"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <MapPin className="h-3.5 w-3.5" />
+                              <span className="truncate">{z.name}</span>
+                            </div>
+                            {z.estimated_minutes && (
+                              <div className="mt-0.5 text-[10px] text-muted-foreground">حوالي {z.estimated_minutes} دقيقة</div>
+                            )}
+                            {z.min_order_amount ? (
+                              <div className="mt-0.5 text-[10px] text-muted-foreground">حد أدنى {z.min_order_amount} ج.م</div>
+                            ) : null}
+                          </div>
+                          <div className="shrink-0 font-black">{Number(z.fee).toFixed(0)} ج.م</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {deliveryMethod === "pickup" && (
+                  <div className="mt-4 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Store className="h-4 w-4 text-primary" />
+                      عنوان الفرع
+                    </div>
+                    <p className="mt-1 text-foreground">{pay.store_address || "سيتم التواصل معك لتأكيد موعد الاستلام"}</p>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="rounded-3xl border-border p-4 sm:p-5">
+                <h2 className="mb-3 font-display text-base font-bold">بيانات التواصل</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="الاسم بالكامل">
+                    <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} placeholder="اكتب اسمك" />
+                  </Field>
+                  <Field label="رقم الهاتف">
+                    <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="01xxxxxxxxx" inputMode="tel" />
+                  </Field>
+                  {deliveryMethod === "delivery" && (
+                    <div className="sm:col-span-2">
+                      <Field label="عنوان التوصيل">
+                        <Textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="المنطقة، الشارع، رقم العقار، الدور، الشقة" />
+                      </Field>
+                    </div>
+                  )}
+                  <div className="sm:col-span-2">
+                    <Field label="ملاحظات (اختياري)">
+                      <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="أي ملاحظات للطلب" />
+                    </Field>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="rounded-3xl border-border p-4 sm:p-5">
+                <h2 className="mb-3 font-display text-base font-bold">طريقة الدفع</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  <PayOption icon={<Banknote className="h-4 w-4" />} label="عند الاستلام" active={form.payment_method === "cod"} onClick={() => setForm({ ...form, payment_method: "cod", payment_reference: "" })} />
+                  <PayOption icon={<Smartphone className="h-4 w-4" />} label="إنستاباي" active={form.payment_method === "instapay"} onClick={() => setForm({ ...form, payment_method: "instapay" })} disabled={!pay.instapay_handle} />
+                  <PayOption icon={<Building2 className="h-4 w-4" />} label="تحويل بنكي" active={form.payment_method === "bank"} onClick={() => setForm({ ...form, payment_method: "bank" })} disabled={!pay.bank_account_info} />
+                </div>
+
+                {form.payment_method === "instapay" && pay.instapay_handle && (
+                  <div className="mt-3 space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="font-bold">حوّل المبلغ <span className="text-primary">{grandTotal.toFixed(2)} ج.م</span> على إنستاباي:</div>
+                    <button type="button" onClick={() => copy(pay.instapay_handle!)} className="flex w-full items-center justify-between rounded-xl bg-background px-3 py-2 font-mono font-bold hover:bg-secondary">
+                      <span>{pay.instapay_handle}</span><Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <Input value={form.payment_reference} onChange={(e) => setForm({ ...form, payment_reference: e.target.value })} placeholder="رقم/مرجع التحويل" />
+                  </div>
+                )}
+
+                {form.payment_method === "bank" && pay.bank_account_info && (
+                  <div className="mt-3 space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
+                    <div className="font-bold">حوّل المبلغ <span className="text-primary">{grandTotal.toFixed(2)} ج.م</span> إلى الحساب التالي:</div>
+                    <pre className="whitespace-pre-wrap rounded-xl bg-background p-3 font-sans leading-relaxed">{pay.bank_account_info}</pre>
+                    <Input value={form.payment_reference} onChange={(e) => setForm({ ...form, payment_reference: e.target.value })} placeholder="رقم/مرجع التحويل" />
+                  </div>
+                )}
+
+                {form.payment_method === "cod" && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {deliveryMethod === "delivery" ? "ستدفع نقداً عند استلام الطلب من المندوب." : "ستدفع نقداً عند استلام الطلب من الفرع."}
+                  </p>
+                )}
+              </Card>
+            </div>
+
+            {/* الملخص الجانبي */}
+            <aside className="lg:sticky lg:top-20 lg:self-start">
+              <Card className="rounded-3xl border-border p-5">
+                <h3 className="mb-3 font-display text-base font-bold">ملخص الطلب</h3>
+
+                {/* كوبون الخصم */}
+                <div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-primary">
+                    <TicketPercent className="h-4 w-4" />
+                    كود الخصم
+                  </div>
+                  {coupon ? (
+                    <div className="flex items-center justify-between gap-2 rounded-xl bg-background p-2">
+                      <div className="text-xs">
+                        <div className="font-black text-primary">{coupon.code}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {coupon.discount_type === "percentage" ? `خصم ${coupon.discount_value}%` : `خصم ${coupon.discount_value} ج.م`}
+                        </div>
+                      </div>
+                      <button onClick={removeCoupon} className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="إزالة الكوبون">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value)}
+                        placeholder="أدخل كود الخصم"
+                        dir="ltr"
+                        className="h-9 text-xs"
+                      />
+                      <Button onClick={applyCoupon} disabled={couponLoading} variant="outline" className="h-9 rounded-xl px-3 text-xs font-bold">
+                        {couponLoading ? "..." : "تطبيق"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <Row label="الإجمالي الفرعي" value={`${totalPrice.toFixed(2)} ج.م`} />
+                  {discountAmount > 0 && (
+                    <Row label={`الخصم (${coupon?.code})`} value={`- ${discountAmount.toFixed(2)} ج.م`} />
+                  )}
+                  <Row label={deliveryMethod === "pickup" ? "رسوم الاستلام" : "رسوم التوصيل"} value={`${Number(deliveryFee).toFixed(2)} ج.م`} />
+                  <div className="my-2 h-px bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold">المبلغ المستحق</span>
+                    <span className="font-display text-2xl font-black text-primary">{grandTotal.toFixed(2)} ج.م</span>
+                  </div>
+                  {belowMin && (
+                    <p className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-bold text-destructive">
+                      ⚠️ الحد الأدنى للطلب هو {effectiveMin} ج.م — أضف بقيمة {(effectiveMin - totalPrice).toFixed(2)} ج.م على الأقل.
+                    </p>
+                  )}
+                </div>
+                <Button
+                  disabled={submitting || belowMin}
+                  onClick={handleSubmit}
+                  className="mt-4 h-12 w-full rounded-2xl hero-gradient text-base font-black text-primary-foreground shadow-card disabled:opacity-50"
+                >
+                  {submitting ? "جارٍ الإرسال..." : "تأكيد وإرسال الطلب"}
+                </Button>
+                <Button variant="outline" onClick={clear} className="mt-2 h-10 w-full rounded-xl text-xs">
+                  إفراغ السلة
+                </Button>
+              </Card>
+            </aside>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-muted-foreground">
+      <span>{label}</span>
+      <span className="font-bold text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function MethodOption({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center justify-center gap-2 rounded-2xl border p-3 text-sm font-bold transition ${
+        active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-secondary"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function PayOption({ icon, label, active, onClick, disabled }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-bold transition ${
+        active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-secondary"
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}

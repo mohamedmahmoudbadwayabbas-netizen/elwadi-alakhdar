@@ -49,14 +49,15 @@ function OverviewPage() {
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const salesToday = orders.filter((o) => new Date(o.created_at) >= today).reduce((s, o) => s + Number(o.total_price), 0);
-  const salesMonth = orders.filter((o) => new Date(o.created_at) >= monthStart).reduce((s, o) => s + Number(o.total_price), 0);
+  const revenueOrders = orders.filter((o) => o.status !== "cancelled");
+  const salesToday = revenueOrders.filter((o) => new Date(o.created_at) >= today).reduce((s, o) => s + Number(o.total_price), 0);
+  const salesMonth = revenueOrders.filter((o) => new Date(o.created_at) >= monthStart).reduce((s, o) => s + Number(o.total_price), 0);
   const newCount = orders.filter((o) => o.status === "new").length;
   const processing = orders.filter((o) => o.status === "processing").length;
 
   // Best sellers from order items
   const tally = new Map<string, number>();
-  for (const o of orders) {
+  for (const o of revenueOrders) {
     for (const it of o.items ?? []) {
       tally.set(it.name, (tally.get(it.name) ?? 0) + Number(it.quantity || 0));
     }
@@ -95,11 +96,11 @@ function OverviewPage() {
             <div className="h-72 w-full" dir="ltr">
               <ResponsiveContainer>
                 <BarChart data={bestSellers} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip cursor={{ fill: "var(--accent)", opacity: 0.1 }} contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)" }} />
-                  <Bar dataKey="qty" fill="var(--primary)" radius={[8, 8, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#374151" }} interval={0} angle={-15} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 11, fill: "#374151" }} />
+                  <Tooltip cursor={{ fill: "#16a34a", opacity: 0.1 }} contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb", background: "#ffffff", color: "#111827" }} />
+                  <Bar dataKey="qty" fill="hsl(143 64% 24%)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

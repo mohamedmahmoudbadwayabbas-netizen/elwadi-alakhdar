@@ -1,7 +1,9 @@
+import { NumberInput } from "@/components/ui/number-input";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart, lineSubtotal } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
 import type { Product } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -134,6 +136,7 @@ function RatingSummary({ reviews }: { reviews: Review[] }) {
 function ProductPage() {
   const { productId } = Route.useParams();
   const { addItem } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -141,20 +144,22 @@ function ProductPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
-  
-  // حفظ حالة المفضلة
-  const [wished, setWished] = useState(() => {
-    return localStorage.getItem(`wishlist_${productId}`) === "true";
-  });
+
+  // المفضلة عبر قاعدة البيانات
+  const [wishlistRowId, setWishlistRowId] = useState<string | null>(null);
+  const wished = !!wishlistRowId;
 
   // 🔀 دمج الميزتين: تتبع المسافة الحالية والتوصيل المتوقع ونوع الحساب
   const [deliveryMethod, setDeliveryMethod] = useState<"manual" | "gps">(() => {
+    if (typeof window === "undefined") return "manual";
     return (localStorage.getItem("delivery_method") as "manual" | "gps") || "manual";
   });
   const [selectedZone, setSelectedZone] = useState(() => {
+    if (typeof window === "undefined") return "near";
     return localStorage.getItem("user_delivery_zone") || "near";
   });
   const [calculatedDistanceKM, setCalculatedDistanceKM] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
     const saved = localStorage.getItem("calculated_distance");
     return saved ? parseFloat(saved) : null;
   });
@@ -172,13 +177,36 @@ function ProductPage() {
   const addBtnRef = useRef<HTMLDivElement>(null);
   const [showSticky, setShowSticky] = useState(false);
 
-  // تفعيل/إلغاء المفضلة
-  const toggleWishlist = () => {
-    const nextState = !wished;
-    setWished(nextState);
-    localStorage.setItem(`wishlist_${productId}`, String(nextState));
-    if (nextState) toast.success("تمت الإضافة للمفضلة ❤️");
-    else toast.info("تمت الإزالة من المفضلة");
+  // تحميل المفضلة من قاعدة البيانات للمستخدم المسجل
+  useEffect(() => {
+    if (!user) { setWishlistRowId(null); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("wishlists").select("id")
+        .eq("user_id", user.id).eq("product_id", productId).maybeSingle();
+      setWishlistRowId(data?.id ?? null);
+    })();
+  }, [user, productId]);
+
+  // تفعيل/إلغاء المفضلة (مرتبطة بحساب المستخدم)
+  const toggleWishlist = async () => {
+    if (!user) {
+      toast.error("سجّل الدخول لإضافة المنتج للمفضلة");
+      navigate({ to: "/auth" });
+      return;
+    }
+    if (wishlistRowId) {
+      const { error } = await supabase.from("wishlists").delete().eq("id", wishlistRowId);
+      if (error) return toast.error(error.message);
+      setWishlistRowId(null);
+      toast.info("تمت الإزالة من المفضلة");
+    } else {
+      const { data, error } = await supabase
+        .from("wishlists").insert({ user_id: user.id, product_id: productId }).select("id").single();
+      if (error) return toast.error(error.message);
+      setWishlistRowId(data!.id);
+      toast.success("تمت الإضافة للمفضلة ❤️");
+    }
   };
 
   // تغيير المنطقة يدوياً
@@ -276,11 +304,20 @@ function ProductPage() {
   const totalCost = lineSubtotal(product, qty).toFixed(2);
 
   async function submitReview() {
-    if (!authorName.trim() || !comment.trim()) { toast.error("يرجى تعبئة الحقول"); return; }
+    if (!user) {
+      toast.error("يجب تسجيل الدخول لإضافة تقييم");
+      navigate({ to: "/auth" });
+      return;
+    }
+    if (!comment.trim()) { toast.error("يرجى كتابة تعليقك"); return; }
     setSubmitting(true);
-    const { data, error } = await supabase.from("reviews").insert({ product_id: productId, author_name: authorName.trim(), rating, comment: comment.trim() }).select().single();
+    const displayName = authorName.trim() || (user.user_metadata as any)?.full_name || user.email?.split("@")[0] || "عميل";
+    const { data, error } = await supabase
+      .from("reviews")
+      .insert({ product_id: productId, user_id: user.id, author_name: displayName, rating, comment: comment.trim() })
+      .select().single();
     setSubmitting(false);
-    if (error) return;
+    if (error) { toast.error(error.message); return; }
     setReviews((prev) => [data as Review, ...prev]);
     setAuthorName(""); setComment("");
     toast.success("تمت إضافة تقييمك بنجاح");
@@ -322,6 +359,16 @@ function ProductPage() {
           )}
         </div>
 
+        {/* ─── وصف المنتج ─── */}
+        {product.description && product.description.trim().length > 0 && (
+          <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-2">
+            <h2 className="text-sm font-bold text-foreground">وصف المنتج</h2>
+            <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
+              {product.description}
+            </p>
+          </div>
+        )}
+
         {/* ─── ميزات الخدمة وحساب وقت التوصيل الديناميكي المدمج ─── */}
         <div className="grid grid-cols-3 gap-2">
           <div className="flex flex-col items-center gap-1 rounded-2xl border bg-card p-3 text-center shadow-sm">
@@ -343,36 +390,36 @@ function ProductPage() {
 
         {/* 🛠️ صندوق أدوات دمج (جوجل مابس التلقائي + الاختيار اليدوي للمناطق) */}
         <div className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b pb-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span>حساب وقت التوصيل الدقيق والمسافة</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+            <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-foreground">
+              <MapPin className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate">حساب وقت التوصيل الدقيق والمسافة</span>
             </div>
             {deliveryMethod === "gps" && calculatedDistanceKM !== null && (
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full font-bold shrink-0">
                 موقعك نشط: {calculatedDistanceKM.toFixed(1)} كم
               </span>
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             {/* زر تحديد الموقع الجغرافي الخرائطي الذكي */}
-            <Button 
+            <Button
               type="button"
               variant={deliveryMethod === "gps" ? "default" : "outline"}
               onClick={handleGPSDetection}
               disabled={isDetecting}
-              className="flex-1 h-10 rounded-xl text-xs font-bold gap-1"
+              className="w-full sm:flex-1 h-10 rounded-xl text-xs font-bold gap-1"
             >
-              <Navigation className={cn("h-3.5 w-3.5", isDetecting && "animate-spin")} />
-              {isDetecting ? "جاري القراءة للخرائط..." : "تحديد موقعي التلقائي (GPS)"}
+              <Navigation className={cn("h-3.5 w-3.5 shrink-0", isDetecting && "animate-spin")} />
+              <span className="truncate">{isDetecting ? "جاري القراءة..." : "تحديد موقعي (GPS)"}</span>
             </Button>
 
             {/* الخيار اليدوي البديل في حال تعطل الـ GPS */}
             <select
               value={deliveryMethod === "manual" ? selectedZone : ""}
               onChange={(e) => handleZoneChange(e.target.value)}
-              className="flex-1 rounded-xl border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:border-primary text-muted-foreground"
+              className="w-full sm:flex-1 min-w-0 max-w-full rounded-xl border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:border-primary text-muted-foreground truncate"
             >
               <option value="" disabled>-- أو اختر منطقتك يدوياً --</option>
               {DELIVERY_ZONES.map((zone) => (
@@ -384,8 +431,8 @@ function ProductPage() {
 
         {/* ─── أوزان وكميات الشراء ─── */}
         {product.is_by_weight && (
-          <div className="rounded-2xl border bg-card p-4 shadow-sm">
-            <div className="mb-2 text-xs font-bold">اختر الوزن المطلـوب:</div>
+          <div className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
+            <div className="text-xs font-bold">اختر الوزن المطلـوب:</div>
             <div className="grid grid-cols-4 gap-2">
               {WEIGHT_PRESETS.map((w) => (
                 <button key={w} onClick={() => setQty(w)} className={cn("rounded-xl border py-2.5 text-xs font-bold", qty === w ? "border-primary bg-primary text-primary-foreground" : "bg-secondary/30")}>
@@ -393,33 +440,100 @@ function ProductPage() {
                 </button>
               ))}
             </div>
+            <div className="space-y-1.5 pt-2 border-t">
+              <label className="text-[11px] font-bold text-muted-foreground">أو أدخل وزناً مخصصاً (بالجرام):</label>
+              <div className="flex gap-2">
+                <NumberInput
+                  decimal={false}
+                  placeholder="مثال: 350"
+                  className="flex-1 min-w-0 rounded-xl border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:border-primary"
+                  onValueChange={(v) => {
+                    const grams = parseFloat(v);
+                    if (!isNaN(grams) && grams > 0) setQty(+(grams / 1000).toFixed(3));
+                  }}
+                />
+                <div className="grid place-items-center rounded-xl bg-secondary/40 px-3 text-[11px] font-bold text-muted-foreground shrink-0">
+                  {Math.round(qty * 1000)} جم
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ─── زر إضافة السلة الرئيسي ─── */}
-        <div ref={addBtnRef} className="rounded-2xl border bg-card p-4 shadow-sm flex items-center justify-between gap-4">
-          {!product.is_by_weight && (
-            <div className="flex items-center gap-1 rounded-full border bg-secondary/30 p-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQty(q => Math.max(min, +(q - step).toFixed(3)))}><Minus className="h-3 w-3" /></Button>
-              <span className="min-w-10 text-center text-sm font-black">{qty}</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQty(q => +(q + step).toFixed(3))}><Plus className="h-3 w-3" /></Button>
-            </div>
-          )}
-          <Button disabled={outOfStock} onClick={() => { addItem(product, qty); toast.success("تمت الإضافة للسلة 🛒"); }} className="flex-1 h-11 rounded-xl hero-gradient font-bold text-xs">
-            <ShoppingBag className="me-2 h-4 w-4" /> {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
+        {/* ─── زر إضافة السلة + شراء فوري ─── */}
+        <div ref={addBtnRef} className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            {!product.is_by_weight && (
+              <div className="flex items-center gap-1 rounded-full border bg-secondary/30 p-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQty(q => Math.max(min, +(q - step).toFixed(3)))}><Minus className="h-3 w-3" /></Button>
+                <span className="min-w-10 text-center text-sm font-black">{qty}</span>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQty(q => +(q + step).toFixed(3))}><Plus className="h-3 w-3" /></Button>
+              </div>
+            )}
+            <Button disabled={outOfStock} onClick={() => { addItem(product, qty); toast.success("تمت الإضافة للسلة 🛒"); }} variant="outline" className="flex-1 h-11 rounded-xl font-bold text-xs">
+              <ShoppingBag className="me-2 h-4 w-4" /> {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
+            </Button>
+          </div>
+          <Button
+            disabled={outOfStock}
+            onClick={() => { addItem(product, qty); navigate({ to: "/cart" }); }}
+            className="w-full h-11 rounded-xl hero-gradient font-black text-sm text-primary-foreground"
+          >
+            اشترِ الآن — إتمام الشراء مباشرة
           </Button>
         </div>
 
         {/* ─── نموذج التعليقات والآراء ─── */}
         <div className="space-y-4 pt-2">
           <RatingSummary reviews={reviews} />
-          <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold">شاركنا رأيك بالمنتج</h3>
-            <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="الاسم" className="w-full rounded-xl border bg-background px-3 py-2 text-xs focus:outline-none focus:border-primary" />
-            <Stars value={rating} interactive={true} size="lg" onChange={setRating} />
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="اكتب تجربتك هنا..." rows={2} className="w-full rounded-xl border bg-background px-3 py-2 text-xs focus:outline-none focus:border-primary resize-none" />
-            <Button onClick={submitReview} disabled={submitting} className="w-full h-9 rounded-xl font-bold text-xs">{submitting ? "جاري الإرسال..." : "إرسال التقييم"}</Button>
-          </div>
+
+          {reviews.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold px-1">آراء العملاء ({reviews.length})</h3>
+              <div className="space-y-2.5">
+                {reviews.map((r) => (
+                  <div key={r.id} className="rounded-2xl border bg-card p-4 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-xs font-black text-primary shrink-0">
+                          {r.author_name?.trim().charAt(0) || "؟"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold truncate">{r.author_name || "زائر"}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {new Date(r.created_at).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" })}
+                          </div>
+                        </div>
+                      </div>
+                      <Stars value={r.rating} size="sm" />
+                    </div>
+                    {r.comment && (
+                      <p className="text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                        {r.comment}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {user ? (
+            <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold">شاركنا رأيك بالمنتج</h3>
+              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="الاسم المعروض (اختياري)" className="w-full rounded-xl border bg-background px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+              <Stars value={rating} interactive={true} size="lg" onChange={setRating} />
+              <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="اكتب تجربتك هنا..." rows={3} className="w-full rounded-xl border bg-background px-3 py-2 text-xs focus:outline-none focus:border-primary resize-none" />
+              <Button onClick={submitReview} disabled={submitting} className="w-full h-9 rounded-xl font-bold text-xs">{submitting ? "جاري الإرسال..." : "إرسال التقييم"}</Button>
+            </div>
+          ) : (
+            <div className="rounded-2xl border bg-card p-5 shadow-sm text-center space-y-3">
+              <p className="text-xs text-muted-foreground">سجّل الدخول لتشارك تقييمك ورأيك بالمنتج</p>
+              <Button onClick={() => navigate({ to: "/auth" })} className="w-full h-9 rounded-xl hero-gradient font-bold text-xs text-primary-foreground">
+                تسجيل الدخول لكتابة تقييم
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* ─── منتجات قد تعجبك ─── */}

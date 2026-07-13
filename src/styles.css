@@ -44,67 +44,101 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Fonts: Tajawal للنصوص، Amiri (Serif) للعناوين */
-  --font-sans: "Tajawal", "Cairo", system-ui, sans-serif;
-  --font-display: "Amiri", "Tajawal", serif;
+  /* Cairo — الخط الرسمي للموقع */
+  --font-sans: "Cairo", system-ui, sans-serif;
+  --font-display: "Cairo", system-ui, sans-serif;
 
-  --shadow-card: 0 4px 16px -4px oklch(0.40 0.12 150 / 0.10);
-  --shadow-lift: 0 14px 36px -10px oklch(0.40 0.14 150 / 0.18);
-  --shadow-elegant: 0 20px 50px -12px oklch(0.40 0.14 150 / 0.22);
+  /* Premium soft shadows — organic retail feel */
+  --shadow-card: 0 6px 20px -8px oklch(0.40 0.10 150 / 0.12);
+  --shadow-lift: 0 18px 40px -14px oklch(0.38 0.12 152 / 0.20);
+  --shadow-elegant: 0 24px 60px -16px oklch(0.36 0.13 152 / 0.25);
 
-  /* Brand gradients — Emerald → Deep Emerald */
-  --gradient-hero: linear-gradient(135deg, oklch(0.45 0.13 152) 0%, oklch(0.38 0.14 156) 100%);
-  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, oklch(0.38 0.14 156) 100%);
+  /* Brand gradients — Deep Forest → Emerald */
+  --gradient-hero: linear-gradient(135deg, oklch(0.42 0.13 152) 0%, oklch(0.32 0.12 156) 100%);
+  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, oklch(0.34 0.12 156) 100%);
   --gradient-sale: linear-gradient(135deg, oklch(0.66 0.20 45) 0%, oklch(0.58 0.22 35) 100%);
   --gradient-accent: linear-gradient(135deg, var(--accent) 0%, oklch(0.58 0.22 35) 100%);
+  --gradient-marble: linear-gradient(135deg, oklch(0.985 0.006 90) 0%, oklch(0.96 0.012 100) 50%, oklch(0.975 0.008 90) 100%);
 }
 
 :root {
-  --radius: 0.875rem;
-  /* Backgrounds — warm off-white for premium feel */
-  --background: oklch(0.985 0.005 95);
-  --foreground: oklch(0.18 0.02 155);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 155);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 155);
+  --radius: 1.25rem;
+  /* خلفية بيضاء ناصعة مع رمادي خفيف #F9FAFB */
+  --background: #F9FAFB;
+  --foreground: #111827;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  --popover: #FFFFFF;
+  --popover-foreground: #111827;
 
-  /* Primary: #166534 Emerald Green */
-  --primary: oklch(0.45 0.13 152);
-  --primary-foreground: oklch(0.985 0.005 95);
+  /* Primary: أخضر الشعار الداكن #115E3B */
+  --primary: #115E3B;
+  --primary-foreground: #FFFFFF;
 
-  --secondary: oklch(0.96 0.015 140);
-  --secondary-foreground: oklch(0.28 0.05 150);
+  --secondary: #F3F4F6;
+  --secondary-foreground: #115E3B;
 
-  --muted: oklch(0.96 0.01 120);
-  --muted-foreground: oklch(0.48 0.02 150);
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
 
-  /* Accent: #ea580c Warm Orange */
-  --accent: oklch(0.68 0.20 45);
-  --accent-foreground: oklch(0.99 0.005 90);
+  /* Accent: برتقالي محمر #E05326 */
+  --accent: #E05326;
+  --accent-foreground: #FFFFFF;
 
   --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: #FFFFFF;
+
+  --success: #115E3B;
+  --success-foreground: #FFFFFF;
+
+  --sale: #E05326;
+  --sale-foreground: #FFFFFF;
+
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #115E3B;
+
+
+
+  /* Sidebar tokens — deep forest green admin sidebar */
+  --sidebar: oklch(0.32 0.08 154);
+  --sidebar-foreground: oklch(0.96 0.008 95);
+  --sidebar-primary: oklch(0.66 0.18 45);
+  --sidebar-primary-foreground: oklch(0.15 0.02 155);
+  --sidebar-accent: oklch(0.38 0.10 152);
+  --sidebar-accent-foreground: oklch(0.98 0.005 90);
+  --sidebar-border: oklch(0.40 0.08 152);
+  --sidebar-ring: oklch(0.66 0.18 45);
+}
+
+.dark {
+  --background: oklch(0.18 0.015 155);
+  --foreground: oklch(0.96 0.005 95);
+  --card: oklch(0.22 0.018 155);
+  --card-foreground: oklch(0.96 0.005 95);
+  --popover: oklch(0.22 0.018 155);
+  --popover-foreground: oklch(0.96 0.005 95);
+  --primary: oklch(0.65 0.15 152);
+  --primary-foreground: oklch(0.15 0.02 155);
+  --secondary: oklch(0.28 0.02 150);
+  --secondary-foreground: oklch(0.95 0.01 140);
+  --muted: oklch(0.26 0.015 150);
+  --muted-foreground: oklch(0.72 0.015 145);
+  --accent: oklch(0.72 0.18 45);
+  --accent-foreground: oklch(0.15 0.02 155);
+  --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-
-  --success: oklch(0.55 0.15 150);
-  --success-foreground: oklch(0.99 0 0);
-
-  --sale: oklch(0.66 0.20 45);
-  --sale-foreground: oklch(0.99 0 0);
-
-  --border: oklch(0.90 0.008 145);
-  --input: oklch(0.93 0.008 145);
-  --ring: oklch(0.45 0.13 152);
-
-  /* Sidebar tokens */
-  --sidebar: oklch(0.99 0.005 95);
-  --sidebar-foreground: oklch(0.22 0.02 155);
-  --sidebar-primary: oklch(0.45 0.13 152);
-  --sidebar-primary-foreground: oklch(0.985 0.005 95);
-  --sidebar-accent: oklch(0.95 0.02 145);
-  --sidebar-accent-foreground: oklch(0.28 0.05 150);
-  --sidebar-border: oklch(0.90 0.008 145);
-  --sidebar-ring: oklch(0.45 0.13 152);
+  --border: oklch(0.32 0.015 150);
+  --input: oklch(0.30 0.015 150);
+  --ring: oklch(0.65 0.15 152);
+  --sidebar: oklch(0.20 0.015 155);
+  --sidebar-foreground: oklch(0.95 0.005 95);
+  --sidebar-primary: oklch(0.65 0.15 152);
+  --sidebar-primary-foreground: oklch(0.15 0.02 155);
+  --sidebar-accent: oklch(0.28 0.02 150);
+  --sidebar-accent-foreground: oklch(0.95 0.01 140);
+  --sidebar-border: oklch(0.32 0.015 150);
+  --sidebar-ring: oklch(0.65 0.15 152);
 }
 
 @layer base {
@@ -143,6 +177,17 @@
 
 @utility shadow-elegant {
   box-shadow: var(--shadow-elegant);
+}
+
+@utility marble-bg {
+  background-image: var(--gradient-marble);
+}
+
+@utility card-premium {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
 }
 
 /* Thermal receipt printing (80mm) */

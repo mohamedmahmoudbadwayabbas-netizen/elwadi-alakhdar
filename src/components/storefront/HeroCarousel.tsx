@@ -1,85 +1,132 @@
 import { useEffect, useState } from "react";
-import { Truck, Tag, Percent, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Truck, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { useTheme } from "@/lib/theme-context";
 
-type Settings = {
-  hero_title: string;
-  hero_subtitle: string;
-  hero_image_url: string | null;
-  hero_cta_text: string;
+type Banner = {
+  id: string;
+  image_url: string;
+  title: string | null;
+  subtitle: string | null;
+  cta_text: string | null;
+  link_url: string | null;
 };
 
-const fallbackSlides = [
-  { title: "توصيل سريع", subtitle: "لكل أوردر فوق 300 جنيه", icon: Truck },
-  { title: "خصومات الأسبوع", subtitle: "حتى 30% على العطارة", icon: Percent },
-  { title: "منتجات أصيلة", subtitle: "بهارات وأعشاب طازجة", icon: Tag },
-];
-
 export function HeroCarousel() {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [i, setI] = useState(0);
+  const theme = useTheme();
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    supabase
-      .from("store_settings")
-      .select("hero_title,hero_subtitle,hero_image_url,hero_cta_text")
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => setSettings(data));
+    const load = async () => {
+      const { data } = await supabase
+        .from("hero_banners")
+        .select("id,image_url,title,subtitle,cta_text,link_url")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      setBanners((data ?? []) as Banner[]);
+    };
+    load();
     const ch = supabase
-      .channel("store-settings-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "store_settings" }, async () => {
-        const { data } = await supabase
-          .from("store_settings")
-          .select("hero_title,hero_subtitle,hero_image_url,hero_cta_text")
-          .limit(1)
-          .maybeSingle();
-        setSettings(data);
-      })
+      .channel("hero-banners-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "hero_banners" }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
+  // fallback شرائح من صور الثيم إذا لا توجد بانرات
+  const slides: Banner[] = banners.length > 0 ? banners : (theme.hero_grid_images.length > 0 ? theme.hero_grid_images : [
+    "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=1200&q=80",
+    "https://images.unsplash.com/photo-1452251889946-8ff5ea7b27ab?w=1200&q=80",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80",
+  ]).map((url, i) => ({
+    id: `fb-${i}`, image_url: url, title: theme.hero_title, subtitle: theme.hero_subtitle,
+    cta_text: theme.hero_cta_text, link_url: "#all-products",
+  }));
+
   useEffect(() => {
-    const t = setInterval(() => setI((v) => (v + 1) % fallbackSlides.length), 4500);
+    if (slides.length <= 1) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 5000);
     return () => clearInterval(t);
-  }, []);
+  }, [slides.length]);
+
+  if (slides.length === 0) return null;
+  const current = slides[idx];
+  const goTo = (i: number) => setIdx(((i % slides.length) + slides.length) % slides.length);
+
+  const handleClick = () => {
+    const href = current.link_url || "#all-products";
+    if (href.startsWith("#")) {
+      document.getElementById(href.slice(1))?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.location.href = href;
+    }
+  };
 
   return (
     <div className="px-3 pt-4 sm:px-6">
-      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl shadow-elegant">
-        <div className="hero-gradient relative grid grid-cols-[1fr_auto] items-center gap-4 p-6 sm:p-10">
-          {settings?.hero_image_url && (
+      <div
+        className="relative mx-auto max-w-6xl overflow-hidden shadow-elegant"
+        style={{ borderRadius: theme.card_radius_px + 4 }}
+      >
+        {/* الشرائح */}
+        <div className="relative aspect-[16/9] w-full bg-[#036233] sm:aspect-[21/9]">
+          {slides.map((s, i) => (
             <img
-              src={settings.hero_image_url}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-overlay"
+              key={s.id}
+              src={s.image_url}
+              alt={s.title ?? ""}
+              loading={i === 0 ? "eager" : "lazy"}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${i === idx ? "opacity-100" : "opacity-0"}`}
             />
-          )}
-          <div className="relative min-w-0 text-primary-foreground">
-            <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest opacity-80">
-              <Sparkles className="h-3.5 w-3.5" />
-              {fallbackSlides[i].title}
+          ))}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-black/70 via-black/30 to-transparent" />
+
+          {/* المحتوى */}
+          {(current.title || current.subtitle || current.cta_text) && (
+            <div className="absolute inset-0 flex flex-col items-end justify-center gap-3 p-6 text-right text-white sm:p-10">
+              {current.title && (
+                <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur">
+                  <Sparkles className="h-3.5 w-3.5 text-[#FFD27A]" />
+                  توصيل سريع
+                  <Truck className="h-3.5 w-3.5" />
+                </div>
+              )}
+              {current.title && (
+                <h2 className="font-display text-2xl font-bold leading-tight drop-shadow sm:text-5xl">{current.title}</h2>
+              )}
+              {current.subtitle && (
+                <p className="max-w-xs text-xs leading-relaxed opacity-95 sm:max-w-md sm:text-sm">{current.subtitle}</p>
+              )}
+              {current.cta_text && (
+                <button
+                  onClick={handleClick}
+                  className="mt-2 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-lift transition-all hover:brightness-110 active:scale-95"
+                  style={{ backgroundColor: theme.accent_hex }}
+                >
+                  {current.cta_text}
+                </button>
+              )}
             </div>
-            <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl">
-              {settings?.hero_title ?? "الوادي الأخضر"}
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-relaxed opacity-95 sm:text-base">
-              {settings?.hero_subtitle ?? fallbackSlides[i].subtitle}
-            </p>
-            <button
-              onClick={() => document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-accent-foreground shadow-lift transition-all hover:brightness-110 active:scale-95"
-            >
-              {settings?.hero_cta_text ?? "تسوّق الآن"}
-            </button>
-          </div>
-          <div className="relative grid h-24 w-24 shrink-0 place-items-center rounded-3xl bg-white/15 backdrop-blur sm:h-36 sm:w-36">
-            {(() => {
-              const Icon = fallbackSlides[i].icon;
-              return <Icon className="h-12 w-12 text-primary-foreground sm:h-16 sm:w-16" />;
-            })()}
-          </div>
+          )}
+
+          {/* أزرار التنقل */}
+          {slides.length > 1 && (
+            <>
+              <button aria-label="السابق" onClick={() => goTo(idx - 1)} className="absolute end-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-foreground shadow hover:bg-white">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button aria-label="التالي" onClick={() => goTo(idx + 1)} className="absolute start-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-foreground shadow hover:bg-white">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                {slides.map((_, i) => (
+                  <button key={i} onClick={() => goTo(i)} aria-label={`الشريحة ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50"}`} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,13 +1,12 @@
+import { NumberInput } from "@/components/ui/number-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Product } from "@/lib/cart-context";
 import { useCart, lineSubtotal } from "@/lib/cart-context";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-const WEIGHT_PRESETS = [0.25, 0.5, 1, 2]; // kg
 
 export function ProductModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { addItem } = useCart();
@@ -49,23 +48,25 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
 
           {product.is_by_weight && (
             <div className="mt-4">
-              <div className="mb-2 text-xs font-bold text-foreground">اختر الوزن</div>
-              <div className="grid grid-cols-4 gap-2">
-                {WEIGHT_PRESETS.map((w) => (
-                  <button
-                    key={w}
-                    onClick={() => setQty(w)}
-                    className={cn(
-                      "rounded-xl border px-2 py-2 text-xs font-bold transition-all",
-                      qty === w
-                        ? "border-primary bg-primary text-primary-foreground shadow-card"
-                        : "border-border bg-secondary/40 text-foreground hover:border-primary/40",
-                    )}
-                  >
-                    {w >= 1 ? `${w} كجم` : `${w * 1000} جم`}
-                  </button>
-                ))}
+              <label className="mb-2 block text-xs font-bold text-foreground">
+                أدخل الوزن المطلوب (جرام)
+              </label>
+              <div className="flex items-center gap-2">
+                <NumberInput
+                  decimal={false}
+                  value={Math.round(qty * 1000)}
+                  onValueChange={(v) => {
+                    const g = Math.max(0, parseInt(v || "0", 10) || 0);
+                    setQty(+(g / 1000).toFixed(3));
+                  }}
+                  className="h-11 flex-1 text-center text-base font-bold"
+                  placeholder="مثال: 500"
+                />
+                <span className="rounded-xl bg-secondary/50 px-3 py-2 text-xs font-bold text-muted-foreground">جرام</span>
               </div>
+              <p className="mt-1.5 text-[10px] text-muted-foreground">
+                يمكنك إدخال أي وزن (مثلاً 350 جرام، 750 جرام، 1200 جرام...)
+              </p>
             </div>
           )}
 

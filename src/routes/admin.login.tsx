@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Leaf, LogIn } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({ meta: [{ title: "تسجيل دخول الإدارة — الوادي الأخضر" }, { name: "robots", content: "noindex,nofollow" }] }),
@@ -17,6 +18,18 @@ function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [bg, setBg] = useState<{ pattern: string | null; floating: string | null }>({ pattern: null, floating: null });
+
+  useEffect(() => {
+    supabase
+      .from("store_settings")
+      .select("login_bg_pattern,floating_element_image")
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setBg({ pattern: (data as any).login_bg_pattern ?? null, floating: (data as any).floating_element_image ?? null });
+      });
+  }, []);
 
   useEffect(() => {
     if (!loading && user && isAdmin) router.history.push("/admin");
@@ -32,8 +45,21 @@ function AdminLogin() {
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4" dir="rtl">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-elegant">
+    <div
+      className={`relative grid min-h-screen place-items-center px-4 ${bg.pattern ? "bg-cover bg-center" : "bg-background"}`}
+      style={bg.pattern ? { backgroundImage: `url(${bg.pattern})` } : undefined}
+      dir="rtl"
+    >
+      {bg.pattern && <div className="absolute inset-0 bg-background/40 backdrop-blur-sm" />}
+      <div className="relative w-full max-w-md overflow-visible rounded-3xl border border-white/40 bg-card/80 p-8 shadow-elegant backdrop-blur-xl">
+        {bg.floating && (
+          <img
+            src={bg.floating}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -top-12 -right-10 h-32 w-32 select-none object-contain drop-shadow-xl rotate-12"
+          />
+        )}
         <div className="mb-6 flex items-center justify-center gap-2.5">
           <div className="grid h-12 w-12 place-items-center rounded-2xl hero-gradient text-primary-foreground shadow-elegant">
             <Leaf className="h-6 w-6" />

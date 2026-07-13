@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,14 @@ const empty: Partial<Product> = {
   is_on_sale: false, is_featured: false, stock_quantity: 100, low_stock_threshold: 10,
 };
 
+import { normalizeDigits } from "@/lib/i18n-context";
+// تحويل الأرقام العربية/الفارسية/الأردية إلى لاتينية
+function normalizeNumber(v: string): number {
+  if (!v) return 0;
+  const n = parseFloat(normalizeDigits(String(v)).replace(/,/g, "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
 function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
@@ -54,11 +63,24 @@ function ProductsPage() {
     if (!editing?.name || editing.price_per_unit == null) {
       toast.error("الاسم والسعر مطلوبان"); return;
     }
+    const price = Number(editing.price_per_unit);
+    if (!Number.isFinite(price) || price <= 0) {
+      toast.error("السعر يجب أن يكون رقماً موجباً"); return;
+    }
+    // التحقق من صحة بيانات المنتجات الموزونة
+    if (editing.is_by_weight) {
+      const unit = (editing.unit_label || "").trim();
+      if (!unit) { toast.error("أدخل وحدة الوزن (مثال: كجم، جرام)"); return; }
+      const stock = Number(editing.stock_quantity ?? 0);
+      if (!Number.isFinite(stock) || stock < 0) {
+        toast.error("مخزون المنتج الموزون يجب أن يكون رقماً صحيحاً ≥ 0"); return;
+      }
+    }
     setSaving(true);
     const payload = {
       name: editing.name!, description: editing.description || null,
       category_id: editing.category_id || null,
-      price_per_unit: Number(editing.price_per_unit),
+      price_per_unit: price,
       old_price: editing.old_price ? Number(editing.old_price) : null,
       image_url: editing.image_url || null,
       is_by_weight: !!editing.is_by_weight,
@@ -76,6 +98,7 @@ function ProductsPage() {
     setEditing(null); load();
   };
 
+
   const remove = async (id: string) => {
     if (!confirm("تأكيد حذف المنتج؟")) return;
     const { error } = await supabase.from("products").delete().eq("id", id);
@@ -89,8 +112,15 @@ function ProductsPage() {
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type, upsert: false });
     if (error) { toast.error(error.message); setUploading(false); return; }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    setEditing((e) => ({ ...(e ?? {}), image_url: data.publicUrl }));
+    const { data, error: signErr } = await supabase.storage
+      .from("product-images")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    if (signErr || !data?.signedUrl) {
+      toast.error(signErr?.message ?? "تعذر إنشاء رابط الصورة");
+      setUploading(false);
+      return;
+    }
+    setEditing((e) => ({ ...(e ?? {}), image_url: data.signedUrl }));
     setUploading(false);
     toast.success("تم رفع الصورة");
   };
@@ -166,7 +196,7 @@ function ProductsPage() {
       )}
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto" dir="rtl">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto bg-card !opacity-100" dir="rtl">
           <DialogHeader><DialogTitle className="font-display">{editing?.id ? "تعديل المنتج" : "منتج جديد"}</DialogTitle></DialogHeader>
           {editing && (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -183,13 +213,13 @@ function ProductsPage() {
               </Field>
               <Field label="وحدة العرض"><Input value={editing.unit_label ?? ""} onChange={(e) => setEditing({ ...editing, unit_label: e.target.value })} placeholder="قطعة / كجم" /></Field>
               <Field label={editing.is_by_weight ? "السعر / كجم" : "السعر"}>
-                <Input type="number" step="0.01" value={editing.price_per_unit ?? 0} onChange={(e) => setEditing({ ...editing, price_per_unit: +e.target.value })} />
+                <NumberInput value={editing.price_per_unit ?? 0} onValueChange={(v) => setEditing({ ...editing, price_per_unit: normalizeNumber(v) })} />
               </Field>
               <Field label="السعر القديم (اختياري)">
-                <Input type="number" step="0.01" value={editing.old_price ?? ""} onChange={(e) => setEditing({ ...editing, old_price: e.target.value ? +e.target.value : null })} />
+                <NumberInput value={editing.old_price ?? ""} onValueChange={(v) => setEditing({ ...editing, old_price: v ? normalizeNumber(v) : null })} />
               </Field>
-              <Field label="المخزون"><Input type="number" value={editing.stock_quantity ?? 0} onChange={(e) => setEditing({ ...editing, stock_quantity: +e.target.value })} /></Field>
-              <Field label="حد التنبيه للمخزون المنخفض"><Input type="number" value={editing.low_stock_threshold ?? 0} onChange={(e) => setEditing({ ...editing, low_stock_threshold: +e.target.value })} /></Field>
+              <Field label="المخزون"><NumberInput decimal={false} value={editing.stock_quantity ?? 0} onValueChange={(v) => setEditing({ ...editing, stock_quantity: normalizeNumber(v) })} /></Field>
+              <Field label="حد التنبيه للمخزون المنخفض"><NumberInput decimal={false} value={editing.low_stock_threshold ?? 0} onValueChange={(v) => setEditing({ ...editing, low_stock_threshold: normalizeNumber(v) })} /></Field>
 
               <div className="sm:col-span-2 grid grid-cols-3 gap-3 rounded-2xl border border-border bg-secondary/30 p-3">
                 <Toggle label="موزون (كجم)" checked={!!editing.is_by_weight} onChange={(v) => setEditing({ ...editing, is_by_weight: v, unit_label: v ? "كجم" : (editing.unit_label || "قطعة") })} />

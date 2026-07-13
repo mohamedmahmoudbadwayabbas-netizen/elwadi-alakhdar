@@ -13,6 +13,16 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { SettingsProvider } from "@/lib/settings-context";
+import { ThemeProvider } from "@/lib/theme-context";
+import { I18nProvider } from "@/lib/i18n-context";
+import { SearchProvider } from "@/lib/search-context";
+import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
+import { BottomNav } from "@/components/storefront/BottomNav";
+import { Header } from "@/components/storefront/Header";
+import { useRouterState } from "@tanstack/react-router";
+
+
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -78,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Amiri:wght@400;700&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" },
       { rel: "stylesheet", href: appCss },
     ],
   }),
@@ -106,12 +116,33 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <CartProvider>
-          <Outlet />
-          <Toaster position="top-center" dir="rtl" richColors />
-        </CartProvider>
-      </AuthProvider>
+      <I18nProvider>
+        <SettingsProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <CartProvider>
+                <SearchProvider>
+                  <AnnouncementBar />
+                  <StorefrontHeader />
+                  <div className="pb-20">
+                    <Outlet />
+                  </div>
+                  <BottomNav />
+                  <Toaster position="top-center" dir="rtl" richColors />
+                </SearchProvider>
+              </CartProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </SettingsProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
+
+function StorefrontHeader() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Hide on admin pages and auth route — those have their own chrome.
+  if (pathname.startsWith("/admin") || pathname.startsWith("/auth")) return null;
+  return <Header />;
+}
+

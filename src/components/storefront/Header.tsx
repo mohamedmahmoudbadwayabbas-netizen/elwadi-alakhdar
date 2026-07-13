@@ -1,69 +1,106 @@
-import { Search, ShoppingBag, LayoutDashboard, Leaf } from "lucide-react";
+import { useState } from "react";
+import { Search, ShoppingBag, Menu, LayoutDashboard, X, Leaf } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
-import { Link } from "@tanstack/react-router";
+import { useI18n } from "@/lib/i18n-context";
+import { useSettings } from "@/lib/settings-context";
+import { useSearch } from "@/lib/search-context";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { UserMenu } from "./UserMenu";
 
-export function Header({ onSearch, query }: { onSearch: (q: string) => void; query: string }) {
-  const { setOpen, totalCount } = useCart();
-  const { user, isAdmin } = useAuth();
+export function Header() {
+  const { totalCount } = useCart();
+  const { isAdmin } = useAuth();
+  const { t, lang } = useI18n();
+  const settings = useSettings();
+  const { query, setQuery } = useSearch();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const logoUrl = settings.logo_url;
+  const siteName = settings.site_name || (lang === "ar" ? "هايبر الوادي - Hyper Wadi" : "Hyper Wadi");
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const handleSearch = (value: string) => {
+    setQuery(value);
+    if (value && pathname !== "/") navigate({ to: "/" });
+  };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-3 sm:gap-4 sm:px-6">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl hero-gradient text-primary-foreground shadow-elegant">
-            <Leaf className="h-5 w-5" />
-          </div>
-          <div className="hidden sm:block">
-            <div className="font-display text-xl font-bold leading-none text-foreground">الوادي الأخضر</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">سوبر ماركت وعطارة</div>
-          </div>
-        </Link>
-
-        <div className="relative flex-1">
-          <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder="ابحث عن منتج، عطارة، توابل..."
-            className="h-11 rounded-full border-border bg-secondary/40 pe-10 ps-4 text-sm focus-visible:bg-background"
-          />
+    <header className="sticky top-0 z-40 bg-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
+        {/* يسار: قائمة + بحث */}
+        <div className="flex items-center gap-1">
+          <Link
+            to="/categories"
+            aria-label={t("nav.categories") || "القائمة"}
+            className="grid h-10 w-10 place-items-center rounded-full text-primary transition-colors hover:bg-secondary"
+          >
+            <Menu className="h-5 w-5" strokeWidth={1.5} />
+          </Link>
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-label={t("search.placeholder") || "بحث"}
+            className="grid h-10 w-10 place-items-center rounded-full text-primary transition-colors hover:bg-secondary"
+          >
+            {searchOpen ? <X className="h-5 w-5" strokeWidth={1.5} /> : <Search className="h-5 w-5" strokeWidth={1.5} />}
+          </button>
         </div>
 
-        {isAdmin && (
-          <Link to="/admin" className="hidden md:block">
-            <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-full text-xs">
-              <LayoutDashboard className="h-4 w-4" />
-              لوحة التحكم
-            </Button>
-          </Link>
-        )}
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setOpen(true)}
-          className="relative h-11 w-11 shrink-0 rounded-full"
-          aria-label="السلة"
-        >
-          <ShoppingBag className="h-5 w-5" />
-          {totalCount > 0 && (
-            <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-accent px-1 text-[10px] text-accent-foreground">
-              {totalCount}
-            </Badge>
+        {/* منتصف: اسم المتجر / الشعار */}
+        <Link to="/" className="flex items-center justify-center gap-2 min-w-0">
+          {logoUrl ? (
+            <img src={logoUrl} alt={siteName} className="h-9 w-auto object-contain" />
+          ) : (
+            <Leaf className="h-5 w-5 text-primary" strokeWidth={1.5} />
           )}
-        </Button>
+          <span className="truncate text-base font-medium tracking-tight text-primary sm:text-lg">
+            {siteName}
+          </span>
+        </Link>
+
+        {/* يمين: أدمن + مستخدم + سلة */}
+        <div className="flex items-center gap-1">
+          {isAdmin && (
+            <Link
+              to="/admin"
+              aria-label={t("nav.admin")}
+              className="hidden md:grid h-10 w-10 place-items-center rounded-full text-primary transition-colors hover:bg-secondary"
+            >
+              <LayoutDashboard className="h-5 w-5" strokeWidth={1.5} />
+            </Link>
+          )}
+          <UserMenu />
+          <Link
+            to="/cart"
+            aria-label={t("nav.cart")}
+            className="relative grid h-10 w-10 place-items-center rounded-full text-primary transition-colors hover:bg-secondary"
+          >
+            <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
+            {totalCount > 0 && (
+              <Badge className="absolute -top-0.5 -end-0.5 h-4 min-w-4 justify-center rounded-full bg-accent px-1 text-[10px] font-normal text-accent-foreground">
+                {totalCount}
+              </Badge>
+            )}
+          </Link>
+        </div>
       </div>
 
-      {isAdmin && (
-        <div className="flex items-center justify-end gap-3 border-t border-border/40 bg-muted/30 px-3 py-1.5 md:hidden">
-          <Link to="/admin" className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
-            <LayoutDashboard className="h-3 w-3" />
-            لوحة التحكم
-          </Link>
+      {searchOpen && (
+        <div className="border-t border-border/40 bg-white px-5 pb-4 pt-3 sm:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="relative">
+              <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
+              <Input
+                autoFocus
+                value={query}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder={t("search.placeholder")}
+                className="h-11 rounded-full border-border bg-[#F9FAFB] pe-10 ps-4 text-sm font-normal focus-visible:bg-white"
+              />
+            </div>
+          </div>
         </div>
       )}
     </header>
