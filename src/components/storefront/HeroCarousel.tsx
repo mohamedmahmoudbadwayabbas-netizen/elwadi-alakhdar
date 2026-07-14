@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Truck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Truck, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 
 type Banner = {
@@ -40,7 +40,7 @@ export function HeroCarousel() {
     id: `fb-${i}`,
     image_url: url,
     title: theme.hero_title || "الوادي الأخضر",
-    subtitle: theme.hero_subtitle || "سوبر ماركت وعطارة - جودة، أصالة وتوصيل سريع مباشر لباب بيتك.",
+    subtitle: theme.hero_subtitle || "طبيعة تروي تفاصيل الفخامة",
     cta_text: theme.hero_cta_text || "تسوّق الآن",
     link_url: "#all-products",
   }));
@@ -57,51 +57,68 @@ export function HeroCarousel() {
   const goTo = (i: number) => setIdx(((i % slides.length) + slides.length) % slides.length);
 
   return (
-    <div className="px-3 pt-6 sm:px-6">
+    <div className="relative px-3 pt-6 sm:px-6">
       <div
-        className="relative mx-auto max-w-6xl overflow-hidden shadow-2xl transition-all duration-500"
+        className="relative mx-auto max-w-6xl overflow-hidden shadow-[0_20px_50px_rgba(4,120,87,0.15)] transition-all duration-500"
         style={{
-          borderRadius: (theme.card_radius_px || 16) + 10,
+          borderRadius: (theme.card_radius_px || 16) + 12,
         }}
       >
-        <div className="relative aspect-[16/10] w-full bg-[#0b1f14] sm:aspect-[21/9] overflow-hidden" dir="rtl">
+        <div className="relative aspect-[16/9] w-full bg-[#05321b] sm:aspect-[21/9] overflow-hidden" dir="rtl">
 
-          {/* 1. خلفية الـ SVG ذات الطبقات والمنحنيات المتداخلة (الوادي الأخضر) */}
-          <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+          {/* 1. خلفية الـ SVG الاحترافية المعاد رسمها لتطابق منحنيات وأمواج التصميم الأصلي بدقة */}
+          <div className="absolute inset-0 w-full h-full z-0 pointer-events-none select-none">
             <svg viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full object-cover">
               <defs>
-                <linearGradient id="base-valley" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(142, 76%, 6%)" />
-                  <stop offset="100%" stopColor="hsl(142, 76%, 16%)" />
+                {/* تدرج الخلفية العميقة */}
+                <linearGradient id="bg-grad" x1="50%" y1="0%" x2="50%" y2="100%">
+                  <stop offset="0%" stopColor="#021d0f" />
+                  <stop offset="50%" stopColor="#05351c" />
+                  <stop offset="100%" stopColor="#01140a" />
                 </linearGradient>
 
-                <linearGradient id="mid-valley" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="hsl(150, 60%, 10%)" />
-                  <stop offset="100%" stopColor="hsl(135, 50%, 18%)" />
+                {/* التدرج اللوني للطبقات الجانبية */}
+                <linearGradient id="wave-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#0b4626" />
+                  <stop offset="100%" stopColor="#042211" />
                 </linearGradient>
 
-                <linearGradient id="top-valley" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(142, 76%, 24%)" />
-                  <stop offset="100%" stopColor="hsl(142, 76%, 14%)" />
+                <linearGradient id="wave-grad-2" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#0f5c32" />
+                  <stop offset="100%" stopColor="#06321b" />
+                </linearGradient>
+
+                <linearGradient id="wave-grad-3" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#1b7a43" />
+                  <stop offset="100%" stopColor="#0b4122" />
                 </linearGradient>
               </defs>
 
-              <rect width="1440" height="800" fill="url(#base-valley)" />
+              {/* طبقة الخلفية الأساسية */}
+              <rect width="1440" height="800" fill="url(#bg-grad)" />
 
-              <path className="animate-wave-1" d="M0 280C360 200 720 440 1080 380C1260 350 1350 280 1440 240V800H0V280Z"
-                fill="url(#mid-valley)"
-                opacity="0.8" />
+              {/* المنحنى الانسيابي الأيسر الأنيق (تدرج ناعم) */}
+              <path d="M0 800V300C250 250 350 450 600 400C850 350 950 150 1440 100V800H0Z" 
+                fill="url(#wave-grad-1)" 
+                opacity="0.5" />
 
-              <path className="animate-wave-2" d="M0 420C240 340 480 560 780 460C1080 360 1260 460 1440 380V800H0V420Z"
-                fill="url(#top-valley)"
-                opacity="0.6" />
+              {/* المنحنى الانسيابي الأيمن المتداخل (يعطي عمق للوادي) */}
+              <path d="M1440 800V250C1200 200 1100 420 850 380C600 340 500 120 0 80V800H1440Z" 
+                fill="url(#wave-grad-2)" 
+                opacity="0.4" />
 
-              <path className="animate-wave-3" d="M0 580C360 520 720 680 1080 600C1260 560 1350 580 1440 540V800H0V580Z"
-                fill="hsl(142, 76%, 12%)"
-                opacity="0.95" />
+              {/* الأمواج السفلية الناعمة والمنسابة من الطرفين نحو المنتصف */}
+              <path d="M0 800V480C300 420 450 600 720 540C990 480 1140 400 1440 380V800H0Z" 
+                fill="url(#wave-grad-3)" 
+                opacity="0.65" />
+
+              <path d="M1440 800V550C1140 500 990 680 720 620C450 560 300 500 0 480V800H1440Z" 
+                fill="#032714" 
+                opacity="0.9" />
             </svg>
           </div>
 
+          {/* تمازج ذكي ومخفف للصور الخارجية لو وجدت حتى لا تغطي على جمال المنحنيات */}
           {slides.map((s, i) => s.image_url && (
             <img
               key={s.id}
@@ -110,64 +127,66 @@ export function HeroCarousel() {
               loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "auto"}
               decoding="async"
-              className={`absolute inset-0 h-full w-full object-cover mix-blend-overlay transition-opacity duration-1000 ${i === idx ? "opacity-25" : "opacity-0"}`}
+              className={`absolute inset-0 h-full w-full object-cover mix-blend-overlay transition-opacity duration-1000 ${i === idx ? "opacity-20" : "opacity-0"}`}
             />
           ))}
 
-          <div className="absolute inset-0 z-10 flex items-center justify-between px-6 sm:px-12 md:px-16 gap-4">
+          {/* التدرج الدائري المصلح لزيادة العمق */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(16,185,129,0.12),transparent_70%)] pointer-events-none" />
 
-            <div className="flex flex-col items-start text-right max-w-[60%] sm:max-w-[55%] gap-2 sm:gap-3">
+          {/* 2. المحتوى المتمركز في المنتصف تماماً متوافق مع العرض الفخم */}
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6 sm:p-12 md:p-16 gap-3 sm:gap-4">
 
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[10px] sm:text-xs font-bold text-white/90 backdrop-blur-md">
-                <Truck className="h-3.5 w-3.5 text-[#FF7A00]" />
-                أول توصيل سريع
-              </div>
-
-              <h2 className="font-display text-2xl font-black text-white drop-shadow-md sm:text-4xl md:text-5xl leading-tight">
-                {current.title}
-              </h2>
-
-              <p className="text-xs font-medium text-white/85 sm:text-sm md:text-base leading-relaxed max-w-md">
-                {current.subtitle}
-              </p>
-
-              <button
-                onClick={() => document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })}
-                className="mt-2 rounded-full px-6 py-2 sm:px-8 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg transition-all hover:scale-105 active:scale-95 hover:shadow-[0_8px_20px_rgba(255,122,0,0.5)]"
-                style={{
-                  background: "linear-gradient(135deg, #ff6a00, #e64a00)",
-                }}
-              >
-                {current.cta_text}
-              </button>
+            {/* الشارة العلوية الأنيقة */}
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[10px] sm:text-xs font-bold text-white/90 backdrop-blur-md shadow-sm">
+              <Sparkles className="h-3.5 w-3.5 text-[#FFD27A]" />
+              جودة أصيلة وتوصيل سريع
+              <Truck className="h-3.5 w-3.5" />
             </div>
 
-            <div className="flex items-center justify-center w-[30%] sm:w-[25%]">
-              <div className="relative flex items-center justify-center w-16 h-16 sm:w-28 sm:h-28 rounded-3xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-lg animate-pulse" style={{ animationDuration: '3s' }}>
-                <Truck className="h-8 w-8 sm:h-14 sm:w-14 text-[#34d399]" />
-                <div className="absolute inset-0 rounded-3xl bg-[#34d399]/10 blur-xl z-[-10]" />
-              </div>
-            </div>
+            {/* العنوان الرئيسي بخط Tajawal الفخم العريض جداً */}
+            <h2 className="font-display text-4xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)] sm:text-6xl md:text-7xl leading-tight">
+              {current.title}
+            </h2>
 
+            {/* العنوان الفرعي بخط Cairo المريح للعين */}
+            <p className="text-sm font-medium text-emerald-100/90 max-w-md sm:max-w-xl sm:text-lg md:text-xl leading-relaxed tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
+              {current.subtitle}
+            </p>
+
+            {/* 3. الزر البرتقالي المتوهج (المطابق للتصميم الأصلي) */}
+            <button
+              onClick={() => document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })}
+              className="mt-4 rounded-full px-8 py-3 sm:px-10 sm:py-3.5 text-sm sm:text-base font-black text-white tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_4px_25px_rgba(255,138,0,0.45)] hover:shadow-[0_10px_35px_rgba(255,138,0,0.65)]"
+              style={{
+                background: "linear-gradient(135deg, #ff9100, #ff6a00)",
+              }}
+            >
+              {current.cta_text}
+            </button>
           </div>
 
+          {/* أزرار التنقل الأنيقة */}
           {slides.length > 1 && (
             <>
-              <button aria-label="السابق" onClick={() => goTo(idx - 1)} className="absolute end-3 top-1/2 z-20 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white backdrop-blur hover:bg-white/20 transition border border-white/10">
-                <ChevronRight className="h-4 w-4" />
+              <button aria-label="السابق" onClick={() => goTo(idx - 1)} className="absolute end-4 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/5 text-white backdrop-blur-md hover:bg-white/20 transition border border-white/10">
+                <ChevronRight className="h-5 w-5" />
               </button>
-              <button aria-label="التالي" onClick={() => goTo(idx + 1)} className="absolute start-3 top-1/2 z-20 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white backdrop-blur hover:bg-white/20 transition border border-white/10">
-                <ChevronLeft className="h-4 w-4" />
+              <button aria-label="التالي" onClick={() => goTo(idx + 1)} className="absolute start-4 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/5 text-white backdrop-blur-md hover:bg-white/20 transition border border-white/10">
+                <ChevronLeft className="h-5 w-5" />
               </button>
 
-              <div className="absolute inset-x-0 bottom-3 z-20 flex justify-center gap-1">
+              <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center gap-1.5">
                 {slides.map((_, i) => (
                   <button key={i} onClick={() => goTo(i)} aria-label={`الشريحة ${i + 1}`}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? "w-5 bg-white" : "w-1.5 bg-white/30"}`} />
+                    className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? "w-6 bg-white" : "w-1.5 bg-white/30"}`} />
                 ))}
               </div>
             </>
           )}
+
+          {/* النجمة الديكورية متموضعة بشكل آمن داخل الكاروسيل وبشفافية مثالية */}
+          <div className="absolute bottom-4 left-4 text-white/10 text-xl pointer-events-none animate-pulse select-none">✦</div>
         </div>
       </div>
     </div>
