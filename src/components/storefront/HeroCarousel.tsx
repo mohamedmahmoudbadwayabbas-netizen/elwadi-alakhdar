@@ -5,7 +5,7 @@ import { useTheme } from "@/lib/theme-context";
 
 type Banner = {
   id: string;
-  image_url: string;
+  image_url: string | null;
   title: string | null;
   subtitle: string | null;
   cta_text: string | null;
@@ -34,16 +34,17 @@ export function HeroCarousel() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const slides: Banner[] = banners.length > 0 ? banners : (theme.hero_grid_images.length > 0 ? theme.hero_grid_images : [
-    "",
-  ]).map((url, i) => ({
-    id: `fb-${i}`,
-    image_url: url,
-    title: theme.hero_title || "الوادي الأخضر",
-    subtitle: theme.hero_subtitle || "طبيعة تروي تفاصيل الفخامة",
-    cta_text: theme.hero_cta_text || "تسوّق الآن",
-    link_url: "#all-products",
-  }));
+  const fallbackImages = theme.hero_grid_images.length > 0 ? theme.hero_grid_images : [""];
+  const slides: Banner[] = banners.length > 0
+    ? banners
+    : fallbackImages.map((url, i) => ({
+        id: `fb-${i}`,
+        image_url: url || null,
+        title: theme.hero_title || "الوادي الأخضر",
+        subtitle: theme.hero_subtitle || "طبيعة تروي تفاصيل الفخامة",
+        cta_text: theme.hero_cta_text || "تسوّق الآن",
+        link_url: "#all-products",
+      }));
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -53,140 +54,158 @@ export function HeroCarousel() {
 
   if (slides.length === 0) return null;
   const current = slides[idx];
-
   const goTo = (i: number) => setIdx(((i % slides.length) + slides.length) % slides.length);
+
+  const title = current.title ?? "الوادي الأخضر";
+  const subtitle = current.subtitle ?? "طبيعة تروي تفاصيل الفخامة";
+  const ctaText = current.cta_text ?? "تسوّق الآن";
 
   return (
     <div className="relative px-3 pt-6 sm:px-6">
       <div
-        className="relative mx-auto max-w-6xl overflow-hidden shadow-[0_20px_50px_rgba(4,120,87,0.15)] transition-all duration-500"
-        style={{
-          borderRadius: (theme.card_radius_px || 16) + 12,
-        }}
+        className="relative mx-auto max-w-6xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(4,120,87,0.35)] transition-all duration-500"
+        style={{ borderRadius: (theme.card_radius_px || 16) + 12 }}
       >
-        <div className="relative aspect-[16/9] w-full bg-[#05321b] sm:aspect-[21/9] overflow-hidden" dir="rtl">
+        <div
+          className="relative aspect-[4/5] w-full overflow-hidden bg-[#032414] sm:aspect-[16/9] md:aspect-[21/9]"
+          dir="rtl"
+        >
+          {/* SVG background: layered emerald waves */}
+          <svg
+            viewBox="0 0 1440 800"
+            preserveAspectRatio="xMidYMid slice"
+            className="absolute inset-0 h-full w-full"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="hc-bg" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%" stopColor="#02180c" />
+                <stop offset="45%" stopColor="#053b21" />
+                <stop offset="100%" stopColor="#01100a" />
+              </linearGradient>
+              <linearGradient id="hc-w1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0c4a28" />
+                <stop offset="100%" stopColor="#03200f" />
+              </linearGradient>
+              <linearGradient id="hc-w2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#116a3a" />
+                <stop offset="100%" stopColor="#052e18" />
+              </linearGradient>
+              <linearGradient id="hc-w3" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#1e8a4d" />
+                <stop offset="100%" stopColor="#0a3d21" />
+              </linearGradient>
+              <radialGradient id="hc-glow" cx="50%" cy="50%" r="55%">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+                <stop offset="70%" stopColor="#10b981" stopOpacity="0" />
+              </radialGradient>
+            </defs>
 
-          {/* 1. خلفية الـ SVG الاحترافية المعاد رسمها لتطابق منحنيات وأمواج التصميم الأصلي بدقة */}
-          <div className="absolute inset-0 w-full h-full z-0 pointer-events-none select-none">
-            <svg viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full object-cover">
-              <defs>
-                {/* تدرج الخلفية العميقة */}
-                <linearGradient id="bg-grad" x1="50%" y1="0%" x2="50%" y2="100%">
-                  <stop offset="0%" stopColor="#021d0f" />
-                  <stop offset="50%" stopColor="#05351c" />
-                  <stop offset="100%" stopColor="#01140a" />
-                </linearGradient>
+            <rect width="1440" height="800" fill="url(#hc-bg)" />
+            <rect width="1440" height="800" fill="url(#hc-glow)" />
 
-                {/* التدرج اللوني للطبقات الجانبية */}
-                <linearGradient id="wave-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#0b4626" />
-                  <stop offset="100%" stopColor="#042211" />
-                </linearGradient>
-
-                <linearGradient id="wave-grad-2" x1="100%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#0f5c32" />
-                  <stop offset="100%" stopColor="#06321b" />
-                </linearGradient>
-
-                <linearGradient id="wave-grad-3" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#1b7a43" />
-                  <stop offset="100%" stopColor="#0b4122" />
-                </linearGradient>
-              </defs>
-
-              {/* طبقة الخلفية الأساسية */}
-              <rect width="1440" height="800" fill="url(#bg-grad)" />
-
-              {/* المنحنى الانسيابي الأيسر الأنيق (تدرج ناعم) */}
-              <path d="M0 800V300C250 250 350 450 600 400C850 350 950 150 1440 100V800H0Z" 
-                fill="url(#wave-grad-1)" 
-                opacity="0.5" />
-
-              {/* المنحنى الانسيابي الأيمن المتداخل (يعطي عمق للوادي) */}
-              <path d="M1440 800V250C1200 200 1100 420 850 380C600 340 500 120 0 80V800H1440Z" 
-                fill="url(#wave-grad-2)" 
-                opacity="0.4" />
-
-              {/* الأمواج السفلية الناعمة والمنسابة من الطرفين نحو المنتصف */}
-              <path d="M0 800V480C300 420 450 600 720 540C990 480 1140 400 1440 380V800H0Z" 
-                fill="url(#wave-grad-3)" 
-                opacity="0.65" />
-
-              <path d="M1440 800V550C1140 500 990 680 720 620C450 560 300 500 0 480V800H1440Z" 
-                fill="#032714" 
-                opacity="0.9" />
-            </svg>
-          </div>
-
-          {/* تمازج ذكي ومخفف للصور الخارجية لو وجدت حتى لا تغطي على جمال المنحنيات */}
-          {slides.map((s, i) => s.image_url && (
-            <img
-              key={s.id}
-              src={`${s.image_url}${s.image_url.includes('?') ? '&' : '?'}w=1200&q=80&fm=webp`}
-              alt={s.title ?? "منتجات الوادي الأخضر"}
-              loading={i === 0 ? "eager" : "lazy"}
-              fetchPriority={i === 0 ? "high" : "auto"}
-              decoding="async"
-              className={`absolute inset-0 h-full w-full object-cover mix-blend-overlay transition-opacity duration-1000 ${i === idx ? "opacity-20" : "opacity-0"}`}
+            <path
+              d="M0 800V300C250 250 350 460 600 400C850 340 950 150 1440 100V800H0Z"
+              fill="url(#hc-w1)"
+              opacity="0.55"
             />
-          ))}
+            <path
+              d="M1440 800V250C1200 200 1100 430 850 380C600 330 500 120 0 80V800H1440Z"
+              fill="url(#hc-w2)"
+              opacity="0.45"
+            />
+            <path
+              d="M0 800V490C300 425 450 610 720 545C990 480 1140 400 1440 380V800H0Z"
+              fill="url(#hc-w3)"
+              opacity="0.7"
+            />
+            <path
+              d="M1440 800V560C1140 505 990 690 720 625C450 560 300 505 0 490V800H1440Z"
+              fill="#022613"
+              opacity="0.92"
+            />
+          </svg>
 
-          {/* التدرج الدائري المصلح لزيادة العمق */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(16,185,129,0.12),transparent_70%)] pointer-events-none" />
+          {/* Optional overlay image (very soft) */}
+          {slides.map((s, i) =>
+            s.image_url ? (
+              <img
+                key={s.id}
+                src={`${s.image_url}${s.image_url.includes("?") ? "&" : "?"}w=1400&q=80&fm=webp`}
+                alt={s.title ?? "الوادي الأخضر"}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
+                decoding="async"
+                className={`absolute inset-0 h-full w-full object-cover mix-blend-overlay transition-opacity duration-1000 ${
+                  i === idx ? "opacity-25" : "opacity-0"
+                }`}
+              />
+            ) : null,
+          )}
 
-          {/* 2. المحتوى المتمركز في المنتصف تماماً متوافق مع العرض الفخم */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6 sm:p-12 md:p-16 gap-3 sm:gap-4">
-
-            {/* الشارة العلوية الأنيقة */}
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[10px] sm:text-xs font-bold text-white/90 backdrop-blur-md shadow-sm">
+          {/* Center content */}
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 p-5 text-center sm:gap-4 sm:p-10 md:p-16">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-bold text-white/95 shadow-sm backdrop-blur-md sm:text-xs">
               <Sparkles className="h-3.5 w-3.5 text-[#FFD27A]" />
               جودة أصيلة وتوصيل سريع
               <Truck className="h-3.5 w-3.5" />
             </div>
 
-            {/* العنوان الرئيسي بخط Tajawal الفخم العريض جداً */}
-            <h2 className="font-display text-4xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)] sm:text-6xl md:text-7xl leading-tight">
-              {current.title}
+            <h2 className="font-display text-3xl font-black leading-tight tracking-tight text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.45)] sm:text-5xl md:text-7xl">
+              {title}
             </h2>
 
-            {/* العنوان الفرعي بخط Cairo المريح للعين */}
-            <p className="text-sm font-medium text-emerald-100/90 max-w-md sm:max-w-xl sm:text-lg md:text-xl leading-relaxed tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-              {current.subtitle}
+            <p className="max-w-md text-sm font-medium leading-relaxed tracking-wide text-emerald-50/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)] sm:max-w-xl sm:text-lg md:text-xl">
+              {subtitle}
             </p>
 
-            {/* 3. الزر البرتقالي المتوهج (المطابق للتصميم الأصلي) */}
             <button
-              onClick={() => document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })}
-              className="mt-4 rounded-full px-8 py-3 sm:px-10 sm:py-3.5 text-sm sm:text-base font-black text-white tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_4px_25px_rgba(255,138,0,0.45)] hover:shadow-[0_10px_35px_rgba(255,138,0,0.65)]"
-              style={{
-                background: "linear-gradient(135deg, #ff9100, #ff6a00)",
-              }}
+              onClick={() =>
+                document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="mt-3 rounded-full px-8 py-3 text-sm font-black tracking-wide text-white shadow-[0_6px_28px_rgba(255,138,0,0.5)] transition-all duration-300 hover:scale-105 hover:shadow-[0_12px_38px_rgba(255,138,0,0.7)] active:scale-95 sm:mt-4 sm:px-10 sm:py-3.5 sm:text-base"
+              style={{ background: "linear-gradient(135deg, #ff9a1f, #ff6a00)" }}
             >
-              {current.cta_text}
+              {ctaText}
             </button>
           </div>
 
-          {/* أزرار التنقل الأنيقة */}
+          {/* Nav */}
           {slides.length > 1 && (
             <>
-              <button aria-label="السابق" onClick={() => goTo(idx - 1)} className="absolute end-4 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/5 text-white backdrop-blur-md hover:bg-white/20 transition border border-white/10">
+              <button
+                aria-label="السابق"
+                onClick={() => goTo(idx - 1)}
+                className="absolute end-3 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-md transition hover:bg-white/25 sm:end-4"
+              >
                 <ChevronRight className="h-5 w-5" />
               </button>
-              <button aria-label="التالي" onClick={() => goTo(idx + 1)} className="absolute start-4 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/5 text-white backdrop-blur-md hover:bg-white/20 transition border border-white/10">
+              <button
+                aria-label="التالي"
+                onClick={() => goTo(idx + 1)}
+                className="absolute start-3 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-md transition hover:bg-white/25 sm:start-4"
+              >
                 <ChevronLeft className="h-5 w-5" />
               </button>
 
               <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center gap-1.5">
                 {slides.map((_, i) => (
-                  <button key={i} onClick={() => goTo(i)} aria-label={`الشريحة ${i + 1}`}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? "w-6 bg-white" : "w-1.5 bg-white/30"}`} />
+                  <button
+                    key={i}
+                    onClick={() => goTo(i)}
+                    aria-label={`الشريحة ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i === idx ? "w-6 bg-white" : "w-1.5 bg-white/40"
+                    }`}
+                  />
                 ))}
               </div>
             </>
           )}
 
-          {/* النجمة الديكورية متموضعة بشكل آمن داخل الكاروسيل وبشفافية مثالية */}
-          <div className="absolute bottom-4 left-4 text-white/10 text-xl pointer-events-none animate-pulse select-none">✦</div>
+          <div className="pointer-events-none absolute bottom-4 left-4 select-none text-xl text-white/10">
+            ✦
+          </div>
         </div>
       </div>
     </div>
