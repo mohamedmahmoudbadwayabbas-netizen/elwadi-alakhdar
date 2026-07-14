@@ -55,7 +55,6 @@ function OverviewPage() {
   const newCount = orders.filter((o) => o.status === "new").length;
   const processing = orders.filter((o) => o.status === "processing").length;
 
-  // Best sellers from order items
   const tally = new Map<string, number>();
   for (const o of revenueOrders) {
     for (const it of o.items ?? []) {
@@ -78,13 +77,13 @@ function OverviewPage() {
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="مبيعات اليوم" value={`${salesToday.toFixed(2)} ج.م`} icon={DollarSign} tone="primary" />
-        <Stat label="مبيعات الشهر" value={`${salesMonth.toFixed(2)} ج.م`} icon={TrendingUp} tone="accent" />
-        <Stat label="طلبات جديدة" value={`${newCount}`} icon={Receipt} tone="primary" />
-        <Stat label="قيد المعالجة" value={`${processing}`} icon={ShoppingCart} tone="accent" />
+        <Stat label="مبيعات اليوم" value={`${salesToday.toFixed(2)} ج.م`} icon={DollarSign} tone="gold" />
+        <Stat label="مبيعات الشهر" value={`${salesMonth.toFixed(2)} ج.م`} icon={TrendingUp} tone="primary" />
+        <Stat label="طلبات جديدة" value={`${newCount}`} icon={Receipt} tone="accent" />
+        <Stat label="قيد المعالجة" value={`${processing}`} icon={ShoppingCart} tone="primary" />
       </div>
 
-      <Card>
+      <Card className="card-glass border-0">
         <CardHeader>
           <CardTitle className="font-display">الأكثر مبيعاً</CardTitle>
           <CardDescription>أعلى 7 منتجات حسب الكمية المباعة</CardDescription>
@@ -96,11 +95,20 @@ function OverviewPage() {
             <div className="h-72 w-full" dir="ltr">
               <ResponsiveContainer>
                 <BarChart data={bestSellers} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#374151" }} interval={0} angle={-15} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 11, fill: "#374151" }} />
-                  <Tooltip cursor={{ fill: "#16a34a", opacity: 0.1 }} contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb", background: "#ffffff", color: "#111827" }} />
-                  <Bar dataKey="qty" fill="hsl(143 64% 24%)" radius={[8, 8, 0, 0]} />
+                  <defs>
+                    <linearGradient id="barGlow" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="oklch(0.72 0.18 45)" />
+                      <stop offset="100%" stopColor="oklch(0.65 0.15 152)" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.4 0.02 150)" opacity={0.25} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "oklch(0.75 0.01 100)" }} interval={0} angle={-15} textAnchor="end" height={60} axisLine={{ stroke: "oklch(0.4 0.02 150)" }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "oklch(0.75 0.01 100)" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: "oklch(0.65 0.15 152)", opacity: 0.08 }}
+                    contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.35 0.02 150)", background: "oklch(0.18 0.02 155)", color: "oklch(0.96 0.005 95)" }}
+                  />
+                  <Bar dataKey="qty" fill="url(#barGlow)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -109,7 +117,7 @@ function OverviewPage() {
       </Card>
 
       {lowStock.length > 0 && (
-        <Card className="border-accent/40">
+        <Card className="card-glass border-accent/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display">
               <AlertTriangle className="h-5 w-5 text-accent" />
@@ -134,11 +142,17 @@ function OverviewPage() {
   );
 }
 
-function Stat({ label, value, icon: Icon, tone }: { label: string; value: string; icon: any; tone: "primary" | "accent" }) {
+function Stat({ label, value, icon: Icon, tone }: { label: string; value: string; icon: any; tone: "primary" | "accent" | "gold" }) {
+  const toneClasses = {
+    primary: "bg-primary/10 text-primary",
+    accent: "bg-accent/10 text-accent",
+    gold: "bg-gold/10 text-gold",
+  }[tone];
+
   return (
-    <Card>
+    <Card className="card-glass border-0">
       <CardContent className="flex items-center gap-3 p-4">
-        <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tone === "primary" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"}`}>
+        <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${toneClasses}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
