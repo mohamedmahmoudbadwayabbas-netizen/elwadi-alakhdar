@@ -23,30 +23,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // دالة جلب الصلاحيات المعدلة لمعرفة الأخطاء وتجنب الـ silent fail عند تغيير الجهاز
   const fetchRole = async (uid: string | undefined) => {
-    if (!uid) { setIsAdmin(false); return; }
-    const { data } = await supabase
+    if (!uid) { 
+      setIsAdmin(false); 
+      return; 
+    }
+    
+    const { data, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", uid)
       .eq("role", "admin")
       .maybeSingle();
+      
+    if (error) {
+      console.error("🚨 [AuthContext] خطأ أثناء جلب صلاحيات الأدمن:", error.message);
+    }
+    
     setIsAdmin(!!data);
   };
 
+  // مراقب الحالة المعدل ليتعامل بسلاسة مع الجلسات القادمة من الأجهزة والمتصفحات المختلفة
   useEffect(() => {
     let mounted = true;
+    
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      fetchRole(data.session?.user.id).finally(() => setLoading(false));
+      fetchRole(data.session?.user.id).finally(() => {
+        if (mounted) setLoading(false);
+      });
     });
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      setSession(s);
-      setTimeout(() => fetchRole(s?.user.id), 0);
+      if (!mounted) return;
+      
+      // أضفنا فحص أحداث الجلسة الإضافية مثل TOKEN_REFRESHED لضمان ثبات الدخول من الأجهزة الأخرى
+      if (
+        event === "SIGNED_IN" || 
+        event === "SIGNED_OUT" || 
+        event === "USER_UPDATED" || 
+        event === "TOKEN_REFRESHED"
+      ) {
+        setSession(s);
+        setTimeout(() => {
+          if (mounted) fetchRole(s?.user.id);
+        }, 0);
+      }
     });
-    return () => { mounted = false; sub.subscription.unsubscribe(); };
+
+    return () => { 
+      mounted = false; 
+      sub.subscription.unsubscribe(); 
+    };
   }, []);
 
   const value = useMemo<AuthCtx>(() => ({
@@ -69,7 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
         if (result.error) {
           const msg = result.error instanceof Error ? result.error.message : String(result.error);
-          // Cancellation by user — don't show as an error
           if (/cancel/i.test(msg)) return { error: "__CANCELLED__" };
           return { error: translateAuthError(msg) };
         }
@@ -80,9 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: translateAuthError(msg) };
       }
     },
-    signOut: async () => { await supabase.auth.signOut(); setIsAdmin(false); },
+    signOut: async () => { 
+      await supabase.auth.signOut(); 
+      setIsAdmin(false); 
+    },
     claimAdmin: async () => false,
-    refreshRole: async () => { await fetchRole(session?.user.id); },
+    refreshRole: async () => { 
+      await fetchRole(session?.user.id); 
+    },
   }), [session, isAdmin, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
