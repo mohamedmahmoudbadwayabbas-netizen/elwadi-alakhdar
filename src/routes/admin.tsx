@@ -51,10 +51,10 @@ function AdminLayout() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background" dir="rtl">
+      <div className="dark flex min-h-screen w-full bg-background" dir="rtl">
         <AdminSidebar />
         <SidebarInset className="flex-1">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl">
             <SidebarTrigger />
             <span className="font-display text-sm font-bold text-muted-foreground">لوحة التحكم</span>
           </header>
