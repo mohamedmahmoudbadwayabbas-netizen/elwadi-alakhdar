@@ -67,7 +67,9 @@ export type Database = {
           created_at: string
           icon: string | null
           id: string
+          image_url: string | null
           name: string
+          parent_id: string | null
           slug: string
           sort_order: number
           updated_at: string
@@ -76,7 +78,9 @@ export type Database = {
           created_at?: string
           icon?: string | null
           id?: string
+          image_url?: string | null
           name: string
+          parent_id?: string | null
           slug: string
           sort_order?: number
           updated_at?: string
@@ -85,10 +89,65 @@ export type Database = {
           created_at?: string
           icon?: string | null
           id?: string
+          image_url?: string | null
           name?: string
+          parent_id?: string | null
           slug?: string
           sort_order?: number
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          first_order_only: boolean
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          min_order_amount: number | null
+          updated_at: string
+          uses_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          first_order_only?: boolean
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+          uses_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          first_order_only?: boolean
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+          uses_count?: number
         }
         Relationships: []
       }
@@ -311,14 +370,35 @@ export type Database = {
       }
       store_settings: {
         Row: {
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
           bank_account_info: string | null
+          cart_empty_bg: string | null
           created_at: string
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          ga4_id: string | null
+          hero_bg_image: string | null
           hero_cta_text: string
           hero_image_url: string | null
           hero_subtitle: string
           hero_title: string
           id: string
           instapay_handle: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          meta_pixel_id: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
           store_address: string | null
           store_lat: number | null
           store_lng: number | null
@@ -326,14 +406,35 @@ export type Database = {
           whatsapp_number: string | null
         }
         Insert: {
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
           bank_account_info?: string | null
+          cart_empty_bg?: string | null
           created_at?: string
+          default_delivery_fee?: number | null
+          favicon_url?: string | null
+          first_order_coupon_code?: string | null
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
+          floating_element_image?: string | null
+          foreground_color?: string | null
+          ga4_id?: string | null
+          hero_bg_image?: string | null
           hero_cta_text?: string
           hero_image_url?: string | null
           hero_subtitle?: string
           hero_title?: string
           id?: string
           instapay_handle?: string | null
+          login_bg_pattern?: string | null
+          logo_url?: string | null
+          meta_pixel_id?: string | null
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
           store_address?: string | null
           store_lat?: number | null
           store_lng?: number | null
@@ -341,14 +442,35 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Update: {
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
           bank_account_info?: string | null
+          cart_empty_bg?: string | null
           created_at?: string
+          default_delivery_fee?: number | null
+          favicon_url?: string | null
+          first_order_coupon_code?: string | null
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
+          floating_element_image?: string | null
+          foreground_color?: string | null
+          ga4_id?: string | null
+          hero_bg_image?: string | null
           hero_cta_text?: string
           hero_image_url?: string | null
           hero_subtitle?: string
           hero_title?: string
           id?: string
           instapay_handle?: string | null
+          login_bg_pattern?: string | null
+          logo_url?: string | null
+          meta_pixel_id?: string | null
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
           store_address?: string | null
           store_lat?: number | null
           store_lng?: number | null
