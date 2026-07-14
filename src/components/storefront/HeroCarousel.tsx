@@ -70,7 +70,7 @@ export function HeroCarousel() {
           className="relative aspect-[4/5] w-full overflow-hidden bg-[#032414] sm:aspect-[16/9] md:aspect-[21/9]"
           dir="rtl"
         >
-          {/* SVG background: layered emerald waves */}
+          {/* SVG background: flowing emerald valley waves (matches reference) */}
           <svg
             viewBox="0 0 1440 800"
             preserveAspectRatio="xMidYMid slice"
@@ -78,25 +78,30 @@ export function HeroCarousel() {
             aria-hidden="true"
           >
             <defs>
-              <linearGradient id="hc-bg" x1="50%" y1="0%" x2="50%" y2="100%">
-                <stop offset="0%" stopColor="#02180c" />
-                <stop offset="45%" stopColor="#053b21" />
-                <stop offset="100%" stopColor="#01100a" />
+              <linearGradient id="hc-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0b3b26" />
+                <stop offset="55%" stopColor="#0d5233" />
+                <stop offset="100%" stopColor="#08331f" />
               </linearGradient>
-              <linearGradient id="hc-w1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#0c4a28" />
-                <stop offset="100%" stopColor="#03200f" />
+              <linearGradient id="hc-w1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#0f5a37" />
+                <stop offset="100%" stopColor="#1a7a4a" />
               </linearGradient>
-              <linearGradient id="hc-w2" x1="100%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#116a3a" />
-                <stop offset="100%" stopColor="#052e18" />
+              <linearGradient id="hc-w2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#0a4a2c" />
+                <stop offset="100%" stopColor="#166b3f" />
               </linearGradient>
-              <linearGradient id="hc-w3" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#1e8a4d" />
-                <stop offset="100%" stopColor="#0a3d21" />
+              <linearGradient id="hc-w3" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#083a22" />
+                <stop offset="60%" stopColor="#0d5030" />
+                <stop offset="100%" stopColor="#2a7d3d" />
               </linearGradient>
-              <radialGradient id="hc-glow" cx="50%" cy="50%" r="55%">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+              <linearGradient id="hc-w4" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#052818" />
+                <stop offset="100%" stopColor="#0e4a2c" />
+              </linearGradient>
+              <radialGradient id="hc-glow" cx="50%" cy="45%" r="55%">
+                <stop offset="0%" stopColor="#34d399" stopOpacity="0.22" />
                 <stop offset="70%" stopColor="#10b981" stopOpacity="0" />
               </radialGradient>
             </defs>
@@ -105,24 +110,23 @@ export function HeroCarousel() {
             <rect width="1440" height="800" fill="url(#hc-glow)" />
 
             <path
-              d="M0 800V300C250 250 350 460 600 400C850 340 950 150 1440 100V800H0Z"
+              d="M0,360 C240,300 420,430 720,410 C1020,390 1220,290 1440,320 L1440,800 L0,800 Z"
               fill="url(#hc-w1)"
               opacity="0.55"
             />
             <path
-              d="M1440 800V250C1200 200 1100 430 850 380C600 330 500 120 0 80V800H1440Z"
+              d="M0,470 C260,410 460,560 760,520 C1060,480 1240,400 1440,430 L1440,800 L0,800 Z"
               fill="url(#hc-w2)"
-              opacity="0.45"
+              opacity="0.75"
             />
             <path
-              d="M0 800V490C300 425 450 610 720 545C990 480 1140 400 1440 380V800H0Z"
+              d="M0,580 C260,510 500,660 800,610 C1100,560 1260,520 1440,540 L1440,800 L0,800 Z"
               fill="url(#hc-w3)"
-              opacity="0.7"
+              opacity="0.9"
             />
             <path
-              d="M1440 800V560C1140 505 990 690 720 625C450 560 300 505 0 490V800H1440Z"
-              fill="#022613"
-              opacity="0.92"
+              d="M0,690 C260,620 520,760 820,700 C1120,640 1280,660 1440,670 L1440,800 L0,800 Z"
+              fill="url(#hc-w4)"
             />
           </svg>
 
