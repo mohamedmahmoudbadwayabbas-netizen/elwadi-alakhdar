@@ -151,6 +151,42 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_zones: {
+        Row: {
+          created_at: string
+          estimated_minutes: number
+          fee: number
+          id: string
+          is_active: boolean
+          min_order_amount: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_minutes?: number
+          fee?: number
+          id?: string
+          is_active?: boolean
+          min_order_amount?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estimated_minutes?: number
+          fee?: number
+          id?: string
+          is_active?: boolean
+          min_order_amount?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hero_banners: {
         Row: {
           created_at: string
@@ -341,6 +377,7 @@ export type Database = {
           id: string
           product_id: string
           rating: number
+          user_id: string | null
         }
         Insert: {
           author_name: string
@@ -349,6 +386,7 @@ export type Database = {
           id?: string
           product_id: string
           rating: number
+          user_id?: string | null
         }
         Update: {
           author_name?: string
@@ -357,6 +395,7 @@ export type Database = {
           id?: string
           product_id?: string
           rating?: number
+          user_id?: string | null
         }
         Relationships: [
           {
