@@ -7,12 +7,19 @@ import { Leaf, LogIn, UserPlus, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme-context";
 
+function safeRelative(path: string) {
+  return path.startsWith("/") && !path.startsWith("//") ? path : "/account";
+}
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "تسجيل الدخول — الوادي الأخضر" },
       { name: "description", content: "سجّل دخولك أو أنشئ حساباً جديداً في متجر الوادي الأخضر" },
     ],
+  }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
   }),
   component: AuthPage,
 });
@@ -21,14 +28,20 @@ function AuthPage() {
   const { user, signIn, signUp, signInWithGoogle, loading } = useAuth();
   const theme = useTheme();
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const dest = safeRelative(next ?? "/account");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/account" });
-  }, [user, loading, navigate]);
+    if (!loading && user) {
+      // Use href for arbitrary paths (e.g. /.lovable/oauth/consent?...).
+      if (dest === "/account") navigate({ to: "/account" });
+      else window.location.href = dest;
+    }
+  }, [user, loading, navigate, dest]);
 
 
   const handle = async (e: React.FormEvent) => {
@@ -44,7 +57,12 @@ function AuthPage() {
 
   const handleGoogle = async () => {
     setBusy(true);
-    const res = await signInWithGoogle();
+    // Preserve the intended destination through the OAuth round-trip by
+    // pointing redirect_uri back at /auth with the same `next`.
+    const redirectUri = typeof window !== "undefined"
+      ? `${window.location.origin}/auth${next ? `?next=${encodeURIComponent(next)}` : ""}`
+      : undefined;
+    const res = await signInWithGoogle(redirectUri);
     setBusy(false);
     if (res.error && res.error !== "__CANCELLED__") toast.error(res.error);
   };

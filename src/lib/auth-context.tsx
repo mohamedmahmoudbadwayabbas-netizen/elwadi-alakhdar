@@ -10,7 +10,7 @@ type AuthCtx = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string) => Promise<{ error?: string }>;
-  signInWithGoogle: () => Promise<{ error?: string }>;
+  signInWithGoogle: (redirectUri?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   claimAdmin: () => Promise<boolean>;
   refreshRole: () => Promise<void>;
@@ -93,8 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
       return error ? { error: translateAuthError(error.message) } : {};
     },
-    signInWithGoogle: async () => {
-      const redirect_uri = typeof window !== "undefined" ? window.location.origin : undefined;
+    signInWithGoogle: async (redirectUri?: string) => {
+      const redirect_uri = redirectUri ?? (typeof window !== "undefined" ? window.location.origin : undefined);
       try {
         const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
         if (result.error) {
