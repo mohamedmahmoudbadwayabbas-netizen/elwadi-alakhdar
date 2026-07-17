@@ -15,6 +15,7 @@ import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { ColorModeProvider } from "@/lib/color-mode-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { SearchProvider } from "@/lib/search-context";
 import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
@@ -119,19 +120,21 @@ function RootComponent() {
       <I18nProvider>
         <SettingsProvider>
           <ThemeProvider>
-            <AuthProvider>
-              <CartProvider>
-                <SearchProvider>
-                  <AnnouncementBar />
-                  <StorefrontHeader />
-                  <div className="pb-20">
-                    <Outlet />
-                  </div>
-                  <BottomNav />
-                  <Toaster position="top-center" dir="rtl" richColors />
-                </SearchProvider>
-              </CartProvider>
-            </AuthProvider>
+            <ColorModeProvider storageKey="store-color-mode" defaultMode="light">
+              <AuthProvider>
+                <CartProvider>
+                  <SearchProvider>
+                    <AnnouncementBar />
+                    <StorefrontHeader />
+                    <div className="pb-20">
+                      <Outlet />
+                    </div>
+                    <BottomNav />
+                    <Toaster position="top-center" dir="rtl" richColors />
+                  </SearchProvider>
+                </CartProvider>
+              </AuthProvider>
+            </ColorModeProvider>
           </ThemeProvider>
         </SettingsProvider>
       </I18nProvider>
@@ -145,4 +148,3 @@ function StorefrontHeader() {
   if (pathname.startsWith("/admin") || pathname.startsWith("/auth")) return null;
   return <Header />;
 }
-
