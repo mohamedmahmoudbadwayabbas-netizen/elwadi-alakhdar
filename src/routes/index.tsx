@@ -288,7 +288,7 @@ function HomePage() {
         {/* أحدث المنتجات */}
         <div className="space-y-4 pt-2">
           <h3 className="text-base font-medium text-primary">أحدث المنتجات</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {latestProducts.map((product) => {
               const isWished = !!wishlist[product.id];
               return (
