@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { ColorModeProvider } from "@/lib/color-mode-context";
+import { ColorModeToggle } from "@/components/ColorModeToggle";
 import { ShieldAlert, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
@@ -50,19 +52,26 @@ function AdminLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="dark flex min-h-screen w-full bg-background" dir="rtl">
-        <AdminSidebar />
-        <SidebarInset className="flex-1">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl">
-            <SidebarTrigger />
-            <span className="font-display text-sm font-bold text-muted-foreground">لوحة التحكم</span>
-          </header>
-          <main className="flex-1">
-            <Outlet />
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    // ColorModeProvider منفصل هنا (بدون forceMode) عشان الأدمن يقدر يبدّل بزراره الخاص،
+    // مستقل عن اختيار المتجر العادي المحفوظ في localStorage تحت نفس المفتاح.
+    <ColorModeProvider storageKey="admin-color-mode" defaultMode="dark">
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background" dir="rtl">
+          <AdminSidebar />
+          <SidebarInset className="flex-1">
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl">
+              <SidebarTrigger />
+              <span className="font-display text-sm font-bold text-muted-foreground">لوحة التحكم</span>
+              <div className="mr-auto">
+                <ColorModeToggle />
+              </div>
+            </header>
+            <main className="flex-1">
+              <Outlet />
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </ColorModeProvider>
   );
 }
