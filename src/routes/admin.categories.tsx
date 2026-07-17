@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Image as ImageIcon, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 
 type Cat = {
@@ -49,10 +49,11 @@ function CategoriesPage() {
 
   const save = async () => {
     if (!editing?.name) { toast.error("الاسم مطلوب"); return; }
+    if (!editing?.image_url) { toast.error("صورة الفئة مطلوبة"); return; }
     const payload = {
       name: editing.name!,
       slug: (editing.slug || editing.name).toLowerCase().replace(/\s+/g, "-").slice(0, 60),
-      icon: editing.icon || null,
+      icon: null,
       image_url: editing.image_url || null,
       parent_id: editing.parent_id || null,
       sort_order: Number(editing.sort_order ?? 0),
@@ -71,6 +72,16 @@ function CategoriesPage() {
     else { toast.success("تم الحذف"); load(); }
   };
 
+  const moveSort = async (cat: Cat, direction: -1 | 1) => {
+    const siblings = rows.filter((c) => c.parent_id === cat.parent_id).sort((a, b) => a.sort_order - b.sort_order);
+    const idx = siblings.findIndex((c) => c.id === cat.id);
+    const swapWith = siblings[idx + direction];
+    if (!swapWith) return;
+    await supabase.from("categories").update({ sort_order: swapWith.sort_order }).eq("id", cat.id);
+    await supabase.from("categories").update({ sort_order: cat.sort_order }).eq("id", swapWith.id);
+    load();
+  };
+
   return (
     <div className="space-y-4 p-4 sm:p-6" dir="rtl">
       <div className="flex items-center justify-between">
@@ -85,22 +96,27 @@ function CategoriesPage() {
       {loading ? (
         <div className="h-32 animate-pulse rounded-xl bg-secondary" />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {parents.map((p) => {
-            const kids = rows.filter((c) => c.parent_id === p.id);
+            const kids = rows.filter((c) => c.parent_id === p.id).sort((a, b) => a.sort_order - b.sort_order);
             return (
               <div key={p.id} className="rounded-2xl border border-border bg-card p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-primary/10 text-primary">
-                      {p.image_url ? <img src={p.image_url} className="h-full w-full object-cover" alt="" /> : <span className="text-xl">{p.icon ?? "🌿"}</span>}
-                    </div>
-                    <div>
-                      <div className="font-bold">{p.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{p.slug} • فئة رئيسية • ترتيب {p.sort_order}</div>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                  <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/10">
+                    {p.image_url ? (
+                      <img src={p.image_url} className="h-full w-full object-cover" alt="" />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    )}
                   </div>
-                  <div className="flex gap-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-bold">{p.name}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">{p.slug} • رئيسية • ترتيب {p.sort_order}</div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveSort(p, -1)}>▲</Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveSort(p, 1)}>▼</Button>
                     <Button variant="ghost" size="sm" onClick={() => setEditing({ parent_id: p.id, sort_order: kids.length })}>
                       <Plus className="h-4 w-4" /> فرعي
                     </Button>
@@ -109,19 +125,23 @@ function CategoriesPage() {
                   </div>
                 </div>
                 {kids.length > 0 && (
-                  <div className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="mt-3 space-y-2 border-t border-border pt-3 pr-7">
                     {kids.map((k) => (
-                      <div key={k.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-background p-2">
-                        <div className="flex items-center gap-2">
-                          <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-lg bg-secondary text-sm">
-                            {k.image_url ? <img src={k.image_url} className="h-full w-full object-cover" alt="" /> : (k.icon ?? "🌿")}
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold">{k.name}</div>
-                            <div className="text-[10px] text-muted-foreground">{k.slug}</div>
-                          </div>
+                      <div key={k.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-2">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-secondary">
+                          {k.image_url ? (
+                            <img src={k.image_url} className="h-full w-full object-cover" alt="" />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          )}
                         </div>
-                        <div className="flex gap-0.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-bold">{k.name}</div>
+                          <div className="truncate text-[10px] text-muted-foreground">{k.slug}</div>
+                        </div>
+                        <div className="flex shrink-0 gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSort(k, -1)}>▲</Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveSort(k, 1)}>▼</Button>
                           <Button variant="ghost" size="icon" onClick={() => setEditing(k)}><Pencil className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => remove(k.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                         </div>
@@ -146,9 +166,9 @@ function CategoriesPage() {
           {editing && (
             <div className="grid gap-3">
               <div>
-                <span className="mb-1.5 block text-xs font-bold">صورة الفئة</span>
+                <span className="mb-1.5 block text-xs font-bold">صورة الفئة (تظهر في الرئيسية وصفحة الفئات)</span>
                 <div className="flex items-center gap-3">
-                  <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/40">
+                  <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/40">
                     {editing.image_url ? <img src={editing.image_url} className="h-full w-full object-cover" alt="" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />}
                   </div>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden"
@@ -175,7 +195,6 @@ function CategoriesPage() {
               </Field>
               <Field label="الاسم"><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
               <Field label="المعرّف (slug)"><Input value={editing.slug ?? ""} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="اختياري" /></Field>
-              <Field label="الأيقونة (Emoji بديلة عن الصورة)"><Input value={editing.icon ?? ""} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} placeholder="🌿" /></Field>
               <Field label="الترتيب"><NumberInput decimal={false} value={editing.sort_order ?? 0} onValueChange={(v) => setEditing({ ...editing, sort_order: parseInt(v || "0", 10) || 0 })} /></Field>
             </div>
           )}
