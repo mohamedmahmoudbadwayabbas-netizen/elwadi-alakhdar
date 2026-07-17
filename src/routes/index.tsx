@@ -30,8 +30,7 @@ function HomePage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  // المفضلة المرتبطة بالحساب (Supabase)
-  const [wishlist, setWishlist] = useState<Record<string, string>>({}); // productId -> wishlist row id
+  const [wishlist, setWishlist] = useState<Record<string, string>>({});
 
   const [savedDeliveryTime, setSavedDeliveryTime] = useState("30 - 45 دقيقة ⚡");
 
@@ -69,7 +68,6 @@ function HomePage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // تحميل المفضلة من قاعدة البيانات للمستخدم المسجل
   useEffect(() => {
     if (!user) { setWishlist({}); return; }
     (async () => {
@@ -114,21 +112,18 @@ function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAF9F6]">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] pb-14 text-right" dir="rtl">
-      
-      {/* شريط البحث موجود في الهيدر — تم إزالة النسخة المكررة */}
+    <div className="min-h-screen bg-background pb-14 text-right" dir="rtl">
 
       <div className="mx-auto max-w-md px-5 pt-4 space-y-8">
 
-        
-        {/* ─── البانر الإعلاني الكبير — يقرأ صورة الخلفية من الإعدادات ─── */}
+        {/* ─── البانر الإعلاني الكبير — يفضل بلون الهوية ثابت في اللايت والدارك ─── */}
         <div
           className="relative overflow-hidden rounded-3xl bg-[#036233] p-5 text-white shadow-lg transition-transform duration-300 hover:shadow-xl"
           style={
@@ -155,7 +150,6 @@ function HomePage() {
                 {settings.hero_cta_text || "تسوّق الآن"}
               </button>
             </div>
-            {/* أيقونة/صورة عائمة جانبية — تستخدم صورة الإعدادات إن وُجدت */}
             <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl bg-white/10 backdrop-blur-sm shadow-inner">
               {settings.floating_element_image ? (
                 <img src={settings.floating_element_image} alt="" className="h-full w-full object-cover" />
@@ -166,16 +160,16 @@ function HomePage() {
           </div>
         </div>
 
-        {/* التحديث 7: شريط التوصيل الديناميكي المخصص للزبون أسفل البانر */}
-        <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-2.5 flex items-center justify-between text-xs font-bold text-emerald-800">
+        {/* شريط التوصيل الديناميكي */}
+        <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-2.5 flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-300">
           <div className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-emerald-600 animate-bounce" />
+            <MapPin className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 animate-bounce" />
             <span>التوصيل المتوقع إليك الآن:</span>
           </div>
-          <span className="bg-white px-2 py-0.5 rounded-lg text-emerald-700 shadow-sm font-black">{savedDeliveryTime}</span>
+          <span className="bg-card px-2 py-0.5 rounded-lg text-emerald-700 dark:text-emerald-300 shadow-sm font-black">{savedDeliveryTime}</span>
         </div>
 
-        {/* ─── التحديث 2 & 6: قسم تسوق حسب القسم التفاعلي ─── */}
+        {/* تسوّق حسب القسم */}
         <div className="space-y-3">
           <h3 className="text-base font-medium text-primary">تسوّق حسب القسم</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none" dir="rtl">
@@ -190,7 +184,7 @@ function HomePage() {
                     "hover:shadow-sm active:scale-95",
                     isActive
                       ? "border-primary bg-primary/5"
-                      : "border-border/60 bg-white",
+                      : "border-border/60 bg-card",
                   )}
                 >
                   <div className={cn(
@@ -206,8 +200,7 @@ function HomePage() {
           </div>
         </div>
 
-
-        {/* ─── التحديث 1 & 5 & 8: قسم الأكثر مبيعاً ─── */}
+        {/* الأكثر مبيعاً */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-medium text-primary flex items-center gap-1">
@@ -215,7 +208,6 @@ function HomePage() {
             </h3>
           </div>
 
-          
           <div className="grid grid-cols-2 gap-3">
             {bestSellers.map((product) => {
               const isWished = !!wishlist[product.id];
@@ -226,9 +218,8 @@ function HomePage() {
                 <div
                   key={product.id}
                   onClick={() => navigate({ to: "/products/$productId", params: { productId: product.id } })}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer"
                 >
-                  {/* شارات الـ FOMO والخصومات الجاذبة فوق الصورة */}
                   <div className="absolute start-2 top-2 z-10 flex flex-col gap-1">
                     <span className="rounded-md bg-[#E55300] px-1.5 py-0.5 text-[9px] font-black text-white flex items-center gap-0.5 shadow-sm">
                       🔥 الأكثر مبيعاً
@@ -240,16 +231,14 @@ function HomePage() {
                     )}
                   </div>
 
-                  {/* زر القلب المرتبط محلياً وثابت دائماً */}
                   <button
                     onClick={(e) => toggleWish(e, product.id)}
-                    className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm transition-transform active:scale-125"
+                    className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-card/80 backdrop-blur-sm shadow-sm transition-transform active:scale-125"
                   >
                     <Heart className={cn("h-3.5 w-3.5 transition-colors", isWished ? "fill-red-500 text-red-500" : "text-slate-400")} />
                   </button>
 
-                  {/* صورة المنتج */}
-                  <div className="aspect-square w-full bg-slate-50 overflow-hidden">
+                  <div className="aspect-square w-full bg-secondary overflow-hidden">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
@@ -257,7 +246,6 @@ function HomePage() {
                     )}
                   </div>
 
-                  {/* تفاصيل البطاقة مع التهوية والتنسيق المثالي للخطوط */}
                   <div className="flex flex-1 flex-col p-3 text-right justify-between space-y-1.5">
                     <div className="space-y-0.5">
                       <h4 className="line-clamp-1 text-sm font-normal text-foreground">{product.name}</h4>
@@ -278,7 +266,6 @@ function HomePage() {
                         )}
                       </div>
 
-                      {/* زر أضف للسلة — بلون التفاعل البرتقالي */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -298,8 +285,7 @@ function HomePage() {
           </div>
         </div>
 
-
-        {/* ─── قسم أحدث المنتجات ─── */}
+        {/* أحدث المنتجات */}
         <div className="space-y-4 pt-2">
           <h3 className="text-base font-medium text-primary">أحدث المنتجات</h3>
           <div className="grid grid-cols-2 gap-3">
@@ -309,7 +295,7 @@ function HomePage() {
                 <div
                   key={product.id}
                   onClick={() => navigate({ to: "/products/$productId", params: { productId: product.id } })}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm transition-all hover:shadow-md cursor-pointer"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all hover:shadow-md cursor-pointer"
                 >
                   <div className="absolute start-2 top-2 z-10">
                     <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-normal text-white shadow-sm">
@@ -318,13 +304,13 @@ function HomePage() {
                   </div>
                   <button
                     onClick={(e) => toggleWish(e, product.id)}
-                    className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/80 shadow-sm"
+                    className="absolute end-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-card/80 shadow-sm"
                     aria-label="المفضلة"
                   >
                     <Heart className={cn("h-3.5 w-3.5", isWished ? "fill-accent text-accent" : "text-muted-foreground")} strokeWidth={1.5} />
                   </button>
 
-                  <div className="aspect-square w-full bg-[#F9FAFB]">
+                  <div className="aspect-square w-full bg-secondary">
                     {product.image_url ? <img src={product.image_url} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-3xl">🌿</div>}
                   </div>
 
@@ -354,12 +340,11 @@ function HomePage() {
           </div>
         </div>
 
-
-        {/* ─── الفوتر الأنيق المماثل للصورة ─── */}
-        <div className="border-t border-slate-200/60 pt-6 pb-4 text-center space-y-1">
-          <div className="text-sm font-black text-slate-700">الوادي الأخضر</div>
-          <div className="text-[10px] text-slate-400 font-medium">سوبر ماركت وعطارة ومحمصة - جودة أصيلة وتوصيل سريع</div>
-          <div className="text-[9px] text-slate-400/80 pt-2" dir="ltr">© 2026 جميع الحقوق محفوظة.</div>
+        {/* الفوتر */}
+        <div className="border-t border-border pt-6 pb-4 text-center space-y-1">
+          <div className="text-sm font-black text-foreground">الوادي الأخضر</div>
+          <div className="text-[10px] text-muted-foreground font-medium">سوبر ماركت وعطارة ومحمصة - جودة أصيلة وتوصيل سريع</div>
+          <div className="text-[9px] text-muted-foreground/80 pt-2" dir="ltr">© 2026 جميع الحقوق محفوظة.</div>
         </div>
 
       </div>
