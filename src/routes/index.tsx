@@ -121,7 +121,7 @@ function HomePage() {
   return (
     <div className="min-h-screen bg-background pb-14 text-right" dir="rtl">
 
-      <div className="mx-auto max-w-md px-5 pt-4 space-y-8">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 space-y-8">
 
         {/* ─── البانر الإعلاني الكبير — يفضل بلون الهوية ثابت في اللايت والدارك ─── */}
         <div
@@ -208,7 +208,7 @@ function HomePage() {
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {bestSellers.map((product) => {
               const isWished = !!wishlist[product.id];
               const hasDiscount = product.old_price && product.old_price > product.price_per_unit;
@@ -288,7 +288,7 @@ function HomePage() {
         {/* أحدث المنتجات */}
         <div className="space-y-4 pt-2">
           <h3 className="text-base font-medium text-primary">أحدث المنتجات</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {latestProducts.map((product) => {
               const isWished = !!wishlist[product.id];
               return (
