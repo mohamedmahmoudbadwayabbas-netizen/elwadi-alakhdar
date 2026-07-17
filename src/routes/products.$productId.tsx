@@ -32,8 +32,8 @@ const STORE_LNG = 31.2357;
 
 // مناطق التوصيل اليدوية الافتراضية
 const DELIVERY_ZONES = [
-  { id: "near", name: "المناطق المجاورة (حتى 5 كم)", time: "45 - 60 دقيقة ⚡", minPrice: 15 },
-  { id: "medium", name: "مناطق وسط المدينة (5 - 15 كم)", time: "75 - 120 دقيقة 🚗", minPrice: 30 },
+  { id: "near", name: "المناطق المجاورة (حتى 5 كم)", time: "30 - 45 دقيقة ⚡", minPrice: 15 },
+  { id: "medium", name: "مناطق وسط المدينة (5 - 15 كم)", time: "60 - 90 دقيقة 🚗", minPrice: 30 },
   { id: "far", name: "أطراف المدينة والمناطق البعيدة (+15 كم)", time: "2 - 3 ساعات 🚚", minPrice: 50 },
 ];
 
