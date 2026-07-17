@@ -22,7 +22,7 @@ function AdminLogin() {
 
   useEffect(() => {
     supabase
-      .from("store_settings")
+      .from("store_settings_public" as any)
       .select("login_bg_pattern,floating_element_image")
       .limit(1)
       .maybeSingle()

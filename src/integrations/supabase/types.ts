@@ -621,15 +621,139 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      store_settings_public: {
+        Row: {
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
+          cart_empty_bg: string | null
+          created_at: string | null
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          hero_bg_image: string | null
+          hero_cta_text: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
+          store_address: string | null
+          store_lat: number | null
+          store_lng: number | null
+          updated_at: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
+          cart_empty_bg?: string | null
+          created_at?: string | null
+          default_delivery_fee?: number | null
+          favicon_url?: string | null
+          first_order_coupon_code?: string | null
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
+          floating_element_image?: string | null
+          foreground_color?: string | null
+          hero_bg_image?: string | null
+          hero_cta_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string | null
+          login_bg_pattern?: string | null
+          logo_url?: string | null
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
+          store_address?: string | null
+          store_lat?: number | null
+          store_lng?: number | null
+          updated_at?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
+          cart_empty_bg?: string | null
+          created_at?: string | null
+          default_delivery_fee?: number | null
+          favicon_url?: string | null
+          first_order_coupon_code?: string | null
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
+          floating_element_image?: string | null
+          foreground_color?: string | null
+          hero_bg_image?: string | null
+          hero_cta_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string | null
+          login_bg_pattern?: string | null
+          logo_url?: string | null
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
+          store_address?: string | null
+          store_lat?: number | null
+          store_lng?: number | null
+          updated_at?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      has_role: {
+      create_order: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
+          p_address: string
+          p_coupon_code: string
+          p_customer_name: string
+          p_delivery_method: string
+          p_delivery_zone_id: string
+          p_items: Json
+          p_notes: string
+          p_payment_method: string
+          p_payment_reference: string
+          p_phone: string
+          p_ref_source: string
         }
-        Returns: boolean
+        Returns: string
+      }
+      get_payment_config: {
+        Args: never
+        Returns: {
+          bank_account_info: string
+          instapay_handle: string
+          store_address: string
+        }[]
+      }
+      validate_coupon: {
+        Args: { p_code: string; p_subtotal: number }
+        Returns: {
+          code: string
+          discount_amount: number
+          discount_type: string
+          discount_value: number
+        }[]
       }
     }
     Enums: {

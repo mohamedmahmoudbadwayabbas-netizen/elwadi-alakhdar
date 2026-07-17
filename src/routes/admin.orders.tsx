@@ -175,34 +175,50 @@ function OrdersPage() {
 }
 
 function printReceipt(o: Order) {
-  const html = `
-  <div class="receipt-print">
-    <div style="text-align:center;font-weight:bold;font-size:14pt">الوادي الأخضر</div>
-    <div style="text-align:center;font-size:9pt;margin-bottom:6pt">سوبر ماركت وعطارة</div>
-    <hr/>
-    <div style="font-size:9pt">طلب: ${o.id.slice(0, 8)}</div>
-    <div style="font-size:9pt">${new Date(o.created_at).toLocaleString("ar-EG")}</div>
-    <div style="font-size:9pt">${o.customer_name} - ${o.phone}</div>
-    <div style="font-size:9pt">${o.address}</div>
-    <hr/>
-    <table style="width:100%;font-size:9pt;border-collapse:collapse">
-      <thead><tr><th align="right">الصنف</th><th align="right">الكمية</th><th align="left">السعر</th></tr></thead>
-      <tbody>
-        ${(o.items ?? []).map((it) => `
-          <tr><td>${it.name}</td><td>${it.quantity} ${it.unit_label}</td><td align="left">${Number(it.subtotal).toFixed(2)}</td></tr>
-        `).join("")}
-      </tbody>
-    </table>
-    <hr/>
-    <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:11pt">
-      <span>الإجمالي</span><span>${Number(o.total_price).toFixed(2)} ج.م</span>
-    </div>
-    <div style="text-align:center;margin-top:8pt;font-size:9pt">شكراً لتسوقكم معنا 🌿</div>
-  </div>`;
-  const w = window.open("", "_blank", "width=400,height=600");
+  const w = window.open("", "_blank", "width=400,height=600,noopener");
   if (!w) return;
-  w.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>إيصال</title>
-    <style>body{font-family:Tajawal,Arial,sans-serif;margin:0;padding:0}hr{border:none;border-top:1px dashed #000;margin:6pt 0}</style>
-    </head><body>${html}<script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500)}<\/script></body></html>`);
-  w.document.close();
+  const doc = w.document;
+  doc.open();
+  doc.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>Receipt</title><style>body{font-family:Tajawal,Arial,sans-serif;margin:0;padding:8pt}hr{border:none;border-top:1px dashed #000;margin:6pt 0}table{width:100%;font-size:9pt;border-collapse:collapse}.row{display:flex;justify-content:space-between}</style></head><body></body></html>');
+  doc.close();
+
+  const body = doc.body;
+  const el = (tag: string, opts: { text?: string; style?: string; parent?: Node } = {}) => {
+    const e = doc.createElement(tag);
+    if (opts.text !== undefined) e.textContent = opts.text;
+    if (opts.style) e.setAttribute("style", opts.style);
+    (opts.parent ?? body).appendChild(e);
+    return e;
+  };
+
+  el("div", { text: "الوادي الأخضر", style: "text-align:center;font-weight:bold;font-size:14pt" });
+  el("div", { text: "سوبر ماركت وعطارة", style: "text-align:center;font-size:9pt;margin-bottom:6pt" });
+  el("hr");
+  el("div", { text: `طلب: ${o.id.slice(0, 8)}`, style: "font-size:9pt" });
+  el("div", { text: new Date(o.created_at).toLocaleString("ar-EG"), style: "font-size:9pt" });
+  el("div", { text: `${o.customer_name} - ${o.phone}`, style: "font-size:9pt" });
+  el("div", { text: o.address, style: "font-size:9pt" });
+  el("hr");
+
+  const table = el("table");
+  const thead = el("thead", { parent: table });
+  const trh = el("tr", { parent: thead });
+  el("th", { text: "الصنف", parent: trh, style: "text-align:right" });
+  el("th", { text: "الكمية", parent: trh, style: "text-align:right" });
+  el("th", { text: "السعر", parent: trh, style: "text-align:left" });
+  const tbody = el("tbody", { parent: table });
+  for (const it of o.items ?? []) {
+    const tr = el("tr", { parent: tbody });
+    el("td", { text: it.name, parent: tr });
+    el("td", { text: `${it.quantity} ${it.unit_label}`, parent: tr });
+    el("td", { text: Number(it.subtotal).toFixed(2), parent: tr, style: "text-align:left" });
+  }
+  el("hr");
+
+  const totalRow = el("div", { style: "display:flex;justify-content:space-between;font-weight:bold;font-size:11pt" });
+  el("span", { text: "الإجمالي", parent: totalRow });
+  el("span", { text: `${Number(o.total_price).toFixed(2)} ج.م`, parent: totalRow });
+  el("div", { text: "شكراً لتسوقكم معنا 🌿", style: "text-align:center;margin-top:8pt;font-size:9pt" });
+
+  w.setTimeout(() => { w.print(); w.setTimeout(() => w.close(), 500); }, 100);
 }

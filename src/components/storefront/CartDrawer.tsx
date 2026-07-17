@@ -32,8 +32,10 @@ export function CartDrawer() {
 
   useEffect(() => {
     if (stage !== "checkout") return;
-    supabase.from("store_settings").select("instapay_handle,bank_account_info").limit(1).maybeSingle()
-      .then(({ data }) => { if (data) setPay(data as typeof pay); });
+    (supabase as any).rpc("get_payment_config").then(({ data }: any) => {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) setPay({ instapay_handle: row.instapay_handle ?? null, bank_account_info: row.bank_account_info ?? null });
+    });
   }, [stage]);
 
   const handleSubmit = async () => {
@@ -46,26 +48,19 @@ export function CartDrawer() {
     }
     setSubmitting(true);
     const ref = (() => { try { return sessionStorage.getItem("alwadi_ref"); } catch { return null; } })();
-    const payload = {
-      customer_name: parsed.data.customer_name,
-      phone: parsed.data.phone,
-      address: parsed.data.address,
-      notes: parsed.data.notes || null,
-      ref_source: ref,
-      total_price: +totalPrice.toFixed(2),
-      payment_method: parsed.data.payment_method,
-      payment_reference: parsed.data.payment_reference?.trim() || null,
-      items: items.map((i) => ({
-        id: i.product.id,
-        name: i.product.name,
-        unit_label: i.product.unit_label,
-        is_by_weight: i.product.is_by_weight,
-        price_per_unit: i.product.price_per_unit,
-        quantity: i.quantity,
-        subtotal: +lineSubtotal(i.product, i.quantity).toFixed(2),
-      })),
-    };
-    const { error } = await supabase.from("orders").insert(payload);
+    const { error } = await (supabase as any).rpc("create_order", {
+      p_customer_name: parsed.data.customer_name,
+      p_phone: parsed.data.phone,
+      p_address: parsed.data.address,
+      p_notes: parsed.data.notes || null,
+      p_items: items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
+      p_delivery_zone_id: null,
+      p_delivery_method: "delivery",
+      p_payment_method: parsed.data.payment_method,
+      p_payment_reference: parsed.data.payment_reference?.trim() || null,
+      p_coupon_code: null,
+      p_ref_source: ref,
+    });
     setSubmitting(false);
     if (error) { toast.error("تعذّر إرسال الطلب", { description: error.message }); return; }
     toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
