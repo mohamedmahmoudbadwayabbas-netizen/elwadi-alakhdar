@@ -113,7 +113,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
     (async () => {
       const t0 = performance.now();
-      const { data, error } = await supabase.from("store_settings").select("*").limit(1).maybeSingle();
+      const { data, error } = await supabase.from("store_settings_public" as any).select("*").limit(1).maybeSingle();
       console.log(`[SettingsProvider] fetch done in ${(performance.now() - t0).toFixed(0)}ms`, { hasData: !!data, error });
       if (!mounted) return;
       if (data) {
