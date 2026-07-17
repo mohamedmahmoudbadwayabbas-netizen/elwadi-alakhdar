@@ -75,22 +75,19 @@ function CartPage() {
     const code = couponInput.trim().toUpperCase();
     if (!code) { toast.error("أدخل كود الخصم"); return; }
     setCouponLoading(true);
-    const { data, error } = await supabase
-      .from("coupons")
-      .select("id,code,discount_type,discount_value,min_order_amount,max_uses,uses_count,expires_at,is_active")
-      .ilike("code", code)
-      .maybeSingle();
+    const { data, error } = await (supabase as any).rpc("validate_coupon", { p_code: code, p_subtotal: totalPrice });
     setCouponLoading(false);
-    if (error || !data) { toast.error("كود الخصم غير صحيح"); return; }
-    if (!data.is_active) { toast.error("هذا الكود متوقف حالياً"); return; }
-    if (data.expires_at && new Date(data.expires_at) < new Date()) { toast.error("انتهت صلاحية الكود"); return; }
-    if (data.max_uses && (data.uses_count ?? 0) >= data.max_uses) { toast.error("تم استنفاد عدد مرات استخدام الكود"); return; }
-    if (data.min_order_amount && totalPrice < Number(data.min_order_amount)) {
-      toast.error(`الحد الأدنى لاستخدام هذا الكود هو ${data.min_order_amount} ج.م`);
+    if (error || !data || (Array.isArray(data) && data.length === 0)) {
+      const msg = error?.message || "";
+      if (msg.includes("EXPIRED")) toast.error("انتهت صلاحية الكود");
+      else if (msg.includes("EXHAUSTED")) toast.error("تم استنفاد عدد مرات استخدام الكود");
+      else if (msg.includes("MIN_ORDER")) toast.error("لم يتم الوصول للحد الأدنى المطلوب لهذا الكود");
+      else toast.error("كود الخصم غير صحيح");
       return;
     }
-    setCoupon({ id: data.id, code: data.code, discount_type: data.discount_type, discount_value: Number(data.discount_value) });
-    toast.success(`تم تطبيق الخصم: ${data.code}`);
+    const row = Array.isArray(data) ? data[0] : data;
+    setCoupon({ id: row.code, code: row.code, discount_type: row.discount_type, discount_value: Number(row.discount_value) });
+    toast.success(`تم تطبيق الخصم: ${row.code}`);
   };
 
   const removeCoupon = () => { setCoupon(null); setCouponInput(""); };
@@ -106,12 +103,19 @@ function CartPage() {
         setZones(z);
         if (z.length > 0 && !zoneId) setZoneId(z[0].id);
       });
-    supabase.from("store_settings").select("instapay_handle,bank_account_info,store_address,cart_empty_bg,floating_element_image").limit(1).maybeSingle()
-      .then(({ data }) => { if (data) { setPay({
-        instapay_handle: (data as any).instapay_handle ?? null,
-        bank_account_info: (data as any).bank_account_info ?? null,
-        store_address: (data as any).store_address ?? null,
-      }); setBg({ empty: (data as any).cart_empty_bg ?? null, floating: (data as any).floating_element_image ?? null }); } });
+    (async () => {
+      const [{ data: rpc }, { data: pub }] = await Promise.all([
+        (supabase as any).rpc("get_payment_config"),
+        supabase.from("store_settings_public" as any).select("cart_empty_bg,floating_element_image").limit(1).maybeSingle(),
+      ]);
+      const pay0 = Array.isArray(rpc) ? rpc[0] : rpc;
+      if (pay0) setPay({
+        instapay_handle: pay0.instapay_handle ?? null,
+        bank_account_info: pay0.bank_account_info ?? null,
+        store_address: pay0.store_address ?? null,
+      });
+      if (pub) setBg({ empty: (pub as any).cart_empty_bg ?? null, floating: (pub as any).floating_element_image ?? null });
+    })();
   }, []);
 
   const zone = useMemo(() => zones.find((z) => z.id === zoneId) ?? null, [zones, zoneId]);
@@ -163,42 +167,22 @@ function CartPage() {
 
     setSubmitting(true);
     const ref = (() => { try { return sessionStorage.getItem("alwadi_ref"); } catch { return null; } })();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    const payload: any = {
-      customer_name: parsed.data.customer_name,
-      phone: parsed.data.phone,
-      address: deliveryMethod === "pickup" ? `[استلام من الفرع] ${pay.store_address ?? ""}`.trim() : parsed.data.address,
-      notes: parsed.data.notes || null,
-      ref_source: ref,
-      user_id: user?.id ?? null,
-      total_price: grandTotal,
-      delivery_fee: deliveryFee || null,
-      delivery_zone_id: deliveryMethod === "delivery" ? (zoneId || null) : null,
-      payment_method: parsed.data.payment_method,
-      payment_reference: parsed.data.payment_reference?.trim() || null,
-      coupon_code: coupon?.code ?? null,
-      discount_amount: discountAmount || null,
-      items: items.map((i) => ({
-        id: i.product.id,
-        name: i.product.name,
-        unit_label: i.product.unit_label,
-        is_by_weight: i.product.is_by_weight,
-        price_per_unit: i.product.price_per_unit,
-        quantity: i.quantity,
-        subtotal: +lineSubtotal(i.product, i.quantity).toFixed(2),
-      })),
-    };
-
-    const { error } = await supabase.from("orders").insert(payload);
+    const { error } = await (supabase as any).rpc("create_order", {
+      p_customer_name: parsed.data.customer_name,
+      p_phone: parsed.data.phone,
+      p_address: deliveryMethod === "pickup" ? `[استلام من الفرع] ${pay.store_address ?? ""}`.trim() : parsed.data.address,
+      p_notes: parsed.data.notes || null,
+      p_items: items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
+      p_delivery_zone_id: deliveryMethod === "delivery" ? (zoneId || null) : null,
+      p_delivery_method: deliveryMethod,
+      p_payment_method: parsed.data.payment_method,
+      p_payment_reference: parsed.data.payment_reference?.trim() || null,
+      p_coupon_code: coupon?.code ?? null,
+      p_ref_source: ref,
+    });
     setSubmitting(false);
     if (error) { toast.error("تعذّر إرسال الطلب", { description: error.message }); return; }
-    if (coupon) {
-      try {
-        const { data: c } = await supabase.from("coupons").select("uses_count").eq("id", coupon.id).maybeSingle();
-        await supabase.from("coupons").update({ uses_count: (c?.uses_count ?? 0) + 1 }).eq("id", coupon.id);
-      } catch {}
-    }
     playSuccessSound();
     toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
     clear();
