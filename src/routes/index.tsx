@@ -121,7 +121,7 @@ function HomePage() {
   return (
     <div className="min-h-screen bg-background pb-14 text-right" dir="rtl">
 
-      <div className="mx-auto max-w-md px-5 pt-4 space-y-8">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 space-y-8">
 
         {/* ─── البانر الإعلاني الكبير — يفضل بلون الهوية ثابت في اللايت والدارك ─── */}
         <div
