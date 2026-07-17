@@ -117,7 +117,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       console.log(`[SettingsProvider] fetch done in ${(performance.now() - t0).toFixed(0)}ms`, { hasData: !!data, error });
       if (!mounted) return;
       if (data) {
-        const merged = { ...DEFAULTS, ...data } as StoreSettings;
+        const merged = { ...DEFAULTS, ...(data as any) } as StoreSettings;
         setSettings(merged);
         applyTheme(merged);
       } else {
