@@ -9,7 +9,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { UserMenu } from "./UserMenu";
-import { ColorModeToggle } from "@/components/ui/ColorModeToggle";
+import { ColorModeToggle } from "@/components/ColorModeToggle";
 
 export function Header() {
   const { totalCount } = useCart();
