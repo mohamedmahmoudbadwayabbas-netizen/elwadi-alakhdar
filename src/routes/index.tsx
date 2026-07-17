@@ -208,7 +208,7 @@ function HomePage() {
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {bestSellers.map((product) => {
               const isWished = !!wishlist[product.id];
               const hasDiscount = product.old_price && product.old_price > product.price_per_unit;
