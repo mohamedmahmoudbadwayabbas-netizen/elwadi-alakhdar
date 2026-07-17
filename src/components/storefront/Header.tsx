@@ -9,6 +9,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { UserMenu } from "./UserMenu";
+import { ColorModeToggle } from "@/components/ui/ColorModeToggle";
 
 export function Header() {
   const { totalCount } = useCart();
@@ -28,7 +29,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white">
+    <header className="sticky top-0 z-40 bg-background">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
         {/* يسار: قائمة + بحث */}
         <div className="flex items-center gap-1">
@@ -60,7 +61,7 @@ export function Header() {
           </span>
         </Link>
 
-        {/* يمين: أدمن + مستخدم + سلة */}
+        {/* يمين: أدمن + وضع ليلي + مستخدم + سلة */}
         <div className="flex items-center gap-1">
           {isAdmin && (
             <Link
@@ -71,6 +72,7 @@ export function Header() {
               <LayoutDashboard className="h-5 w-5" strokeWidth={1.5} />
             </Link>
           )}
+          <ColorModeToggle className="rounded-full text-primary hover:bg-secondary" />
           <UserMenu />
           <Link
             to="/cart"
@@ -88,7 +90,7 @@ export function Header() {
       </div>
 
       {searchOpen && (
-        <div className="border-t border-border/40 bg-white px-5 pb-4 pt-3 sm:px-8">
+        <div className="border-t border-border/40 bg-background px-5 pb-4 pt-3 sm:px-8">
           <div className="mx-auto max-w-6xl">
             <div className="relative">
               <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
@@ -97,7 +99,7 @@ export function Header() {
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder={t("search.placeholder")}
-                className="h-11 rounded-full border-border bg-[#F9FAFB] pe-10 ps-4 text-sm font-normal focus-visible:bg-white"
+                className="h-11 rounded-full border-border bg-[#F9FAFB] dark:bg-secondary pe-10 ps-4 text-sm font-normal focus-visible:bg-white dark:focus-visible:bg-background"
               />
             </div>
           </div>
