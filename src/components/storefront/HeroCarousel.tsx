@@ -189,7 +189,7 @@ export function HeroCarousel() {
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
                 decoding="async"
-                className={`absolute inset-0 h-full w-full object-cover mix-blend-overlay transition-opacity duration-1000 ${
+                className={`absolute inset-0 h-full w-full object-cover mix-blend-overlay ${reducedMotion ? "transition-none" : "transition-opacity duration-1000"} ${
                   i === idx ? "opacity-25" : "opacity-0"
                 }`}
               />
