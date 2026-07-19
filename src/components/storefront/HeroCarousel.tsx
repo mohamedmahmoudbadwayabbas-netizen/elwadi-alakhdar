@@ -46,11 +46,56 @@ export function HeroCarousel() {
         link_url: "#all-products",
       }));
 
+  // Respect prefers-reduced-motion
+  const [reducedMotion, setReducedMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Auto-advance with pause on user interaction, resume 2s after last interaction
+  const pauseUntilRef = useRef<number>(0);
+  const pauseNow = () => { pauseUntilRef.current = Date.now() + 2000; };
   useEffect(() => {
     if (slides.length <= 1) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 6000);
+    const interval = reducedMotion ? 12000 : 6000;
+    const t = setInterval(() => {
+      if (Date.now() < pauseUntilRef.current) return;
+      setIdx((i) => (i + 1) % slides.length);
+    }, interval);
     return () => clearInterval(t);
-  }, [slides.length]);
+  }, [slides.length, reducedMotion]);
+
+  // Preload the next slide image once the first has loaded
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const next = slides[(idx + 1) % slides.length];
+    if (!next?.image_url) return;
+    const img = new Image();
+    img.src = `${next.image_url}${next.image_url.includes("?") ? "&" : "?"}w=1400&q=80&fm=webp`;
+  }, [idx, slides]);
+
+  // Touch swipe support
+  const touchStartX = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    pauseNow();
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return;
+    // RTL: swipe right → previous, swipe left → next
+    setIdx((i) => {
+      const delta = dx > 0 ? -1 : 1;
+      return ((i + delta) % slides.length + slides.length) % slides.length;
+    });
+  };
 
   if (slides.length === 0) return null;
   const current = slides[idx];
