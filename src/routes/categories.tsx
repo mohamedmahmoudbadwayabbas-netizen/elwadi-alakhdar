@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Leaf, ArrowRight } from "lucide-react";
+import { Leaf, ArrowRight, LayoutGrid } from "lucide-react";
+import { EmptyState } from "@/components/storefront/EmptyState";
+import { SkeletonBox } from "@/components/storefront/Skeletons";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
