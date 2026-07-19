@@ -4,6 +4,7 @@ import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { flyToCart } from "@/lib/fly-to-cart";
 
 export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p: Product) => void }) {
   const { addItem, updateQuantity, removeItem, items } = useCart();
@@ -18,13 +19,14 @@ export function ProductCard({ product, onOpen }: { product: Product; onOpen: (p:
   const displayPrice = product.is_by_weight ? product.price_per_unit / 2 : product.price_per_unit;
   const displayUnit = product.is_by_weight ? "/ ½ كجم" : `/ ${product.unit_label}`;
 
-  const handleAdd = (e: React.MouseEvent) => {
+  const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     addItem(product, step);
+    flyToCart(e.currentTarget);
     toast.success("تمت الإضافة للسلة", { description: product.name });
   };
 
-  const handleInc = (e: React.MouseEvent) => { e.stopPropagation(); addItem(product, step); };
+  const handleInc = (e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); addItem(product, step); flyToCart(e.currentTarget); };
   const handleDec = (e: React.MouseEvent) => {
     e.stopPropagation();
     const next = +(qty - step).toFixed(3);

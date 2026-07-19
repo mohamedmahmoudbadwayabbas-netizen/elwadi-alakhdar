@@ -126,9 +126,11 @@ function RootComponent() {
                   <SearchProvider>
                     <AnnouncementBar />
                     <StorefrontHeader />
-                    <div className="pb-20">
-                      <Outlet />
-                    </div>
+                    <RouteFade>
+                      <div className="pb-20">
+                        <Outlet />
+                      </div>
+                    </RouteFade>
                     <BottomNav />
                     <Toaster position="top-center" dir="rtl" richColors />
                   </SearchProvider>
@@ -147,4 +149,14 @@ function StorefrontHeader() {
   // Hide on admin pages and auth route — those have their own chrome.
   if (pathname.startsWith("/admin") || pathname.startsWith("/auth")) return null;
   return <Header />;
+}
+
+// Fade transition on route change — respects prefers-reduced-motion.
+function RouteFade({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <div key={pathname} className="motion-safe:animate-fade-in">
+      {children}
+    </div>
+  );
 }

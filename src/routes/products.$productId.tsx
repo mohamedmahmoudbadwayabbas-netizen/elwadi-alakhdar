@@ -14,6 +14,8 @@ import {
   Package, ChevronLeft, Heart, Share2, Truck, ShieldCheck,
   RotateCcw, ZoomIn, ChevronRight, X, MapPin, Navigation
 } from "lucide-react";
+import { ProductPageSkeleton } from "@/components/storefront/Skeletons";
+import { flyToCart } from "@/lib/fly-to-cart";
 
 // ─── الأنواع ───────────────────────────────────────────────────────────────────
 type Review = {
@@ -85,16 +87,7 @@ function Stars({ value, max = 5, interactive = false, size = "md", onChange }: {
 }
 
 // ─── Skeleton شاشة التحميل ─────────────────────────────────────────────────────
-function Skeleton() {
-  return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <div className="mx-auto max-w-2xl px-4 py-6 space-y-5">
-        <div className="h-5 w-32 animate-pulse rounded-full bg-secondary" />
-        <div className="aspect-square w-full animate-pulse rounded-3xl bg-secondary" />
-      </div>
-    </div>
-  );
-}
+// (Skeleton moved to shared component: ProductPageSkeleton)
 
 // ─── ملخص التقييمات ───────────────────────────────────────────────────────────
 function RatingSummary({ reviews }: { reviews: Review[] }) {
@@ -295,7 +288,7 @@ function ProductPage() {
     return () => { isMounted = false; };
   }, [productId]);
 
-  if (loading) return <Skeleton />;
+  if (loading) return <ProductPageSkeleton />;
   if (!product) return <div className="text-center py-20">المنتج غير موجود</div>;
 
   const outOfStock = (product.stock_quantity ?? 1) <= 0;
@@ -470,7 +463,7 @@ function ProductPage() {
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQty(q => +(q + step).toFixed(3))}><Plus className="h-3 w-3" /></Button>
               </div>
             )}
-            <Button disabled={outOfStock} onClick={() => { addItem(product, qty); toast.success("تمت الإضافة للسلة 🛒"); }} variant="outline" className="flex-1 h-11 rounded-xl font-bold text-xs">
+            <Button disabled={outOfStock} onClick={(e) => { addItem(product, qty); flyToCart(e.currentTarget as HTMLElement); toast.success("تمت الإضافة للسلة 🛒"); }} variant="outline" className="flex-1 h-11 rounded-xl font-bold text-xs">
               <ShoppingBag className="me-2 h-4 w-4" /> {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
             </Button>
           </div>
@@ -550,16 +543,25 @@ function ProductPage() {
 
       </div>
 
-      {/* ─── الـ Sticky Bar السفلي السريع ─── */}
+      {/* ─── الـ Sticky Bar السفلي السريع (موبايل فقط) ─── */}
       {showSticky && (
-        <div className="fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 p-3 backdrop-blur-md shadow-md">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-            <div>
-              <div className="text-[10px] text-muted-foreground font-bold truncate max-w-[150px]">{product.name}</div>
-              <div className="font-display text-base font-black text-primary">{totalCost} ج.م</div>
+        <div className="fixed bottom-16 inset-x-0 z-40 border-t border-border bg-card p-3 shadow-elegant md:hidden animate-in slide-in-from-bottom-4 duration-300">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-bold truncate max-w-[130px]">{product.name}</div>
+              <div className="font-display text-base font-black text-primary">{totalCost} <span className="text-[10px] font-bold text-muted-foreground">ج.م</span></div>
             </div>
-            <Button disabled={outOfStock} onClick={() => { addItem(product, qty); toast.success("تمت الإضافة للسلة"); }} className="h-10 rounded-xl hero-gradient font-bold text-xs px-5">
-              إضافة سريعة ({qty})
+            <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/40 p-0.5">
+              <button aria-label="تقليل" onClick={() => setQty(q => Math.max(min, +(q - step).toFixed(3)))} className="grid h-8 w-8 place-items-center rounded-full hover:bg-background">
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <span className="min-w-8 text-center text-xs font-black">{product.is_by_weight ? (qty >= 1 ? `${qty}كجم` : `${Math.round(qty*1000)}جم`) : qty}</span>
+              <button aria-label="زيادة" onClick={() => setQty(q => +(q + step).toFixed(3))} className="grid h-8 w-8 place-items-center rounded-full hover:bg-background">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <Button disabled={outOfStock} onClick={(e) => { addItem(product, qty); flyToCart(e.currentTarget as HTMLElement); toast.success("تمت الإضافة للسلة"); }} className="h-10 rounded-xl hero-gradient font-bold text-xs px-4 shrink-0">
+              أضف للسلة
             </Button>
           </div>
         </div>
