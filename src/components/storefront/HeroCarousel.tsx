@@ -114,6 +114,10 @@ export function HeroCarousel() {
         <div
           className="relative aspect-[4/5] w-full overflow-hidden bg-[#032414] sm:aspect-[16/9] md:aspect-[21/9]"
           dir="rtl"
+          onMouseEnter={pauseNow}
+          onMouseMove={pauseNow}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
         >
           {/* SVG background: flowing emerald valley waves (matches reference) */}
           <svg
