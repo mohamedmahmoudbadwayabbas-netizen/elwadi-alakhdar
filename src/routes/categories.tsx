@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Leaf, ArrowRight } from "lucide-react";
+import { Leaf, ArrowRight, LayoutGrid } from "lucide-react";
+import { EmptyState } from "@/components/storefront/EmptyState";
+import { SkeletonBox } from "@/components/storefront/Skeletons";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -63,13 +65,15 @@ function CategoriesPage() {
       <main className="mx-auto w-full max-w-5xl px-4 py-6">
         {loading ? (
           <div className="grid gap-6">
-            <div className="h-40 animate-pulse rounded-3xl bg-secondary" />
-            <div className="h-40 animate-pulse rounded-3xl bg-secondary" />
+            <SkeletonBox className="h-40 w-full rounded-3xl" />
+            <SkeletonBox className="h-40 w-full rounded-3xl" />
           </div>
         ) : parents.length === 0 ? (
-          <div className="grid place-items-center rounded-3xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-            لا توجد فئات بعد.
-          </div>
+          <EmptyState
+            icon={<LayoutGrid className="h-8 w-8" />}
+            title="لا توجد فئات بعد"
+            description="سنضيف قريباً فئات جديدة لتصفح المنتجات بسهولة."
+          />
         ) : (
           <div className="space-y-8">
             {parents.map((p) => {

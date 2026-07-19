@@ -75,6 +75,7 @@ export function Header() {
           <ColorModeToggle className="rounded-full text-primary hover:bg-secondary" />
           <UserMenu />
           <Link
+            id="cart-icon-target"
             to="/cart"
             aria-label={t("nav.cart")}
             className="relative grid h-10 w-10 place-items-center rounded-full text-primary transition-colors hover:bg-secondary"

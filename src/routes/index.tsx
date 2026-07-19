@@ -9,8 +9,11 @@ import type { Product } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Heart, MapPin, Truck, Sparkles,
+  Plus, Heart, MapPin, Truck, Sparkles, SearchX, PackageOpen,
 } from "lucide-react";
+import { HomePageSkeleton } from "@/components/storefront/Skeletons";
+import { EmptyState } from "@/components/storefront/EmptyState";
+import { flyToCart } from "@/lib/fly-to-cart";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -110,13 +113,7 @@ function HomePage() {
   const bestSellers = filteredProducts.slice(0, 4);
   const latestProducts = filteredProducts.slice(2, 7);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  if (loading) return <HomePageSkeleton />;
 
   return (
     <div className="min-h-screen bg-background pb-14 text-right" dir="rtl">
@@ -200,6 +197,30 @@ function HomePage() {
           </div>
         </div>
 
+        {/* Fade wrapper — keyed by category, transitions smoothly on switch */}
+        <div key={selectedCategory + searchQuery} className="motion-safe:animate-fade-in space-y-8">
+
+        {filteredProducts.length === 0 && (
+          <EmptyState
+            icon={searchQuery ? <SearchX className="h-8 w-8" /> : <PackageOpen className="h-8 w-8" />}
+            title={searchQuery ? "لا توجد نتائج" : "لا توجد منتجات في هذا القسم بعد"}
+            description={
+              searchQuery
+                ? `لم نجد منتجات تطابق "${searchQuery}" — جرّب كلمة أخرى أو تصفّح الأقسام.`
+                : "قريباً هنضيف منتجات جديدة في هذا القسم. جرّب قسم آخر مؤقتاً 🌿"
+            }
+            action={
+              <button
+                onClick={() => { setSelectedCategory("all"); }}
+                className="rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90"
+              >
+                تصفّح كل المنتجات
+              </button>
+            }
+          />
+        )}
+
+
         {/* الأكثر مبيعاً */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -270,6 +291,7 @@ function HomePage() {
                         onClick={(e) => {
                           e.stopPropagation();
                           addItem(product, product.is_by_weight ? 0.5 : 1);
+                          flyToCart(e.currentTarget);
                           toast.success(`تمت إضافة ${product.name} للسلة 🛒`);
                         }}
                         className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm hover:opacity-90 active:scale-90 transition-transform"
@@ -325,6 +347,7 @@ function HomePage() {
                         onClick={(e) => {
                           e.stopPropagation();
                           addItem(product, 1);
+                          flyToCart(e.currentTarget);
                           toast.success("أضيف للسلة 🛒");
                         }}
                         className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm hover:opacity-90 active:scale-90 transition-all"
@@ -339,6 +362,10 @@ function HomePage() {
             })}
           </div>
         </div>
+
+        </div>{/* /fade wrapper */}
+
+
 
         {/* الفوتر */}
         <div className="border-t border-border pt-6 pb-4 text-center space-y-1">
