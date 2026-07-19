@@ -235,10 +235,10 @@ function CartPage() {
               }}
             >
               {(theme.cart_empty_bg_url || bg.empty) && <div className="absolute inset-0 bg-gradient-to-br from-black/75 via-black/55 to-black/75" />}
-              <div className="relative z-10 grid h-24 w-24 place-items-center rounded-3xl bg-white/10 text-5xl backdrop-blur">🛒</div>
-              <p className="relative z-10 font-display text-xl font-bold">السلة فارغة</p>
-              <p className={`relative z-10 text-sm ${bg.empty ? "text-white/80" : "text-muted-foreground"}`}>
-                ابدأ التسوّق وأضف منتجاتك المفضلة من المتجر
+              <div className={`relative z-10 grid h-24 w-24 place-items-center rounded-3xl text-5xl ${(theme.cart_empty_bg_url || bg.empty) ? "bg-white/10 backdrop-blur" : "bg-primary/15 text-primary"}`}>🛒</div>
+              <p className="relative z-10 font-display text-xl font-black">سلتك فارغة الآن</p>
+              <p className={`relative z-10 font-display text-sm font-medium ${bg.empty ? "text-white/80" : "text-muted-foreground"}`}>
+                ابدأ رحلة تسوّقك من "الوادي الأخضر" — منتجات طازجة تصلك سريعاً 🌿
               </p>
               <Link to="/" className="relative z-10">
                 <Button className="mt-2 rounded-full hero-gradient text-primary-foreground">تصفح المنتجات</Button>
