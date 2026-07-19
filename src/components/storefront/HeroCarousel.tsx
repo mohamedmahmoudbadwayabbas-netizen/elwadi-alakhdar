@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Truck, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
