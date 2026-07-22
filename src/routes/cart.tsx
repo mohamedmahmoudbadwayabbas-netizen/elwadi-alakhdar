@@ -34,6 +34,10 @@ type DeliveryMethod = "delivery" | "pickup";
 type Zone = {
   id: string;
   name: string;
+  country: string;
+  governorate: string | null;
+  city: string | null;
+  area: string | null;
   fee: number;
   min_order_amount: number | null;
   estimated_minutes: number | null;
