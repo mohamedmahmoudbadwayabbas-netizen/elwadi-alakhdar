@@ -398,34 +398,72 @@ function CartPage() {
                 </div>
 
                 {deliveryMethod === "delivery" && zones.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <span className="block text-xs font-bold">منطقة التوصيل</span>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {zones.map((z) => (
-                        <button
-                          key={z.id}
-                          type="button"
-                          onClick={() => setZoneId(z.id)}
-                          className={`flex items-center justify-between gap-2 rounded-2xl border p-3 text-start text-xs transition ${
-                            zoneId === z.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-secondary"
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-bold">
-                              <MapPin className="h-3.5 w-3.5" />
-                              <span className="truncate">{z.name}</span>
-                            </div>
-                            {z.estimated_minutes && (
-                              <div className="mt-0.5 text-[10px] text-muted-foreground">حوالي {z.estimated_minutes} دقيقة</div>
-                            )}
-                            {z.min_order_amount ? (
-                              <div className="mt-0.5 text-[10px] text-muted-foreground">حد أدنى {z.min_order_amount} ج.م</div>
-                            ) : null}
-                          </div>
-                          <div className="shrink-0 font-black">{Number(z.fee).toFixed(0)} ج.م</div>
-                        </button>
-                      ))}
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary" />
+                      حدّد موقع التوصيل
                     </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <CascadeSelect
+                        label="البلد"
+                        value={country}
+                        options={countries}
+                        placeholder="اختر البلد"
+                        onChange={(v) => { setCountry(v); setGovernorate(""); setCity(""); setArea(""); }}
+                      />
+                      <CascadeSelect
+                        label="المحافظة"
+                        value={governorate}
+                        options={governorates}
+                        placeholder="اختر المحافظة"
+                        disabled={!country || governorates.length === 0}
+                        onChange={(v) => { setGovernorate(v); setCity(""); setArea(""); }}
+                      />
+                      <CascadeSelect
+                        label="المدينة"
+                        value={city}
+                        options={cities}
+                        placeholder={cities.length === 0 ? "لا يتطلب" : "اختر المدينة"}
+                        disabled={!governorate || cities.length === 0}
+                        onChange={(v) => { setCity(v); setArea(""); }}
+                      />
+                      <CascadeSelect
+                        label="المنطقة / الحي"
+                        value={area}
+                        options={areas}
+                        placeholder={areas.length === 0 ? "لا يتطلب" : "اختر المنطقة"}
+                        disabled={!city || areas.length === 0}
+                        onChange={setArea}
+                      />
+                    </div>
+
+                    {zone ? (
+                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-xs">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 font-bold text-primary">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span className="truncate">{zone.name}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+                            {zone.estimated_minutes ? <span>⏱️ حوالي {zone.estimated_minutes} دقيقة</span> : null}
+                            {zone.min_order_amount ? <span>حد أدنى {zone.min_order_amount} ج.م</span> : null}
+                          </div>
+                        </div>
+                        <div className="shrink-0 font-display text-sm font-black text-primary">
+                          {Number(zone.fee).toFixed(2)} ج.م
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-3 text-center text-[11px] text-muted-foreground">
+                        اختر منطقتك لعرض رسوم التوصيل تلقائياً
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {deliveryMethod === "delivery" && zones.length === 0 && (
+                  <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/40 p-3 text-center text-[11px] text-muted-foreground">
+                    لم يتم إضافة مناطق توصيل بعد — تواصل مع المتجر لتأكيد التغطية.
                   </div>
                 )}
 
