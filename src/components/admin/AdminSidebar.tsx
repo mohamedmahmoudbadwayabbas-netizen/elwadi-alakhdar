@@ -3,7 +3,7 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Package, ListTree, Receipt, Settings, LogOut, Leaf, ExternalLink, Ticket, MessageSquare, UserCircle2, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, Package, ListTree, Receipt, Settings, LogOut, Leaf, ExternalLink, Ticket, MessageSquare, UserCircle2, Image as ImageIcon, MapPin } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ const items = [
   { title: "التصنيفات", url: "/admin/categories", icon: ListTree },
   { title: "البانرات", url: "/admin/banners", icon: ImageIcon },
   { title: "الطلبات", url: "/admin/orders", icon: Receipt },
+  { title: "مناطق التوصيل", url: "/admin/delivery-zones", icon: MapPin },
   { title: "الكوبونات", url: "/admin/coupons", icon: Ticket },
   { title: "التقييمات", url: "/admin/reviews", icon: MessageSquare },
   { title: "الملف الشخصي", url: "/admin/profile", icon: UserCircle2 },
