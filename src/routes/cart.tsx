@@ -127,6 +127,45 @@ function CartPage() {
     })();
   }, []);
 
+  // Cascading options
+  const countries = useMemo(() => Array.from(new Set(zones.map((z) => z.country))).filter(Boolean), [zones]);
+  const governorates = useMemo(
+    () => Array.from(new Set(zones.filter((z) => z.country === country).map((z) => z.governorate ?? ""))).filter(Boolean),
+    [zones, country],
+  );
+  const cities = useMemo(
+    () => Array.from(new Set(zones.filter((z) => z.country === country && (z.governorate ?? "") === governorate).map((z) => z.city ?? ""))).filter(Boolean),
+    [zones, country, governorate],
+  );
+  const areas = useMemo(
+    () => Array.from(new Set(zones.filter((z) => z.country === country && (z.governorate ?? "") === governorate && (z.city ?? "") === city).map((z) => z.area ?? ""))).filter(Boolean),
+    [zones, country, governorate, city],
+  );
+
+  // Default country to first available (usually مصر) once zones load
+  useEffect(() => {
+    if (!country && countries.length > 0) setCountry(countries[0]);
+  }, [countries, country]);
+
+  // Auto-resolve zoneId when all required cascading levels are chosen
+  useEffect(() => {
+    if (!country) { setZoneId(""); return; }
+    const match = zones.find((z) =>
+      z.country === country &&
+      (z.governorate ?? "") === governorate &&
+      (z.city ?? "") === city &&
+      (z.area ?? "") === area,
+    );
+    // Fallback: if area is not applicable at this level, allow matching without area
+    const partial = match ?? zones.find((z) =>
+      z.country === country &&
+      (z.governorate ?? "") === governorate &&
+      (z.city ?? "") === city &&
+      !z.area,
+    );
+    setZoneId(partial?.id ?? "");
+  }, [zones, country, governorate, city, area]);
+
   const zone = useMemo(() => zones.find((z) => z.id === zoneId) ?? null, [zones, zoneId]);
   const deliveryFee = deliveryMethod === "delivery" ? (zone?.fee ?? 0) : 0;
   const minOrder = deliveryMethod === "delivery" ? (zone?.min_order_amount ?? 0) : 0;
