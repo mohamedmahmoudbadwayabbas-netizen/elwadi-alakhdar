@@ -113,8 +113,8 @@ function ZonesPage() {
     };
     setSaving(true);
     const { error } = editing
-      ? await supabase.from("delivery_zones").update(payload).eq("id", editing.id)
-      : await supabase.from("delivery_zones").insert(payload);
+      ? await (supabase as any).from("delivery_zones").update(payload).eq("id", editing.id)
+      : await (supabase as any).from("delivery_zones").insert(payload);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success(editing ? "تم التحديث" : "تمت الإضافة");
