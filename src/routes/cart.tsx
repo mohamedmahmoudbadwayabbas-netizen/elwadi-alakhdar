@@ -659,3 +659,30 @@ function PayOption({ icon, label, active, onClick, disabled }: { icon: React.Rea
     </button>
   );
 }
+
+function CascadeSelect({
+  label, value, options, placeholder, onChange, disabled,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  placeholder: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold text-foreground">{label}</span>
+      <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="h-10 rounded-xl">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  );
+}
