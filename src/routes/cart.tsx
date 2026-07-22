@@ -10,6 +10,7 @@ import {
   ShoppingBag, Minus, Plus, Trash2, ArrowRight, Banknote, Smartphone, Building2,
   Copy, Truck, Store, MapPin, Leaf, TicketPercent, X,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useTheme } from "@/lib/theme-context";
