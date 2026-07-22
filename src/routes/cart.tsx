@@ -10,6 +10,7 @@ import {
   ShoppingBag, Minus, Plus, Trash2, ArrowRight, Banknote, Smartphone, Building2,
   Copy, Truck, Store, MapPin, Leaf, TicketPercent, X,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useTheme } from "@/lib/theme-context";
@@ -33,6 +34,10 @@ type DeliveryMethod = "delivery" | "pickup";
 type Zone = {
   id: string;
   name: string;
+  country: string;
+  governorate: string | null;
+  city: string | null;
+  area: string | null;
   fee: number;
   min_order_amount: number | null;
   estimated_minutes: number | null;
@@ -92,16 +97,20 @@ function CartPage() {
 
   const removeCoupon = () => { setCoupon(null); setCouponInput(""); };
 
+  const [country, setCountry] = useState<string>("");
+  const [governorate, setGovernorate] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [area, setArea] = useState<string>("");
+
   useEffect(() => {
-    supabase
+    (supabase as any)
       .from("delivery_zones")
-      .select("id,name,fee,min_order_amount,estimated_minutes,is_active,sort_order")
+      .select("id,name,fee,min_order_amount,estimated_minutes,is_active,sort_order,country,governorate,city,area")
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         const z = (data ?? []) as Zone[];
         setZones(z);
-        if (z.length > 0 && !zoneId) setZoneId(z[0].id);
       });
     (async () => {
       const [{ data: rpc }, { data: pub }] = await Promise.all([
@@ -117,6 +126,45 @@ function CartPage() {
       if (pub) setBg({ empty: (pub as any).cart_empty_bg ?? null, floating: (pub as any).floating_element_image ?? null });
     })();
   }, []);
+
+  // Cascading options
+  const countries = useMemo(() => Array.from(new Set(zones.map((z) => z.country))).filter(Boolean), [zones]);
+  const governorates = useMemo(
+    () => Array.from(new Set(zones.filter((z) => z.country === country).map((z) => z.governorate ?? ""))).filter(Boolean),
+    [zones, country],
+  );
+  const cities = useMemo(
+    () => Array.from(new Set(zones.filter((z) => z.country === country && (z.governorate ?? "") === governorate).map((z) => z.city ?? ""))).filter(Boolean),
+    [zones, country, governorate],
+  );
+  const areas = useMemo(
+    () => Array.from(new Set(zones.filter((z) => z.country === country && (z.governorate ?? "") === governorate && (z.city ?? "") === city).map((z) => z.area ?? ""))).filter(Boolean),
+    [zones, country, governorate, city],
+  );
+
+  // Default country to first available (usually مصر) once zones load
+  useEffect(() => {
+    if (!country && countries.length > 0) setCountry(countries[0]);
+  }, [countries, country]);
+
+  // Auto-resolve zoneId when all required cascading levels are chosen
+  useEffect(() => {
+    if (!country) { setZoneId(""); return; }
+    const match = zones.find((z) =>
+      z.country === country &&
+      (z.governorate ?? "") === governorate &&
+      (z.city ?? "") === city &&
+      (z.area ?? "") === area,
+    );
+    // Fallback: if area is not applicable at this level, allow matching without area
+    const partial = match ?? zones.find((z) =>
+      z.country === country &&
+      (z.governorate ?? "") === governorate &&
+      (z.city ?? "") === city &&
+      !z.area,
+    );
+    setZoneId(partial?.id ?? "");
+  }, [zones, country, governorate, city, area]);
 
   const zone = useMemo(() => zones.find((z) => z.id === zoneId) ?? null, [zones, zoneId]);
   const deliveryFee = deliveryMethod === "delivery" ? (zone?.fee ?? 0) : 0;
@@ -350,34 +398,72 @@ function CartPage() {
                 </div>
 
                 {deliveryMethod === "delivery" && zones.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <span className="block text-xs font-bold">منطقة التوصيل</span>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {zones.map((z) => (
-                        <button
-                          key={z.id}
-                          type="button"
-                          onClick={() => setZoneId(z.id)}
-                          className={`flex items-center justify-between gap-2 rounded-2xl border p-3 text-start text-xs transition ${
-                            zoneId === z.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-secondary"
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-bold">
-                              <MapPin className="h-3.5 w-3.5" />
-                              <span className="truncate">{z.name}</span>
-                            </div>
-                            {z.estimated_minutes && (
-                              <div className="mt-0.5 text-[10px] text-muted-foreground">حوالي {z.estimated_minutes} دقيقة</div>
-                            )}
-                            {z.min_order_amount ? (
-                              <div className="mt-0.5 text-[10px] text-muted-foreground">حد أدنى {z.min_order_amount} ج.م</div>
-                            ) : null}
-                          </div>
-                          <div className="shrink-0 font-black">{Number(z.fee).toFixed(0)} ج.م</div>
-                        </button>
-                      ))}
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary" />
+                      حدّد موقع التوصيل
                     </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <CascadeSelect
+                        label="البلد"
+                        value={country}
+                        options={countries}
+                        placeholder="اختر البلد"
+                        onChange={(v) => { setCountry(v); setGovernorate(""); setCity(""); setArea(""); }}
+                      />
+                      <CascadeSelect
+                        label="المحافظة"
+                        value={governorate}
+                        options={governorates}
+                        placeholder="اختر المحافظة"
+                        disabled={!country || governorates.length === 0}
+                        onChange={(v) => { setGovernorate(v); setCity(""); setArea(""); }}
+                      />
+                      <CascadeSelect
+                        label="المدينة"
+                        value={city}
+                        options={cities}
+                        placeholder={cities.length === 0 ? "لا يتطلب" : "اختر المدينة"}
+                        disabled={!governorate || cities.length === 0}
+                        onChange={(v) => { setCity(v); setArea(""); }}
+                      />
+                      <CascadeSelect
+                        label="المنطقة / الحي"
+                        value={area}
+                        options={areas}
+                        placeholder={areas.length === 0 ? "لا يتطلب" : "اختر المنطقة"}
+                        disabled={!city || areas.length === 0}
+                        onChange={setArea}
+                      />
+                    </div>
+
+                    {zone ? (
+                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-xs">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 font-bold text-primary">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span className="truncate">{zone.name}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+                            {zone.estimated_minutes ? <span>⏱️ حوالي {zone.estimated_minutes} دقيقة</span> : null}
+                            {zone.min_order_amount ? <span>حد أدنى {zone.min_order_amount} ج.م</span> : null}
+                          </div>
+                        </div>
+                        <div className="shrink-0 font-display text-sm font-black text-primary">
+                          {Number(zone.fee).toFixed(2)} ج.م
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-border bg-secondary/40 p-3 text-center text-[11px] text-muted-foreground">
+                        اختر منطقتك لعرض رسوم التوصيل تلقائياً
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {deliveryMethod === "delivery" && zones.length === 0 && (
+                  <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/40 p-3 text-center text-[11px] text-muted-foreground">
+                    لم يتم إضافة مناطق توصيل بعد — تواصل مع المتجر لتأكيد التغطية.
                   </div>
                 )}
 
@@ -571,5 +657,32 @@ function PayOption({ icon, label, active, onClick, disabled }: { icon: React.Rea
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function CascadeSelect({
+  label, value, options, placeholder, onChange, disabled,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  placeholder: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold text-foreground">{label}</span>
+      <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="h-10 rounded-xl">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
   );
 }
