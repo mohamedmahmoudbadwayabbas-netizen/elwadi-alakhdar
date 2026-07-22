@@ -97,16 +97,20 @@ function CartPage() {
 
   const removeCoupon = () => { setCoupon(null); setCouponInput(""); };
 
+  const [country, setCountry] = useState<string>("");
+  const [governorate, setGovernorate] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [area, setArea] = useState<string>("");
+
   useEffect(() => {
-    supabase
+    (supabase as any)
       .from("delivery_zones")
-      .select("id,name,fee,min_order_amount,estimated_minutes,is_active,sort_order")
+      .select("id,name,fee,min_order_amount,estimated_minutes,is_active,sort_order,country,governorate,city,area")
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         const z = (data ?? []) as Zone[];
         setZones(z);
-        if (z.length > 0 && !zoneId) setZoneId(z[0].id);
       });
     (async () => {
       const [{ data: rpc }, { data: pub }] = await Promise.all([
