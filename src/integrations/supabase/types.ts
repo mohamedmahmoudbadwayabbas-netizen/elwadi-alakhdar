@@ -153,9 +153,13 @@ export type Database = {
       }
       delivery_zones: {
         Row: {
+          area: string | null
+          city: string | null
+          country: string
           created_at: string
           estimated_minutes: number
           fee: number
+          governorate: string | null
           id: string
           is_active: boolean
           min_order_amount: number
@@ -164,9 +168,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          area?: string | null
+          city?: string | null
+          country?: string
           created_at?: string
           estimated_minutes?: number
           fee?: number
+          governorate?: string | null
           id?: string
           is_active?: boolean
           min_order_amount?: number
@@ -175,9 +183,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          area?: string | null
+          city?: string | null
+          country?: string
           created_at?: string
           estimated_minutes?: number
           fee?: number
+          governorate?: string | null
           id?: string
           is_active?: boolean
           min_order_amount?: number
@@ -231,6 +243,9 @@ export type Database = {
           address: string
           created_at: string
           customer_name: string
+          delivery_fee: number
+          delivery_method: string
+          delivery_zone_id: string | null
           id: string
           items: Json
           notes: string | null
@@ -247,6 +262,9 @@ export type Database = {
           address: string
           created_at?: string
           customer_name: string
+          delivery_fee?: number
+          delivery_method?: string
+          delivery_zone_id?: string | null
           id?: string
           items?: Json
           notes?: string | null
@@ -263,6 +281,9 @@ export type Database = {
           address?: string
           created_at?: string
           customer_name?: string
+          delivery_fee?: number
+          delivery_method?: string
+          delivery_zone_id?: string | null
           id?: string
           items?: Json
           notes?: string | null
@@ -275,7 +296,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
