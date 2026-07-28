@@ -70,8 +70,11 @@ const DEFAULTS: StoreSettings = {
 
 const SettingsContext = createContext<StoreSettings>(DEFAULTS);
 
-function hexToHsl(hex: string): string {
+function hexToHsl(hex: string | null | undefined): string | null {
+  if (!hex || typeof hex !== "string") return null;
   const m = hex.replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(m)) return null;
+
   const r = parseInt(m.substring(0, 2), 16) / 255;
   const g = parseInt(m.substring(2, 4), 16) / 255;
   const b = parseInt(m.substring(4, 6), 16) / 255;
@@ -94,11 +97,15 @@ function hexToHsl(hex: string): string {
 function applyTheme(s: StoreSettings) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.style.setProperty("--primary", hexToHsl(s.primary_color));
-  root.style.setProperty("--accent", hexToHsl(s.accent_color));
-  root.style.setProperty("--background", hexToHsl(s.background_color));
-  root.style.setProperty("--foreground", hexToHsl(s.foreground_color));
+  const set = (name: string, value: string | null) => {
+    if (value) root.style.setProperty(name, value);
+  };
+  set("--primary", hexToHsl(s.primary_color));
+  set("--accent", hexToHsl(s.accent_color));
+  set("--background", hexToHsl(s.background_color));
+  set("--foreground", hexToHsl(s.foreground_color));
 }
+
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
