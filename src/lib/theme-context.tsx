@@ -30,8 +30,11 @@ const DEFAULTS: ThemeSettings = {
   cart_empty_bg_url: null,
 };
 
-function hexToHsl(hex: string): string {
+function hexToHsl(hex: string | null | undefined): string | null {
+  if (!hex || typeof hex !== "string") return null;
   const m = hex.replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(m)) return null;
+
   const r = parseInt(m.substring(0, 2), 16) / 255;
   const g = parseInt(m.substring(2, 4), 16) / 255;
   const b = parseInt(m.substring(4, 6), 16) / 255;
@@ -53,12 +56,18 @@ function hexToHsl(hex: string): string {
 function applyTokens(t: ThemeSettings) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.style.setProperty("--primary", hexToHsl(t.primary_hex));
-  root.style.setProperty("--ring", hexToHsl(t.primary_hex));
-  root.style.setProperty("--accent", hexToHsl(t.accent_hex));
-  root.style.setProperty("--sale", hexToHsl(t.accent_hex));
-  root.style.setProperty("--radius", `${t.card_radius_px}px`);
+  const set = (name: string, value: string | null) => {
+    if (value) root.style.setProperty(name, value);
+  };
+  const primary = hexToHsl(t.primary_hex);
+  const accent = hexToHsl(t.accent_hex);
+  set("--primary", primary);
+  set("--ring", primary);
+  set("--accent", accent);
+  set("--sale", accent);
+  if (t.card_radius_px) root.style.setProperty("--radius", `${t.card_radius_px}px`);
   if (t.marble_bg_url) {
+
     document.body.style.backgroundImage = `url(${t.marble_bg_url})`;
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.backgroundSize = "cover";
