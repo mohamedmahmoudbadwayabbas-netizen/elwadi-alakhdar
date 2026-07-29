@@ -18,16 +18,16 @@ import { flyToCart } from "@/lib/fly-to-cart";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "الوادي الأخضر — سوبر ماركت وعطارة أونلاين وتوصيل سريع" },
+      { title: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
       {
         name: "description",
         content:
           "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
       },
-      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت وعطارة أونلاين" },
+      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
       {
         property: "og:description",
-        content: "بقالة ولحوم ودواجن وعطارة طازجة مع توصيل سريع من الوادي الأخضر.",
+        content: "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
