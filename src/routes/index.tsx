@@ -39,6 +39,12 @@ export const Route = createFileRoute("/")({
 
 type Category = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
 
+// نجيب بس الأعمدة المستخدمة فعلياً في الصفحة، وبحد أقصى معقول —
+// الصفحة أصلاً بتعرض 9 منتجات كحد أقصى، فمفيش داعي نجيب كل الكتالوج في كل زيارة.
+const HOME_PRODUCT_COLUMNS =
+  "id,name,price_per_unit,old_price,image_url,category_id,unit_label,is_by_weight,stock_quantity";
+const HOME_PRODUCTS_LIMIT = 120;
+
 function HomePage() {
   const navigate = useNavigate();
   const { addItem } = useCart();
@@ -71,7 +77,11 @@ function HomePage() {
 
     const loadAll = async () => {
       const [{ data: prods }, { data: cats }] = await Promise.all([
-        supabase.from("products").select("*"),
+        supabase
+          .from("products")
+          .select(HOME_PRODUCT_COLUMNS)
+          .order("created_at", { ascending: false })
+          .limit(HOME_PRODUCTS_LIMIT),
         supabase.from("categories").select("id,name,slug,icon,sort_order").order("sort_order", { ascending: true }),
       ]);
       setProducts((prods ?? []) as Product[]);
@@ -129,7 +139,7 @@ function HomePage() {
   });
 
   const bestSellers = filteredProducts.slice(0, 4);
-  const latestProducts = filteredProducts.slice(2, 7);
+  const latestProducts = filteredProducts.slice(4, 9);
 
   if (loading) return <HomePageSkeleton />;
 
@@ -167,7 +177,13 @@ function HomePage() {
             </div>
             <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl bg-white/10 backdrop-blur-sm shadow-inner">
               {settings.floating_element_image ? (
-                <img src={settings.floating_element_image} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={settings.floating_element_image}
+                  alt=""
+                  loading="eager"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <Truck className="h-10 w-10 text-emerald-300" />
               )}
@@ -248,7 +264,7 @@ function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-            {bestSellers.map((product) => {
+            {bestSellers.map((product, i) => {
               const isWished = !!wishlist[product.id];
               const hasDiscount = product.old_price && product.old_price > product.price_per_unit;
               const discountPercent = hasDiscount ? Math.round(((product.old_price! - product.price_per_unit) / product.old_price!) * 100) : 0;
@@ -279,7 +295,13 @@ function HomePage() {
 
                   <div className="aspect-square w-full bg-secondary overflow-hidden">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        loading={i === 0 ? "eager" : "lazy"}
+                        decoding="async"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
                     ) : (
                       <div className="grid h-full w-full place-items-center text-3xl">🌿</div>
                     )}
@@ -351,7 +373,17 @@ function HomePage() {
                   </button>
 
                   <div className="aspect-square w-full bg-secondary">
-                    {product.image_url ? <img src={product.image_url} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-3xl">🌿</div>}
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-3xl">🌿</div>
+                    )}
                   </div>
 
                   <div className="flex flex-1 flex-col p-3 justify-between space-y-1.5">
