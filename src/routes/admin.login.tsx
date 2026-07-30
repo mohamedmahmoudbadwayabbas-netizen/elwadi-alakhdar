@@ -35,13 +35,47 @@ function AdminLogin() {
     if (!loading && user && isAdmin) router.history.push("/admin");
   }, [user, isAdmin, loading, router]);
 
+  // ── تسجيل الدخول: بعد نجاح الدخول، نتحقق فوراً من صلاحية الأدمن ──
+  // بدل ما نستنى الـ useEffect (اللي بيعتمد على تحديث isAdmin في الـ context
+  // وممكن ياخد وقت أو مايتحدّثش أوي)، بنتأكد بأنفسنا هنا ونسجّل خروج أي
+  // مستخدم مش أدمن فوراً مع رسالة واضحة، بدل ما يفضل واقف في صفحة اللوجين
+  // من غير أي تفسير.
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+
     const res = await signIn(email, password);
+    if (res.error) {
+      setBusy(false);
+      toast.error("بيانات الدخول غير صحيحة");
+      return;
+    }
+
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", uid)
+      .eq("role", "admin")
+      .maybeSingle();
+
     setBusy(false);
-    if (res.error) return toast.error("بيانات الدخول غير صحيحة");
+
+    if (roleError) {
+      toast.error("تعذر التحقق من صلاحياتك، حاول مرة أخرى");
+      return;
+    }
+
+    if (!roleData) {
+      await supabase.auth.signOut();
+      toast.error("هذا الحساب غير مصرّح له بالدخول للوحة الإدارة");
+      return;
+    }
+
     toast.success("مرحباً بعودتك");
+    router.history.push("/admin");
   };
 
   return (
@@ -69,7 +103,6 @@ function AdminLogin() {
             <div className="text-[11px] text-muted-foreground">دخول لوحة الإدارة</div>
           </div>
         </div>
-
         <form onSubmit={handle} className="space-y-3">
           <label className="block">
             <span className="mb-1.5 block text-xs font-bold">البريد الإلكتروني</span>
@@ -84,7 +117,6 @@ function AdminLogin() {
             {busy ? "جارٍ الدخول..." : "دخول"}
           </Button>
         </form>
-
         <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
           هذه الصفحة مخصصة لإدارة المتجر فقط.
         </p>
