@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { Product } from "@/lib/cart-context";
 import { useCart, lineSubtotal } from "@/lib/cart-context";
 import { toast } from "sonner";
+import { flyToCart } from "@/lib/fly-to-cart";
 
 export function ProductModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { addItem } = useCart();
@@ -97,12 +98,15 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
           </div>
 
           <Button
-            disabled={outOfStock}
-            className="mt-5 h-12 w-full rounded-2xl hero-gradient text-base font-black text-primary-foreground shadow-card hover:opacity-95"
-            onClick={() => {
-              addItem(product, qty);
-              toast.success("تمت الإضافة للسلة");
-              onClose();
+  disabled={outOfStock}
+  className="mt-5 h-12 w-full rounded-2xl hero-gradient text-base font-black text-primary-foreground shadow-card hover:opacity-95"
+  onClick={(e) => {
+    addItem(product, qty);
+    flyToCart(e.currentTarget);
+    toast.success("تمت الإضافة للسلة");
+    onClose();
+  }}
+>
             }}
           >
             <ShoppingBag className="me-2 h-5 w-5" />
