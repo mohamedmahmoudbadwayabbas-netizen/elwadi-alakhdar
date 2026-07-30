@@ -20,6 +20,7 @@ export type StoreSettings = {
   hero_image_url: string | null;
   hero_cta_text: string | null;
   hero_bg_image: string | null;
+  login_bg_pattern: string | null;
   cart_empty_bg: string | null;
   floating_element_image: string | null;
   store_address: string | null;
@@ -35,24 +36,26 @@ export type StoreSettings = {
   first_order_discount_percent: number;
 };
 
+// ⚠️ القيم دي بقت HSL نصي زي "142 76% 24%" مش Hex — لازم تتطابق مع admin.settings.tsx
 const DEFAULTS: StoreSettings = {
   site_name: "الوادي الأخضر",
   logo_url: null,
   favicon_url: null,
-  primary_color: "#166534",
-  accent_color: "#ea580c",
-  background_color: "#fafaf7",
-  foreground_color: "#1a1a1a",
+  primary_color: "142 76% 24%",
+  accent_color: "18 85% 55%",
+  background_color: "48 33% 97%",
+  foreground_color: "120 18% 12%",
   font_family: "Tajawal",
   announcement_text: "شحن مجاني فوق ٣٠٠ ج.م | توصيل سريع خلال ٤٥ دقيقة ⚡ | الدفع عند الاستلام ✓",
   announcement_enabled: true,
-  announcement_bg_color: "#166534",
+  announcement_bg_color: "142 76% 24%",
   whatsapp_number: null,
   hero_title: null,
   hero_subtitle: null,
   hero_image_url: null,
   hero_cta_text: null,
   hero_bg_image: null,
+  login_bg_pattern: null,
   cart_empty_bg: null,
   floating_element_image: null,
   store_address: null,
@@ -70,59 +73,38 @@ const DEFAULTS: StoreSettings = {
 
 const SettingsContext = createContext<StoreSettings>(DEFAULTS);
 
-function hexToHsl(hex: string | null | undefined): string | null {
-  if (!hex || typeof hex !== "string") return null;
-  const m = hex.replace("#", "");
-  if (!/^[0-9a-fA-F]{6}$/.test(m)) return null;
-
-  const r = parseInt(m.substring(0, 2), 16) / 255;
-  const g = parseInt(m.substring(2, 4), 16) / 255;
-  const b = parseInt(m.substring(4, 6), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
-    }
-    h /= 6;
-  }
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-}
-
+// ── القيم جايه من الداتابيز HSL زي ما هي، مفيش تحويل هنا خالص ──
 function applyTheme(s: StoreSettings) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const set = (name: string, value: string | null) => {
+  const set = (name: string, value: string | null | undefined) => {
     if (value) root.style.setProperty(name, value);
   };
-  set("--primary", hexToHsl(s.primary_color));
-  set("--accent", hexToHsl(s.accent_color));
-  set("--background", hexToHsl(s.background_color));
-  set("--foreground", hexToHsl(s.foreground_color));
+  set("--primary", s.primary_color);
+  set("--accent", s.accent_color);
+  set("--background", s.background_color);
+  set("--foreground", s.foreground_color);
 }
-
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
 
   useEffect(() => {
     let mounted = true;
-    (globalThis as any).__settingsEffectRuns = ((globalThis as any).__settingsEffectRuns || 0) + 1;
-    const runId = (globalThis as any).__settingsEffectRuns;
-    console.log(`[SettingsProvider] useEffect run #${runId} — fetching store_settings`);
-    if (runId > 2) {
-      console.error("[SettingsProvider] ⚠️ Potential infinite loop — useEffect ran more than twice");
-    }
+
     (async () => {
-      const t0 = performance.now();
-      const { data, error } = await supabase.from("store_settings_public" as any).select("*").limit(1).maybeSingle();
-      console.log(`[SettingsProvider] fetch done in ${(performance.now() - t0).toFixed(0)}ms`, { hasData: !!data, error });
+      const { data, error } = await supabase
+        .from("store_settings_public" as any)
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
       if (!mounted) return;
+
+      if (error) {
+        console.error("[SettingsProvider] failed to load store_settings_public", error);
+      }
+
       if (data) {
         const merged = { ...DEFAULTS, ...(data as any) } as StoreSettings;
         setSettings(merged);
@@ -131,6 +113,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         applyTheme(DEFAULTS);
       }
     })();
+
     return () => { mounted = false; };
   }, []);
 
