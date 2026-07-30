@@ -29,7 +29,7 @@ type Review = {
 };
 
 // 📍 إحداثيات موقع متجرك الثابت (قم بتغييرها لتطابق موقع السوبرماركت الفعلي)
-const STORE_LAT = 30.0444; 
+const STORE_LAT = 30.0444;
 const STORE_LNG = 31.2357;
 
 // مناطق التوصيل اليدوية الافتراضية
@@ -86,9 +86,6 @@ function Stars({ value, max = 5, interactive = false, size = "md", onChange }: {
   );
 }
 
-// ─── Skeleton شاشة التحميل ─────────────────────────────────────────────────────
-// (Skeleton moved to shared component: ProductPageSkeleton)
-
 // ─── ملخص التقييمات ───────────────────────────────────────────────────────────
 function RatingSummary({ reviews }: { reviews: Review[] }) {
   if (reviews.length === 0) return null;
@@ -98,7 +95,6 @@ function RatingSummary({ reviews }: { reviews: Review[] }) {
     count: reviews.filter(r => r.rating === star).length,
     pct: Math.round((reviews.filter(r => r.rating === star).length / reviews.length) * 100),
   }));
-
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
       <h3 className="mb-4 text-base font-bold">ملخص التقييمات</h3>
@@ -131,7 +127,6 @@ function ProductPage() {
   const { addItem } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-
   const [product, setProduct] = useState<Product | null>(null);
   const [similar, setSimilar] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -168,6 +163,9 @@ function ProductPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const addBtnRef = useRef<HTMLDivElement>(null);
+  // 📸 ref مباشر على الصورة الرئيسية، بيتنقل معاها لأي مكان في الصفحة
+  // (بدل البحث عنها بـ closest لأنها مش جوه نفس الكارت بتاع زرار الإضافة)
+  const mainImgRef = useRef<HTMLImageElement>(null);
   const [showSticky, setShowSticky] = useState(false);
 
   // تحميل المفضلة من قاعدة البيانات للمستخدم المسجل
@@ -217,20 +215,16 @@ function ProductPage() {
       toast.error("متصفحك لا يدعم خاصية تحديد الموقع الجغرافي");
       return;
     }
-
     setIsDetecting(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
-        
         // حساب المسافة الدقيقة بين المتجر والزبون بالـ KM
         const distance = calculateDistance(STORE_LAT, STORE_LNG, userLat, userLng);
-        
         setCalculatedDistanceKM(distance);
         setDeliveryMethod("gps");
         setIsDetecting(false);
-
         localStorage.setItem("delivery_method", "gps");
         localStorage.setItem("calculated_distance", distance.toString());
         toast.success(`تم تحديد موقعك بنجاح! المسافة للمتجر: ${distance.toFixed(1)} كم`);
@@ -272,7 +266,6 @@ function ProductPage() {
         supabase.from("reviews").select("*").eq("product_id", productId).order("created_at", { ascending: false }),
       ]);
       if (!isMounted) return;
-
       if (prod) {
         const p = prod as Product;
         setProduct(p);
@@ -318,7 +311,6 @@ function ProductPage() {
 
   return (
     <div className="min-h-screen bg-background pb-28" dir="rtl">
-      
       {/* ─── شريط التنقل العلوي ─── */}
       <div className="sticky top-0 z-30 border-b border-border/50 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
@@ -333,17 +325,19 @@ function ProductPage() {
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        
         {/* ─── معرض الصور ─── */}
         <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-secondary shadow-sm">
-          {images.length > 0 ? <img src={images[activeImg]} className="h-full w-full object-cover" alt="" /> : <div className="grid h-full w-full place-items-center text-6xl">🌿</div>}
+          {images.length > 0 ? (
+            <img ref={mainImgRef} src={images[activeImg]} className="h-full w-full object-cover" alt="" />
+          ) : (
+            <div className="grid h-full w-full place-items-center text-6xl">🌿</div>
+          )}
         </div>
 
         {/* ─── تفاصيل السعر والمخزون ─── */}
         <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-3">
           <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
           <div className="font-display text-4xl font-black text-primary">{totalCost} <span className="text-base font-bold text-muted-foreground">ج.م</span></div>
-          
           {/* تأثير الـ FOMO */}
           {!outOfStock && product.stock_quantity && product.stock_quantity <= 5 && (
             <div className="rounded-xl bg-orange-500/10 p-2.5 border border-orange-500/20 text-center animate-pulse">
@@ -463,7 +457,12 @@ function ProductPage() {
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQty(q => +(q + step).toFixed(3))}><Plus className="h-3 w-3" /></Button>
               </div>
             )}
-            <Button disabled={outOfStock} onClick={(e) => { addItem(product, qty); flyToCart(e.currentTarget as HTMLElement); toast.success("تمت الإضافة للسلة 🛒"); }} variant="outline" className="flex-1 h-11 rounded-xl font-bold text-xs">
+            <Button
+              disabled={outOfStock}
+              onClick={() => { addItem(product, qty); flyToCart(mainImgRef.current); toast.success("تمت الإضافة للسلة 🛒"); }}
+              variant="outline"
+              className="flex-1 h-11 rounded-xl font-bold text-xs"
+            >
               <ShoppingBag className="me-2 h-4 w-4" /> {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
             </Button>
           </div>
@@ -479,7 +478,6 @@ function ProductPage() {
         {/* ─── نموذج التعليقات والآراء ─── */}
         <div className="space-y-4 pt-2">
           <RatingSummary reviews={reviews} />
-
           {reviews.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-bold px-1">آراء العملاء ({reviews.length})</h3>
@@ -540,7 +538,6 @@ function ProductPage() {
             </div>
           </div>
         )}
-
       </div>
 
       {/* ─── الـ Sticky Bar السفلي السريع (موبايل فقط) ─── */}
@@ -560,13 +557,12 @@ function ProductPage() {
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
-            <Button disabled={outOfStock} onClick={(e) => { addItem(product, qty); flyToCart(e.currentTarget as HTMLElement); toast.success("تمت الإضافة للسلة"); }} className="h-10 rounded-xl hero-gradient font-bold text-xs px-4 shrink-0">
+            <Button disabled={outOfStock} onClick={() => { addItem(product, qty); flyToCart(mainImgRef.current); toast.success("تمت الإضافة للسلة"); }} className="h-10 rounded-xl hero-gradient font-bold text-xs px-4 shrink-0">
               أضف للسلة
             </Button>
           </div>
         </div>
       )}
-
     </div>
   );
 }
