@@ -77,13 +77,11 @@ const SettingsContext = createContext<StoreSettings>(DEFAULTS);
 function applyTheme(s: StoreSettings) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const set = (name: string, value: string | null | undefined) => {
-    if (value) root.style.setProperty(name, value);
+  const setHsl = (name: string, value: string | null | undefined) => {
+    if (value) root.style.setProperty(name, `hsl(${value})`);
   };
-  set("--primary", s.primary_color);
-  set("--accent", s.accent_color);
-  set("--background", s.background_color);
-  set("--foreground", s.foreground_color);
+  setHsl("--primary", s.primary_color);
+  setHsl("--accent", s.accent_color);
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
