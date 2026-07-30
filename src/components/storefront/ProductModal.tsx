@@ -107,8 +107,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
     onClose();
   }}
 >
-            }}
-          >
+            
             <ShoppingBag className="me-2 h-5 w-5" />
             {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
           </Button>
