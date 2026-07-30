@@ -37,7 +37,7 @@ export const Route = createFileRoute("/")({
 });
 
 
-type Category = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
+type Category = { id: string; name: string; slug: string; icon: string | null; image_url: string | null; sort_order: number };
 
 // نجيب بس الأعمدة المستخدمة فعلياً في الصفحة، وبحد أقصى معقول —
 // الصفحة أصلاً بتعرض 9 منتجات كحد أقصى، فمفيش داعي نجيب كل الكتالوج في كل زيارة.
@@ -77,12 +77,7 @@ function HomePage() {
 
     const loadAll = async () => {
       const [{ data: prods }, { data: cats }] = await Promise.all([
-        supabase
-          .from("products")
-          .select(HOME_PRODUCT_COLUMNS)
-          .order("created_at", { ascending: false })
-          .limit(HOME_PRODUCTS_LIMIT),
-        supabase.from("categories").select("id,name,slug,icon,sort_order").order("sort_order", { ascending: true }),
+        supabase.from("categories").select("id,name,slug,icon,image_url,sort_order").order("sort_order", { ascending: true }),
       ]);
       setProducts((prods ?? []) as Product[]);
       setCategories((cats ?? []) as Category[]);
@@ -219,17 +214,11 @@ function HomePage() {
                   )}
                 >
                   <div className={cn(
-                    "grid h-11 w-11 place-items-center rounded-xl text-xl transition-colors",
-                    isActive ? "bg-primary text-white" : "bg-secondary text-primary",
-                  )}>
-                    {cat.icon ? <span aria-hidden>{cat.icon}</span> : <Sparkles className="h-5 w-5" strokeWidth={1.5} />}
-                  </div>
-                  <span className="text-xs font-normal text-foreground">{cat.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+  "grid h-11 w-11 place-items-center rounded-xl text-xl transition-colors",
+  isActive ? "bg-primary text-white" : "bg-secondary text-primary",
+)}>
+  {cat.icon ? <span aria-hidden>{cat.icon}</span> : <Sparkles className="h-5 w-5" strokeWidth={1.5} />}
+</div>
 
         {/* Fade wrapper — keyed by category, transitions smoothly on switch */}
         <div key={selectedCategory + searchQuery} className="motion-safe:animate-fade-in space-y-8">
