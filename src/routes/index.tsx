@@ -36,7 +36,7 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-type Category = { id: string; name: string; slug: string; icon: string | null; image_url: string | null; sort_order: number };
+type Category = { id: string; name: string; slug: string; icon: string | null; sort_order: number };
 
 // نجيب بس الأعمدة المستخدمة فعلياً في الصفحة، وبحد أقصى معقول —
 // الصفحة أصلاً بتعرض 9 منتجات كحد أقصى، فمفيش داعي نجيب كل الكتالوج في كل زيارة.
@@ -78,7 +78,7 @@ function HomePage() {
           .select(HOME_PRODUCT_COLUMNS)
           .order("created_at", { ascending: false })
           .limit(HOME_PRODUCTS_LIMIT),
-        supabase.from("categories").select("id,name,slug,icon,image_url,sort_order").order("sort_order", { ascending: true }),
+        supabase.from("categories").select("id,name,slug,icon,sort_order").order("sort_order", { ascending: true }),
       ]);
       setProducts((prods ?? []) as Product[]);
       setCategories((cats ?? []) as Category[]);
@@ -199,7 +199,7 @@ function HomePage() {
         <div className="space-y-3">
           <h3 className="text-base font-medium text-primary">تسوّق حسب القسم</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none" dir="rtl">
-            {[{ id: "all", name: "الكل", icon: "✨", image_url: null as string | null }, ...categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon, image_url: c.image_url }))].map((cat) => {
+            {[{ id: "all", name: "الكل", icon: "✨" }, ...categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon }))].map((cat) => {
               const isActive = selectedCategory === cat.id;
               return (
                 <button
@@ -214,21 +214,10 @@ function HomePage() {
                   )}
                 >
                   <div className={cn(
-                    "grid h-11 w-11 place-items-center overflow-hidden rounded-xl text-xl transition-colors",
+                    "grid h-11 w-11 place-items-center rounded-xl text-xl transition-colors",
                     isActive ? "bg-primary text-white" : "bg-secondary text-primary",
                   )}>
-                    {cat.image_url ? (
-                      <img
-                        src={cat.image_url}
-                        alt=""
-                        loading="lazy"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : cat.icon ? (
-                      <span aria-hidden>{cat.icon}</span>
-                    ) : (
-                      <Sparkles className="h-5 w-5" strokeWidth={1.5} />
-                    )}
+                    {cat.icon ? <span aria-hidden>{cat.icon}</span> : <Sparkles className="h-5 w-5" strokeWidth={1.5} />}
                   </div>
                   <span className="text-xs font-normal text-foreground">{cat.name}</span>
                 </button>
@@ -328,7 +317,8 @@ function HomePage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             addItem(product, product.is_by_weight ? 0.5 : 1);
-                            flyToCart(e.currentTarget);
+                            const card = e.currentTarget.closest(".group") as HTMLElement | null;
+                            flyToCart(card?.querySelector("img") ?? null);
                             toast.success(`تمت إضافة ${product.name} للسلة 🛒`);
                           }}
                           className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm hover:opacity-90 active:scale-90 transition-transform"
@@ -392,7 +382,8 @@ function HomePage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             addItem(product, 1);
-                            flyToCart(e.currentTarget);
+                            const card = e.currentTarget.closest(".group") as HTMLElement | null;
+                            flyToCart(card?.querySelector("img") ?? null);
                             toast.success("أضيف للسلة 🛒");
                           }}
                           className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm hover:opacity-90 active:scale-90 transition-all"
