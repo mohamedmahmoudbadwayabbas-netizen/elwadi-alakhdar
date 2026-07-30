@@ -79,29 +79,21 @@ export const Route = createFileRoute("/admin/settings")({
 });
 
 function SettingsPage() {
-  const [s, setS]         = useState<Settings | null>(null);
+  const [s, setS] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    (globalThis as any).__adminSettingsEffectRuns = ((globalThis as any).__adminSettingsEffectRuns || 0) + 1;
-    const runId = (globalThis as any).__adminSettingsEffectRuns;
-    console.log(`[AdminSettings] useEffect run #${runId} — fetching store_settings`);
-    if (runId > 2) {
-      console.error("[AdminSettings] ⚠️ Potential infinite loop — useEffect ran more than twice");
-    }
-    const t0 = performance.now();
+
     supabase
       .from("store_settings")
       .select("*")
       .limit(1)
       .maybeSingle()
       .then(({ data, error }) => {
-        console.log(`[AdminSettings] fetch done in ${(performance.now() - t0).toFixed(0)}ms`, { hasData: !!data, error });
         if (!mounted) return;
         if (error) {
-          console.error("[AdminSettings] failed to load store_settings", error);
           toast.error("تعذر تحميل الإعدادات، تم فتح القيم الافتراضية مؤقتاً");
         }
         setS(data ? ({ ...DEFAULT_SETTINGS, ...data } as Settings) : DEFAULT_SETTINGS);
@@ -111,16 +103,31 @@ function SettingsPage() {
     return () => { mounted = false; };
   }, []);
 
+  // ── الحفظ: لو مفيش id (أول مرة) بنعمل insert ونرجّع الصف اللي اتعمل
+  // (id.select().single()) عشان نحفظه في الـ state فوراً. لو ماعملناش كده،
+  // أي ضغطة "حفظ" تانية هتعمل insert جديد بدل update وهيبقى عندنا أكتر من
+  // صف إعدادات في قاعدة البيانات.
   const save = async () => {
     if (!s) return;
     setSaving(true);
     const { id, ...payload } = s;
+
     const res = id
-      ? await supabase.from("store_settings").update(payload).eq("id", id)
-      : await supabase.from("store_settings").insert(payload);
+      ? await supabase.from("store_settings").update(payload).eq("id", id).select().maybeSingle()
+      : await supabase.from("store_settings").insert(payload).select().maybeSingle();
+
     setSaving(false);
-    if (res.error) toast.error(res.error.message);
-    else toast.success("تم حفظ الإعدادات — التغييرات تظهر فوراً على المتجر");
+
+    if (res.error) {
+      toast.error(res.error.message);
+      return;
+    }
+
+    if (!id && res.data?.id) {
+      setS((prev) => (prev ? { ...prev, id: res.data!.id } : prev));
+    }
+
+    toast.success("تم حفظ الإعدادات — التغييرات تظهر فوراً على المتجر");
   };
 
   if (loading)
@@ -141,8 +148,6 @@ function SettingsPage() {
 
       {/* ── معاينة حية ── */}
       <LivePreview s={s} />
-
-
 
       {/* هوية المتجر */}
       <Section icon={Store} title="هوية المتجر">
@@ -166,10 +171,10 @@ function SettingsPage() {
           القيم بصيغة HSL مثل: <code className="rounded bg-muted px-1">142 76% 36%</code>
         </p>
         <div className="grid grid-cols-2 gap-3">
-          <ColorField label="اللون الرئيسي"  value={s.primary_color}    onChange={(v) => set("primary_color", v)} />
-          <ColorField label="اللون المميز"    value={s.accent_color}     onChange={(v) => set("accent_color", v)} />
-          <ColorField label="لون الخلفية"     value={s.background_color} onChange={(v) => set("background_color", v)} />
-          <ColorField label="لون النص"        value={s.foreground_color} onChange={(v) => set("foreground_color", v)} />
+          <ColorField label="اللون الرئيسي" value={s.primary_color} onChange={(v) => set("primary_color", v)} />
+          <ColorField label="اللون المميز" value={s.accent_color} onChange={(v) => set("accent_color", v)} />
+          <ColorField label="لون الخلفية" value={s.background_color} onChange={(v) => set("background_color", v)} />
+          <ColorField label="لون النص" value={s.foreground_color} onChange={(v) => set("foreground_color", v)} />
         </div>
       </Section>
 
@@ -333,6 +338,7 @@ function SettingsPage() {
 }
 
 // ─── مكونات مساعدة ────────────────────────────────────────────────────────────
+
 function Section({
   icon: Icon, title, children,
 }: {
@@ -488,7 +494,6 @@ function LivePreview({ s }: { s: Settings }) {
     </section>
   );
 }
-
 
 // ─── MapToggle: يحمّل الخريطة Lazy فقط عند الضغط ────────────────────────────
 function MapToggle({
