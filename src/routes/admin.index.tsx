@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminSupabase as supabase } from "@/integrations/supabase/admin-client";
 import { Receipt, DollarSign, ShoppingCart, AlertTriangle, TrendingUp } from "lucide-react";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,

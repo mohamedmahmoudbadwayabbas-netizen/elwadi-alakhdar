@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { AdminAuthProvider, useAdminAuth } from "@/lib/admin-auth-context";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ColorModeProvider } from "@/lib/color-mode-context";
@@ -13,7 +13,15 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminLayout() {
-  const { user, isAdmin, loading } = useAuth();
+  return (
+    <AdminAuthProvider>
+      <AdminLayoutInner />
+    </AdminAuthProvider>
+  );
+}
+
+function AdminLayoutInner() {
+  const { user, isAdmin, loading } = useAdminAuth();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isLoginRoute = pathname === "/admin/login";
@@ -52,8 +60,6 @@ function AdminLayout() {
   }
 
   return (
-    // ColorModeProvider منفصل هنا (بدون forceMode) عشان الأدمن يقدر يبدّل بزراره الخاص،
-    // مستقل عن اختيار المتجر العادي المحفوظ في localStorage تحت نفس المفتاح.
     <ColorModeProvider storageKey="admin-color-mode" defaultMode="dark">
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background" dir="rtl">
@@ -75,3 +81,4 @@ function AdminLayout() {
     </ColorModeProvider>
   );
 }
+

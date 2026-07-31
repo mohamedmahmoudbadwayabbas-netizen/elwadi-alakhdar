@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { useAdminAuth } from "@/lib/admin-auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Leaf, LogIn } from "lucide-react";
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/login")({
 });
 
 function AdminLogin() {
-  const { user, isAdmin, signIn, loading } = useAuth();
+  const { user, isAdmin, signIn, loading } = useAdminAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,47 +35,13 @@ function AdminLogin() {
     if (!loading && user && isAdmin) router.history.push("/admin");
   }, [user, isAdmin, loading, router]);
 
-  // ── تسجيل الدخول: بعد نجاح الدخول، نتحقق فوراً من صلاحية الأدمن ──
-  // بدل ما نستنى الـ useEffect (اللي بيعتمد على تحديث isAdmin في الـ context
-  // وممكن ياخد وقت أو مايتحدّثش أوي)، بنتأكد بأنفسنا هنا ونسجّل خروج أي
-  // مستخدم مش أدمن فوراً مع رسالة واضحة، بدل ما يفضل واقف في صفحة اللوجين
-  // من غير أي تفسير.
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-
     const res = await signIn(email, password);
-    if (res.error) {
-      setBusy(false);
-      toast.error("بيانات الدخول غير صحيحة");
-      return;
-    }
-
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id;
-
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", uid)
-      .eq("role", "admin")
-      .maybeSingle();
-
     setBusy(false);
-
-    if (roleError) {
-      toast.error("تعذر التحقق من صلاحياتك، حاول مرة أخرى");
-      return;
-    }
-
-    if (!roleData) {
-      await supabase.auth.signOut();
-      toast.error("هذا الحساب غير مصرّح له بالدخول للوحة الإدارة");
-      return;
-    }
-
+    if (res.error) return toast.error("بيانات الدخول غير صحيحة");
     toast.success("مرحباً بعودتك");
-    router.history.push("/admin");
   };
 
   return (
@@ -124,3 +90,4 @@ function AdminLogin() {
     </div>
   );
 }
+
