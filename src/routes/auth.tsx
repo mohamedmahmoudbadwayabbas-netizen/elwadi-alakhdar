@@ -79,6 +79,7 @@ export function AuthPage() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim()) return toast.error("يرجى أدخال رقم الهاتف");
+    if (password.trim().length < 8) return toast.error("كلمة المرور مطلوبة (8 أحرف على الأقل)");
     setBusy(true);
 
     if (mode === "signin") {
@@ -358,11 +359,12 @@ export function AuthPage() {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-foreground">
-                  كلمة المرور (أو رمز المرور)
+                  كلمة المرور
                 </span>
                 <Input
                   type="password"
-                  minLength={6}
+                  required
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="أدخل كلمة مرور الحساب"

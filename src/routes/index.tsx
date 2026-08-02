@@ -80,7 +80,7 @@ type HeroBanner = {
 };
 
 const HOME_PRODUCT_COLUMNS =
-  "id,name,price,original_price,image_url,category_id,stock,description";
+  "id,name,price_per_unit,old_price,image_url,category_id,stock_quantity,description,unit_label,is_by_weight,is_popular,is_on_sale,created_at";
 const HOME_PRODUCTS_LIMIT = 150;
 
 function HomePage() {

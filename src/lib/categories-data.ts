@@ -644,4 +644,4 @@ export function getMergedCategories(dbCats?: any[]): ComprehensiveCategory[] {
   return Array.from(resultMap.values()).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
-export const MOCK_PRODUCTS = [];
+export const MOCK_PRODUCTS: any[] = [];
