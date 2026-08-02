@@ -182,12 +182,9 @@ function SettingsPage() {
   useEffect(() => {
     let mounted = true;
 
-    supabase
-      .from("store_settings")
-      .select("*")
-      .limit(1)
+    (supabase.rpc("get_store_settings_admin" as any) as any)
       .maybeSingle()
-      .then(({ data, error }) => {
+      .then(({ data, error }: { data: any; error: any }) => {
         if (!mounted) return;
         if (error) {
           toast.error("تعذر تحميل الإعدادات من القاعدة، تم فتح القيم الافتراضية");
@@ -231,8 +228,8 @@ function SettingsPage() {
       const dbPayload = payload as any;
 
       const res = id
-        ? await supabase.from("store_settings").update(dbPayload).eq("id", id).select().maybeSingle()
-        : await supabase.from("store_settings").insert(dbPayload).select().maybeSingle();
+        ? await supabase.from("store_settings").update(dbPayload).eq("id", id).select("id").maybeSingle()
+        : await supabase.from("store_settings").insert(dbPayload).select("id").maybeSingle();
 
       if (!res.error) {
         if (!id && res.data?.id) {
@@ -265,8 +262,8 @@ function SettingsPage() {
     const dbPayload = payload as any;
 
     const res = id
-      ? await supabase.from("store_settings").update(dbPayload).eq("id", id).select().maybeSingle()
-      : await supabase.from("store_settings").insert(dbPayload).select().maybeSingle();
+      ? await supabase.from("store_settings").update(dbPayload).eq("id", id).select("id").maybeSingle()
+      : await supabase.from("store_settings").insert(dbPayload).select("id").maybeSingle();
 
     clearTimeout(timer1);
     clearTimeout(timer2);
