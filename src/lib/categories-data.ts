@@ -646,7 +646,7 @@ export function getMergedCategories(dbCats?: any[]): ComprehensiveCategory[] {
 
 export const MOCK_PRODUCTS = [
   {
-    id: "mock-1",
+    id: "a1e4f8c2-3b6d-4e91-9a7c-1f2e3d4c5b6a",
     name: "طماطم بلدي طازجة",
     description: "طماطم حمراء طازجة درجة أولى مجمعة من المزارع يومياً",
     price_per_unit: 15.0,
@@ -659,7 +659,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 150,
   },
   {
-    id: "mock-2",
+    id: "b2f5a9d3-4c7e-4f92-8b8d-2a3f4e5d6c7b",
     name: "تفاح أحمر سكري فاخر",
     description: "تفاح أحمر طازج ومقرمش طعم غني وسكري",
     price_per_unit: 45.0,
@@ -672,7 +672,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 100,
   },
   {
-    id: "mock-3",
+    id: "c3a6b0e4-5d8f-4093-9c9e-3b4a5f6e7d8c",
     name: "أرز مصري عريض الحبة 5 كجم",
     description: "أرز أبيض فاخر نقي ومفلفل 100%",
     price_per_unit: 175.0,
@@ -685,7 +685,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 80,
   },
   {
-    id: "mock-4",
+    id: "d4b7c1f5-6e90-4194-ad0f-4c5b6a7f8e9d",
     name: "زيت عباد الشمس النقي 1 لتر",
     description: "زيت طعام خفيف وصحي مثالي للطهي والقلي",
     price_per_unit: 65.0,
@@ -698,7 +698,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 120,
   },
   {
-    id: "mock-5",
+    id: "e5c8d2a6-7f01-4295-be10-5d6c7b8a9f0e",
     name: "جبنة بيضاء براميلي بلدي",
     description: "جبن براميلي طبيعي عالي الجودة بطعم بلدية أصيل",
     price_per_unit: 120.0,
@@ -711,7 +711,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 50,
   },
   {
-    id: "mock-6",
+    id: "f6d9e3b7-8012-4396-cf21-6e7d8c9b0a1f",
     name: "حليب طازج كامل الدسم 1 لتر",
     description: "حليب مزرعة نقي غير معدل غني بالكالسيوم",
     price_per_unit: 38.0,
@@ -724,7 +724,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 90,
   },
   {
-    id: "mock-7",
+    id: "a7e0f4c8-9123-4497-d032-7f8e9d0c1b2a",
     name: "لحم كندوز بلدي طازج",
     description: "قطع لحم بلدي طازجة ذبح اليوم خالية من الدهون الزائدة",
     price_per_unit: 380.0,
@@ -737,7 +737,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 40,
   },
   {
-    id: "mock-8",
+    id: "b8f1a5d9-0234-4598-e143-809f0e1d2c3b",
     name: "دجاج طازج منظف ومجهز 1.2 كجم",
     description: "دجاج بلدي مغسول ومجهز للطهي الفوري",
     price_per_unit: 140.0,
@@ -750,7 +750,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 60,
   },
   {
-    id: "mock-9",
+    id: "c902b6e0-1345-4699-f254-91a0f1e2d3c4",
     name: "خلطة بهارات المشويات الخاصة",
     description: "تركيبة عطارة الوادي الأخضر السرية للحوم والدواجن",
     price_per_unit: 45.0,
@@ -763,7 +763,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 110,
   },
   {
-    id: "mock-10",
+    id: "da13c7f1-2456-479a-0365-a2b1a0f2e3d5",
     name: "كمون بلدي حصى فاخر",
     description: "كمون بلدي مطهر ومفروز نقي ورائحة نفاذة",
     price_per_unit: 35.0,
@@ -776,7 +776,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 95,
   },
   {
-    id: "mock-11",
+    id: "eb24d802-3567-489b-1476-b3c2b1a0f3e6",
     name: "مكسرات مشكلة محمصة سوبر",
     description: "كاجو، لوز، فستق وبندق محمص طازج بدون زيوت إضافية",
     price_per_unit: 280.0,
@@ -789,7 +789,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 70,
   },
   {
-    id: "mock-12",
+    id: "fc35e913-4678-499c-2587-c4d3c2b1a0f7",
     name: "بن يمني محوج بالحبهان",
     description: "قهوة عربية أصيلة مطحونة طازجة برائحة الهيل الزكية",
     price_per_unit: 90.0,
@@ -802,7 +802,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 85,
   },
   {
-    id: "mock-13",
+    id: "0d46fa24-5789-40ad-3698-d5e4d3c2b1a8",
     name: "كرواسون طازج بالزبدة 4 قطع",
     description: "خبز فرنسي هش وطازج مخبوز صباح اليوم",
     price_per_unit: 40.0,
@@ -815,7 +815,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 50,
   },
   {
-    id: "mock-14",
+    id: "1e57ab35-689a-41be-47a9-e6f5e4d3c2b9",
     name: "عصير برتقال طبيعي 1 لتر",
     description: "عصير برتقال طازج معصور 100% بدون سكر مضاف",
     price_per_unit: 30.0,
@@ -828,7 +828,7 @@ export const MOCK_PRODUCTS = [
     stock_quantity: 100,
   },
   {
-    id: "mock-15",
+    id: "2f68bc46-79ab-42cf-58ba-f7a6f5e4d3ca",
     name: "شوكولاتة داكنة بالبندق والكراميل",
     description: "لوح شوكولاتة فاخرة 70% كاكاو مع قطع البندق المقرمشة",
     price_per_unit: 25.0,
