@@ -775,6 +775,51 @@ export type Database = {
           store_address: string
         }[]
       }
+      get_store_settings_admin: {
+        Args: never
+        Returns: {
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
+          bank_account_info: string | null
+          cart_empty_bg: string | null
+          created_at: string
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          ga4_id: string | null
+          hero_bg_image: string | null
+          hero_cta_text: string
+          hero_image_url: string | null
+          hero_subtitle: string
+          hero_title: string
+          id: string
+          instapay_handle: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          meta_pixel_id: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
+          store_address: string | null
+          store_lat: number | null
+          store_lng: number | null
+          updated_at: string
+          whatsapp_number: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "store_settings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       validate_coupon: {
         Args: { p_code: string; p_subtotal: number }
         Returns: {
