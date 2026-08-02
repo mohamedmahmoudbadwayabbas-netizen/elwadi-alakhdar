@@ -115,55 +115,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const needsConfirmation = !data.session;
         return { needsConfirmation };
       },
+      // ملاحظة أمنية: لا يجوز أبداً توليد كلمة مرور من رقم الهاتف،
+      // لأن أي شخص يعرف الرقم يستطيع تخمينها والدخول للحساب.
+      // كلمة المرور مطلوبة دائماً ويختارها المستخدم بنفسه.
       signInWithPhone: async (phone, password) => {
-        // تنظيف رقم الهاتف ومطابقته
-        let formattedPhone = phone.trim().replace(/\s+/g, "");
-        if (!formattedPhone.startsWith("+")) {
-          if (formattedPhone.startsWith("0")) formattedPhone = "+20" + formattedPhone.slice(1);
-          else formattedPhone = "+20" + formattedPhone;
+        const formattedPhone = normalizePhone(phone);
+        if (!password || password.length < 8) {
+          return { error: "كلمة المرور مطلوبة (8 أحرف على الأقل)" };
         }
-        if (password) {
-          const { error } = await supabase.auth.signInWithPassword({
-            phone: formattedPhone,
-            password,
-          });
-          if (!error) return {};
-        }
-        // محاولة التسجيل/الدخول بـ OTP أو البريد الوهمي للسهولة
-        const synthEmail = `${formattedPhone.replace("+", "")}@phone.elwadi.local`;
-        const synthPass = password || `Pass_${formattedPhone.slice(-6)}_2026`;
+        const { error } = await supabase.auth.signInWithPassword({
+          phone: formattedPhone,
+          password,
+        });
+        if (!error) return {};
+        const synthEmail = phoneEmail(formattedPhone);
         const { error: inErr } = await supabase.auth.signInWithPassword({
           email: synthEmail,
-          password: synthPass,
+          password,
         });
-        if (!inErr) return {};
-        const { error: upErr } = await supabase.auth.signUp({
-          email: synthEmail,
-          password: synthPass,
-          options: { data: { phone: formattedPhone } },
-        });
-        if (upErr) return { error: translateAuthError(upErr.message) };
+        if (inErr) return { error: translateAuthError(inErr.message) };
         return {};
       },
       signUpWithPhone: async (phone, password, fullName) => {
-        let formattedPhone = phone.trim().replace(/\s+/g, "");
-        if (!formattedPhone.startsWith("+")) {
-          if (formattedPhone.startsWith("0")) formattedPhone = "+20" + formattedPhone.slice(1);
-          else formattedPhone = "+20" + formattedPhone;
+        const formattedPhone = normalizePhone(phone);
+        if (!password || password.length < 8) {
+          return { error: "اختر كلمة مرور قوية (8 أحرف على الأقل)" };
         }
-        const synthEmail = `${formattedPhone.replace("+", "")}@phone.elwadi.local`;
+        const synthEmail = phoneEmail(formattedPhone);
         const { data, error } = await supabase.auth.signUp({
           email: synthEmail,
-          password: password || `Pass_${formattedPhone.slice(-6)}_2026`,
+          password,
           options: { data: { full_name: fullName, phone: formattedPhone } },
         });
         if (error) return { error: translateAuthError(error.message) };
         if (!data.session) {
-          // محاولة الدخول مباشرة إذا كانت الحسابات مفعلة تلقائياً
-          await supabase.auth.signInWithPassword({
-            email: synthEmail,
-            password: password || `Pass_${formattedPhone.slice(-6)}_2026`,
-          });
+          await supabase.auth.signInWithPassword({ email: synthEmail, password });
         }
         return {};
       },
