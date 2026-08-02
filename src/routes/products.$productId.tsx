@@ -576,11 +576,11 @@ function ProductPage() {
 
             {/* شارات الجودة والتخفيض ─── */}
             <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
-              {product.original_price && product.original_price > product.price && (
+              {product.old_price && product.old_price > product.price_per_unit && (
                 <span className="rounded-full bg-red-500 text-white font-black text-[11px] px-3 py-1 shadow-md">
                   خصم{" "}
                   {Math.round(
-                    ((product.original_price - product.price) / product.original_price) * 100,
+                    ((product.old_price - product.price_per_unit) / product.old_price) * 100,
                   )}
                   %
                 </span>
@@ -642,7 +642,7 @@ function ProductPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
-                {product.unit ? `يباع بـ: ${product.unit}` : "منتج فاخر"}
+                {product.unit_label ? `يباع بـ: ${product.unit_label}` : "منتج فاخر"}
               </span>
               <h1 className="mt-2 text-2xl font-black text-foreground">{product.name}</h1>
             </div>
@@ -650,9 +650,9 @@ function ProductPage() {
               <div className="font-display text-3xl font-black text-primary">
                 {totalCost} <span className="text-sm font-bold text-muted-foreground">ج.م</span>
               </div>
-              {product.original_price && product.original_price > product.price && (
+              {product.old_price && product.old_price > product.price_per_unit && (
                 <div className="text-xs text-muted-foreground line-through font-bold">
-                  {(product.original_price * (product.is_by_weight ? qty : 1)).toFixed(2)} ج.م
+                  {(product.old_price * (product.is_by_weight ? qty : 1)).toFixed(2)} ج.م
                 </div>
               )}
             </div>
