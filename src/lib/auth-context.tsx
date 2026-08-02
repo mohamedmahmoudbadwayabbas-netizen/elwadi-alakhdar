@@ -29,6 +29,18 @@ type AuthCtx = {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
+function normalizePhone(phone: string): string {
+  let p = phone.trim().replace(/\s+/g, "");
+  if (!p.startsWith("+")) {
+    p = p.startsWith("0") ? "+20" + p.slice(1) : "+20" + p;
+  }
+  return p;
+}
+
+function phoneEmail(formattedPhone: string): string {
+  return `${formattedPhone.replace("+", "")}@phone.elwadi.local`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
