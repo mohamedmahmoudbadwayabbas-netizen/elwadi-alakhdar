@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart, type Product } from "@/lib/cart-context";
@@ -312,12 +312,11 @@ function HomePage() {
     window.history.pushState({}, "", url.toString());
   };
 
-  // 1. SELECTIVE CATEGORIES ONLY (Top-level parent categories, strictly no subcategory clutter)
+  // 1. SELECTIVE CATEGORIES ONLY (Top 4 main categories on homepage; full catalog on /categories)
   const selectiveCategories = useMemo(() => {
-    // Filter categories that don't have a parent_id, or take top 6 main categories
     const mainCats = categories.filter((c) => !c.parent_id);
-    if (mainCats.length > 0) return mainCats.slice(0, 6);
-    return categories.slice(0, 6);
+    if (mainCats.length > 0) return mainCats.slice(0, 4);
+    return categories.slice(0, 4);
   }, [categories]);
 
   // 2. FILTERED PRODUCTS (using category filter + fuzzy search with typo tolerance)
@@ -579,17 +578,26 @@ function HomePage() {
                 </button>
               );
             })}
-          </div>
 
-          {/* Button directing to Full Categories Catalog Page */}
-          <div className="pt-2 flex justify-center">
-            <button
-              onClick={() => navigate({ to: "/categories" })}
-              className="inline-flex items-center gap-2 rounded-2xl bg-secondary px-6 py-3 text-xs sm:text-sm font-black text-foreground hover:bg-emerald-500/10 hover:text-emerald-600 border border-border/80 transition-all shadow-xs"
+            {/* View all categories card */}
+            <Link
+              to="/categories"
+              aria-label="عرض كل الأقسام"
+              className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card text-right transition-all duration-300 hover:border-emerald-500/60 hover:shadow-lg hover:-translate-y-1"
             >
-              <span>عرض جميع الفئات والأقسام الكاملة</span>
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+              <div className="relative h-28 w-full overflow-hidden bg-secondary">
+                <div className="grid h-full w-full place-items-center bg-emerald-500/10 text-3xl">
+                  🛒
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity" />
+              </div>
+              <div className="p-3 bg-card flex flex-1 items-center justify-between">
+                <span className="text-xs font-black text-foreground group-hover:text-emerald-600 truncate">
+                  عرض كل الأقسام
+                </span>
+                <ArrowLeft className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-emerald-600" />
+              </div>
+            </Link>
           </div>
         </div>
 
