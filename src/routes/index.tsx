@@ -312,12 +312,11 @@ function HomePage() {
     window.history.pushState({}, "", url.toString());
   };
 
-  // 1. SELECTIVE CATEGORIES ONLY (Top-level parent categories, strictly no subcategory clutter)
+  // 1. SELECTIVE CATEGORIES ONLY (Top 4 main categories on homepage; full catalog on /categories)
   const selectiveCategories = useMemo(() => {
-    // Filter categories that don't have a parent_id, or take top 6 main categories
     const mainCats = categories.filter((c) => !c.parent_id);
-    if (mainCats.length > 0) return mainCats.slice(0, 6);
-    return categories.slice(0, 6);
+    if (mainCats.length > 0) return mainCats.slice(0, 4);
+    return categories.slice(0, 4);
   }, [categories]);
 
   // 2. FILTERED PRODUCTS (using category filter + fuzzy search with typo tolerance)
