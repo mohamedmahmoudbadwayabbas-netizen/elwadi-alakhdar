@@ -479,6 +479,7 @@ function HomePage() {
                   }
                   className="h-9 w-9 rounded-xl bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all hover:scale-105"
                   title="السلايد السابق"
+                  aria-label="السلايد السابق"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
@@ -487,6 +488,7 @@ function HomePage() {
                   onClick={() => setCurrentSlideIndex((prev) => (prev + 1) % heroSlides.length)}
                   className="h-9 w-9 rounded-xl bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all hover:scale-105"
                   title="السلايد التالي"
+                  aria-label="السلايد التالي"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -499,6 +501,7 @@ function HomePage() {
                     key={slide.id || idx}
                     type="button"
                     onClick={() => setCurrentSlideIndex(idx)}
+                    aria-label={`الانتقال للسلايد ${idx + 1}`}
                     className={`h-2.5 rounded-full transition-all duration-300 ${
                       idx === currentSlideIndex
                         ? "w-7 bg-emerald-400 shadow-md"
