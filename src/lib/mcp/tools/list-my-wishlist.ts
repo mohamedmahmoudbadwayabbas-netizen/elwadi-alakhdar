@@ -19,7 +19,7 @@ export default defineTool({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     const { data, error } = await supabaseAsUser(ctx)
       .from("wishlists")
-      .select("product_id,created_at,products(id,name,price,image_url)")
+      .select("product_id,created_at,products(id,name,price_per_unit,unit_label,image_url)")
       .order("created_at", { ascending: false });
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
