@@ -52,8 +52,33 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "تسوّق البقالة، اللحوم البلدي، الخضار والأجبان بأسعار مناسبة مع توصيل فورى.",
       },
+      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "الوادي الأخضر",
+          url: "https://elwadi-alakhdar.lovable.app/",
+          inLanguage: "ar",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://elwadi-alakhdar.lovable.app/?q={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "الوادي الأخضر",
+            url: "https://elwadi-alakhdar.lovable.app/",
+          },
+        }),
+      },
     ],
   }),
+
   component: HomePage,
 });
 
