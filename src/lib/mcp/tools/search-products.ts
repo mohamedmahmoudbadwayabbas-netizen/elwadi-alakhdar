@@ -6,7 +6,7 @@ export default defineTool({
   name: "search_products",
   title: "Search products",
   description:
-    "Search Al-Wadi Al-Akhdar store products by Arabic or English keyword. Returns id, name, price, unit, stock, category and image.",
+    "Search Al-Wadi Al-Akhdar store products by Arabic or English keyword. Returns id, name, price per unit, unit label, stock, category and image.",
   inputSchema: {
     query: z.string().trim().min(1).describe("Search text (matches product name)."),
     limit: z.number().int().min(1).max(50).default(20).describe("Max results (1-50)."),
