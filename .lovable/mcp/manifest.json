@@ -19,7 +19,7 @@
       {
         "name": "search_products",
         "title": "Search products",
-        "description": "Search Al-Wadi Al-Akhdar store products by Arabic or English keyword. Returns id, name, price, unit, stock, category and image.",
+        "description": "Search Al-Wadi Al-Akhdar store products by Arabic or English keyword. Returns id, name, price per unit, unit label, stock, category and image.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
