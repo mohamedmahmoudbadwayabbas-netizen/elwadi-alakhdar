@@ -80,8 +80,67 @@ const DELIVERY_ZONES = [
 const WEIGHT_PRESETS = [0.25, 0.5, 1, 2];
 
 export const Route = createFileRoute("/products/$productId")({
+  loader: async ({ params }) => {
+    const { data } = await supabase
+      .from("products")
+      .select("name,description,image_url,price_per_unit")
+      .eq("id", params.productId)
+      .maybeSingle();
+    return { seo: data ?? null };
+  },
+  head: ({ params, loaderData }) => {
+    const url = `https://elwadi-alakhdar.lovable.app/products/${params.productId}`;
+    const p = loaderData?.seo;
+    const name = p?.name ?? "منتج";
+    const title = `${name} — الوادي الأخضر`.slice(0, 60);
+    const description = (
+      p?.description?.trim() ||
+      `اشترِ ${name} طازجًا من متجر الوادي الأخضر بأفضل سعر مع توصيل سريع لباب بيتك.`
+    ).slice(0, 158);
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "product" },
+        { property: "og:url", content: url },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        ...(p?.image_url?.startsWith("https://")
+          ? [
+              { property: "og:image", content: p.image_url },
+              { name: "twitter:image", content: p.image_url },
+            ]
+          : []),
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: p
+        ? [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "Product",
+                name: p.name,
+                description,
+                ...(p.image_url ? { image: p.image_url } : {}),
+                offers: {
+                  "@type": "Offer",
+                  price: p.price_per_unit,
+                  priceCurrency: "EGP",
+                  availability: "https://schema.org/InStock",
+                  url,
+                },
+              }),
+            },
+          ]
+        : [],
+    };
+  },
   component: ProductPage,
 });
+
 
 // دالة ذكية لحساب المسافة الجغرافية بين نقطتين بالكيلومتر (Haversine Formula)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

@@ -42,8 +42,18 @@ export const Route = createFileRoute("/cart")({
     meta: [
       { title: "سلة المشتريات — الوادي الأخضر" },
       { name: "description", content: "أتمم طلبك من متجر الوادي الأخضر مع توصيل سريع لمنطقتك" },
+      { property: "og:title", content: "سلة المشتريات — الوادي الأخضر" },
+      {
+        property: "og:description",
+        content: "راجع منتجاتك وأكمل الطلب مع توصيل سريع لمنطقتك.",
+      },
+      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/cart" },
+      { name: "twitter:title", content: "سلة المشتريات — الوادي الأخضر" },
+      { name: "robots", content: "noindex,follow" },
     ],
+    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/cart" }],
   }),
+
   component: CartPage,
 });
 

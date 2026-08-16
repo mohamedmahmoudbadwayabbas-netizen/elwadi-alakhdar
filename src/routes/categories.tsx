@@ -31,8 +31,17 @@ export const Route = createFileRoute("/categories")({
         content:
           "تصفّح أقسام متجر الوادي الأخضر الشاملة بأعلى جودة وصور احترافية: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات",
       },
+      { property: "og:title", content: "دليل الأقسام الشامل — الوادي الأخضر" },
+      {
+        property: "og:description",
+        content: "كل أقسام متجر الوادي الأخضر: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات.",
+      },
+      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/categories" },
+      { name: "twitter:title", content: "دليل الأقسام الشامل — الوادي الأخضر" },
     ],
+    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/categories" }],
   }),
+
   component: CategoriesPage,
 });
 
@@ -120,6 +129,8 @@ export function CategoriesPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background pb-28 text-right">
+      <h1 className="sr-only">دليل الأقسام الشامل — كل أقسام متجر الوادي الأخضر</h1>
+
       {/* هيدر الصفحة الرئيسي */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">

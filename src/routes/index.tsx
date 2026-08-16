@@ -52,8 +52,33 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "تسوّق البقالة، اللحوم البلدي، الخضار والأجبان بأسعار مناسبة مع توصيل فورى.",
       },
+      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "الوادي الأخضر",
+          url: "https://elwadi-alakhdar.lovable.app/",
+          inLanguage: "ar",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://elwadi-alakhdar.lovable.app/?q={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "الوادي الأخضر",
+            url: "https://elwadi-alakhdar.lovable.app/",
+          },
+        }),
+      },
     ],
   }),
+
   component: HomePage,
 });
 
@@ -454,6 +479,7 @@ function HomePage() {
                   }
                   className="h-9 w-9 rounded-xl bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all hover:scale-105"
                   title="السلايد السابق"
+                  aria-label="السلايد السابق"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
@@ -462,6 +488,7 @@ function HomePage() {
                   onClick={() => setCurrentSlideIndex((prev) => (prev + 1) % heroSlides.length)}
                   className="h-9 w-9 rounded-xl bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all hover:scale-105"
                   title="السلايد التالي"
+                  aria-label="السلايد التالي"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -474,6 +501,7 @@ function HomePage() {
                     key={slide.id || idx}
                     type="button"
                     onClick={() => setCurrentSlideIndex(idx)}
+                    aria-label={`الانتقال للسلايد ${idx + 1}`}
                     className={`h-2.5 rounded-full transition-all duration-300 ${
                       idx === currentSlideIndex
                         ? "w-7 bg-emerald-400 shadow-md"

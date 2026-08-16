@@ -127,7 +127,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "stylesheet", href: appCss },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "الوادي الأخضر",
+          url: "https://elwadi-alakhdar.lovable.app/",
+          logo: "https://elwadi-alakhdar.lovable.app/favicon.svg",
+          description:
+            "سوبر ماركت ومحل عطارة أونلاين: بقالة، لحوم، خضار وفاكهة وعطارة مع توصيل سريع.",
+        }),
+      },
+    ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
