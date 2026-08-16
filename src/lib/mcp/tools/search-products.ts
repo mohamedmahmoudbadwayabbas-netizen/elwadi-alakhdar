@@ -18,7 +18,9 @@ export default defineTool({
     });
     const { data, error } = await sb
       .from("products")
-      .select("id,name,price,unit,stock,image_url,category_id,featured")
+      .select(
+        "id,name,price_per_unit,old_price,unit_label,is_by_weight,stock_quantity,image_url,category_id,is_featured",
+      )
       .ilike("name", `%${query}%`)
       .limit(limit);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
