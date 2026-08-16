@@ -31,8 +31,17 @@ export const Route = createFileRoute("/categories")({
         content:
           "تصفّح أقسام متجر الوادي الأخضر الشاملة بأعلى جودة وصور احترافية: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات",
       },
+      { property: "og:title", content: "دليل الأقسام الشامل — الوادي الأخضر" },
+      {
+        property: "og:description",
+        content: "كل أقسام متجر الوادي الأخضر: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات.",
+      },
+      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/categories" },
+      { name: "twitter:title", content: "دليل الأقسام الشامل — الوادي الأخضر" },
     ],
+    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/categories" }],
   }),
+
   component: CategoriesPage,
 });
 
