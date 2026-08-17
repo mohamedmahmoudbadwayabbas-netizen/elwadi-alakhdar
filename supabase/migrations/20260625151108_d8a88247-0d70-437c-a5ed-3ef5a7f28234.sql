@@ -14,7 +14,7 @@ BEGIN
       email_change, email_change_token_new, recovery_token
     ) VALUES (
       '00000000-0000-0000-0000-000000000000', admin_uid, 'authenticated', 'authenticated',
-      'admin@elwadi.com', crypt('Admin@2026', gen_salt('bf')),
+      'admin@elwadi.com', crypt(encode(gen_random_bytes(24),'base64'), gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
       '{"full_name":"Admin"}'::jsonb,
@@ -24,7 +24,7 @@ BEGIN
     VALUES (gen_random_uuid(), admin_uid, jsonb_build_object('sub', admin_uid::text, 'email', 'admin@elwadi.com', 'email_verified', true), 'email', admin_uid::text, now(), now(), now());
   ELSE
     admin_uid := existing_uid;
-    UPDATE auth.users SET encrypted_password = crypt('Admin@2026', gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, now()), updated_at = now() WHERE id = admin_uid;
+    UPDATE auth.users SET encrypted_password = crypt(encode(gen_random_bytes(24),'base64'), gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, now()), updated_at = now() WHERE id = admin_uid;
   END IF;
 
   INSERT INTO public.profiles (id, full_name) VALUES (admin_uid, 'Admin') ON CONFLICT (id) DO NOTHING;

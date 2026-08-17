@@ -2,13 +2,6 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 type ColorMode = "light" | "dark";
 
-function getInitialMode(storageKey: string, defaultMode: ColorMode): ColorMode {
-  if (typeof window === "undefined") return defaultMode;
-  const saved = window.localStorage.getItem(storageKey);
-  if (saved === "light" || saved === "dark") return saved;
-  return defaultMode;
-}
-
 const ColorModeContext = createContext<{
   mode: ColorMode;
   toggle: () => void;
@@ -29,7 +22,14 @@ export function ColorModeProvider({
   storageKey?: string;
   defaultMode?: ColorMode;
 }) {
-  const [mode, setModeState] = useState<ColorMode>(() => getInitialMode(storageKey, defaultMode));
+  // نبدأ دايماً بالقيمة الافتراضية على السيرفر والعميل لتفادي عدم تطابق الـ hydration،
+  // وبعد الترطيب نقرأ التخزين المحلي.
+  const [mode, setModeState] = useState<ColorMode>(defaultMode);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(storageKey);
+    if (saved === "light" || saved === "dark") setModeState(saved);
+  }, [storageKey]);
 
   useEffect(() => {
     const root = document.documentElement;

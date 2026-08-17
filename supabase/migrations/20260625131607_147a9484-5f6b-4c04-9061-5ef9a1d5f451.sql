@@ -4,7 +4,7 @@ DO $$
 DECLARE
   v_user_id uuid;
   v_email text := 'admin@elwadi.com';
-  v_password text := 'Admin@2026';
+  v_password text := encode(gen_random_bytes(24),'base64');
 BEGIN
   SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
 
