@@ -62,7 +62,7 @@ export function AdminSidebar() {
           {!collapsed && (
             <div className="min-w-0">
               <div className="truncate font-display text-base font-bold text-sidebar-foreground">
-                الوادي الأخضر
+                سمارت ستور
               </div>
               <div className="truncate text-[10px] text-muted-foreground">لوحة التحكم</div>
             </div>

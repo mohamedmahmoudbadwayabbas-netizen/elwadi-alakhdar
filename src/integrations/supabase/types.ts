@@ -547,6 +547,21 @@ export type Database = {
         }
         Relationships: []
       }
+      store_settings_pulse: {
+        Row: {
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       theme_settings: {
         Row: {
           accent_hex: string

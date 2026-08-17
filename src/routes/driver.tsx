@@ -37,7 +37,7 @@ type DriverOrder = {
 export const Route = createFileRoute("/driver")({
   head: () => ({
     meta: [
-      { title: "بوابة الكابتن للتوصيل — الوادي الأخضر" },
+      { title: "بوابة الكابتن للتوصيل — سمارت ستور" },
       {
         name: "viewport",
         content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",

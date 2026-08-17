@@ -91,7 +91,7 @@ export function CartDrawer() {
     setSubmitting(true);
     const ref = (() => {
       try {
-        return sessionStorage.getItem("alwadi_ref");
+        return sessionStorage.getItem("store_ref");
       } catch {
         return null;
       }
@@ -114,7 +114,7 @@ export function CartDrawer() {
       toast.error("تعذّر إرسال الطلب", { description: error.message });
       return;
     }
-    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
+    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق سمارت ستور قريباً" });
     clear();
     setStage("cart");
     setForm({
@@ -147,7 +147,7 @@ export function CartDrawer() {
               </button>
             )}
             <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            {stage === "cart" ? "سلة تسوّق الوادي الأخضر" : "إتمام طلب السوبرماركت"}
+            {stage === "cart" ? "سلة تسوّق سمارت ستور" : "إتمام طلب السوبرماركت"}
           </SheetTitle>
         </SheetHeader>
 
@@ -209,7 +209,7 @@ export function CartDrawer() {
               onClick={() => setOpen(false)}
               className="mt-2 rounded-2xl hero-gradient text-primary-foreground font-black text-xs"
             >
-              تصفّح منتجات الوادي الأخضر
+              تصفّح منتجات سمارت ستور
             </Button>
           </div>
         ) : stage === "cart" ? (

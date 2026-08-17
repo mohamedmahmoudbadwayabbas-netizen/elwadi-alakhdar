@@ -43,7 +43,7 @@ export function HeroCarousel() {
       : fallbackImages.map((url, i) => ({
           id: `fb-${i}`,
           image_url: url || null,
-          title: theme.hero_title || "الوادي الأخضر",
+          title: theme.hero_title || "سمارت ستور",
           subtitle: theme.hero_subtitle || "طبيعة تروي تفاصيل الفخامة",
           cta_text: theme.hero_cta_text || "تسوّق الآن",
           link_url: "#all-products",
@@ -106,7 +106,7 @@ export function HeroCarousel() {
   const current = slides[idx];
   const goTo = (i: number) => setIdx(((i % slides.length) + slides.length) % slides.length);
 
-  const title = current.title ?? "الوادي الأخضر";
+  const title = current.title ?? "سمارت ستور";
   const subtitle = current.subtitle ?? "طبيعة تروي تفاصيل الفخامة";
   const ctaText = current.cta_text ?? "تسوّق الآن";
 
@@ -190,7 +190,7 @@ export function HeroCarousel() {
               <img
                 key={s.id}
                 src={`${s.image_url}${s.image_url.includes("?") ? "&" : "?"}w=1400&q=80&fm=webp`}
-                alt={s.title ?? "الوادي الأخضر"}
+                alt={s.title ?? "سمارت ستور"}
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
                 decoding="async"

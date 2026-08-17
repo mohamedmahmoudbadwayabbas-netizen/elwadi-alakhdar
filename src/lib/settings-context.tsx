@@ -44,7 +44,7 @@ export type StoreSettings = {
 
 // ⚠️ القيم دي بقت HSL نصي زي "142 76% 24%" مش Hex — لازم تتطابق مع admin.settings.tsx
 const DEFAULTS: StoreSettings = {
-  site_name: "الوادي الأخضر — هايبر ماركت",
+  site_name: "سمارت ستور — هايبر ماركت",
   logo_url: null,
   favicon_url: null,
   primary_color: "142 76% 24%",
@@ -53,11 +53,11 @@ const DEFAULTS: StoreSettings = {
   foreground_color: "120 18% 12%",
   font_family: "Tajawal",
   announcement_text:
-    "🛒 هايبر ماركت الوادي الأخضر — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
+    "🛒 هايبر ماركت سمارت ستور — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
   announcement_enabled: true,
   announcement_bg_color: "142 76% 24%",
   whatsapp_number: null,
-  hero_title: "الوادي الأخضر — هايبر ماركت أونلاين متكامل 🛒",
+  hero_title: "سمارت ستور — هايبر ماركت أونلاين متكامل 🛒",
   hero_subtitle:
     "تسوّق جميع سلع البقالة، اللحوم البلدية الطازجة، الأجبان، المشروبات والمنظفات بأسعار الجملة التنافسية وتوصيل سريع لباب المنزل.",
   hero_image_url: null,
@@ -119,7 +119,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
+    const load = async () => {
       const { data, error } = await supabase
         .from("store_settings_public" as any)
         .select("*")
@@ -129,7 +129,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
       if (error) {
-        console.error("[SettingsProvider] failed to load store_settings_public", error);
+        console.warn("[SettingsProvider] store settings unavailable, using defaults", error.message);
       }
 
       // Check saved local customizer overrides if any
@@ -139,16 +139,35 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (cached) localCustomizer = JSON.parse(cached);
       } catch {}
 
-      if (data) {
-        const merged = { ...DEFAULTS, ...(data as any), ...localCustomizer } as StoreSettings;
-        setSettings(merged);
-        applyTheme(merged);
-      } else {
-        const merged = { ...DEFAULTS, ...localCustomizer } as StoreSettings;
-        setSettings(merged);
-        applyTheme(merged);
+      const merged = {
+        ...DEFAULTS,
+        ...((data as any) ?? {}),
+        ...localCustomizer,
+      } as StoreSettings;
+      // Never let NULL columns wipe a usable default value.
+      for (const key of Object.keys(merged) as (keyof StoreSettings)[]) {
+        if (merged[key] === null && DEFAULTS[key] !== null && DEFAULTS[key] !== undefined) {
+          (merged as any)[key] = DEFAULTS[key];
+        }
       }
-    })();
+      setSettings(merged);
+      applyTheme(merged);
+    };
+
+    void load();
+
+    // Realtime: a trigger bumps `store_settings_pulse` whenever an admin saves
+    // settings, so every open storefront refetches the public settings view.
+    const channel = supabase
+      .channel("store_settings_live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "store_settings_pulse" },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
 
     // Listen to custom event for real-time live preview update across admin & storefront
     const handleCustomUpdate = (e: CustomEvent<Partial<StoreSettings>>) => {
@@ -161,6 +180,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      supabase.removeChannel(channel);
       window.removeEventListener("store_settings_updated" as any, handleCustomUpdate);
     };
   }, []);

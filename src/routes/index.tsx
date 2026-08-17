@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,38 +42,38 @@ import { motion, AnimatePresence } from "motion/react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع لباب بيتك 🌿" },
+      { title: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع لباب بيتك 🌿" },
       {
         name: "description",
         content:
-          "تسوّق البقالة، اللحوم البلدي الطازجة، الخضار والفاكهة والأجبان من الوادي الأخضر مع توصيل فورى وأعلى جودة.",
+          "تسوّق البقالة، اللحوم البلدي الطازجة، الخضار والفاكهة والأجبان من سمارت ستور مع توصيل فورى وأعلى جودة.",
       },
-      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
+      { property: "og:title", content: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
       {
         property: "og:description",
         content: "تسوّق البقالة، اللحوم البلدي، الخضار والأجبان بأسعار مناسبة مع توصيل فورى.",
       },
-      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/" },
+      { property: "og:url", content: `${SITE_URL}/` },
     ],
-    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/" }],
+    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
     scripts: [
       {
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "الوادي الأخضر",
-          url: "https://elwadi-alakhdar.lovable.app/",
+          name: "سمارت ستور",
+          url: `${SITE_URL}/`,
           inLanguage: "ar",
           potentialAction: {
             "@type": "SearchAction",
-            target: "https://elwadi-alakhdar.lovable.app/?q={search_term_string}",
+            target: `${SITE_URL}/?q={search_term_string}`,
             "query-input": "required name=search_term_string",
           },
           publisher: {
             "@type": "Organization",
-            name: "الوادي الأخضر",
-            url: "https://elwadi-alakhdar.lovable.app/",
+            name: "سمارت ستور",
+            url: `${SITE_URL}/`,
           },
         }),
       },
@@ -226,7 +227,7 @@ function HomePage() {
   const heroSlides = useMemo(() => {
     const mainSlide = {
       id: "main-store-hero",
-      title: settings.hero_title || settings.site_name || "الوادي الأخضر — هايبر ماركت أونلاين",
+      title: settings.hero_title || settings.site_name || "سمارت ستور — هايبر ماركت أونلاين",
       subtitle:
         settings.hero_subtitle ||
         "تسوّق جميع سلع البقالة، اللحوم البلدية الطازجة، الأجبان والمنظفات بأسعار الجملة التنافسية وتوصيل سريع لباب المنزل.",
@@ -245,7 +246,7 @@ function HomePage() {
       mainSlide,
       ...heroBanners.map((b) => ({
         id: b.id,
-        title: b.title || settings.site_name || "عروض الوادي الأخضر 🌟",
+        title: b.title || settings.site_name || "عروض سمارت ستور 🌟",
         subtitle:
           b.subtitle || "تخفيضات وعروض حصرية لفترة محدودة على أفضل السلع والمنتجات الطازجة.",
         image_url: b.image_url,
@@ -874,7 +875,7 @@ function HomePage() {
         {/* Footer */}
         <div className="border-t border-border/60 pt-8 pb-6 text-center space-y-2">
           <div className="text-sm font-black text-foreground font-display">
-            الوادي الأخضر — Elwadi Alakhdar 🌿
+            سمارت ستور — Smart Store 🛍️
           </div>
           <p className="text-xs text-muted-foreground font-bold max-w-md mx-auto">
             سوبر ماركت، عطارة، لحوم ومخبوزات طازجة — جودة عالية وتوصيل سريع لباب المنزل.

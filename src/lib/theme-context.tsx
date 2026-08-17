@@ -23,7 +23,7 @@ const DEFAULTS: ThemeSettings = {
   accent_hex: "#E85D2F",
   card_radius_px: 24,
   hero_grid_images: [],
-  hero_title: "الوادي الأخضر",
+  hero_title: "سمارت ستور",
   hero_subtitle: "سوبر ماركت وعطارة - أفضل أنواع الاختيارات وتوصيل سريع مباشر لباب بيتك",
   hero_cta_text: "تسوّق الآن",
   auth_bg_url: null,
@@ -89,23 +89,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    (globalThis as any).__themeEffectRuns = ((globalThis as any).__themeEffectRuns || 0) + 1;
-    const runId = (globalThis as any).__themeEffectRuns;
-    console.log(`[ThemeProvider] useEffect run #${runId} — fetching theme_settings`);
-    if (runId > 2) {
-      console.error("[ThemeProvider] ⚠️ Potential infinite loop — useEffect ran more than twice");
-    }
-    (async () => {
-      const t0 = performance.now();
-      const { data, error } = await supabase
-        .from("theme_settings")
-        .select("*")
-        .limit(1)
-        .maybeSingle();
-      console.log(`[ThemeProvider] fetch done in ${(performance.now() - t0).toFixed(0)}ms`, {
-        hasData: !!data,
-        error,
-      });
+
+    const load = async () => {
+      const { data } = await supabase.from("theme_settings").select("*").limit(1).maybeSingle();
       if (!mounted) return;
       if (!data) {
         applyTokens(DEFAULTS);
@@ -115,6 +101,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const merged: ThemeSettings = {
         ...DEFAULTS,
         ...d,
+        primary_hex: d.primary_hex ?? DEFAULTS.primary_hex,
+        accent_hex: d.accent_hex ?? DEFAULTS.accent_hex,
         hero_title: d.hero_title ?? DEFAULTS.hero_title,
         hero_subtitle: d.hero_subtitle ?? DEFAULTS.hero_subtitle,
         hero_cta_text: d.hero_cta_text ?? DEFAULTS.hero_cta_text,
@@ -122,9 +110,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       };
       setTheme(merged);
       applyTokens(merged);
-    })();
+    };
+
+    void load();
+
+    const channel = supabase
+      .channel("theme_settings_live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "theme_settings" }, () => {
+        void load();
+      })
+      .subscribe();
+
     return () => {
       mounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 

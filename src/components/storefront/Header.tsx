@@ -1,5 +1,6 @@
+import { BRAND_NAME_AR, BRAND_NAME_EN } from "@/lib/brand";
 import { useState } from "react";
-import { Search, ShoppingBag, Menu, X, Leaf } from "lucide-react";
+import { Search, ShoppingBag, Menu, X, Store } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n-context";
@@ -19,7 +20,7 @@ export function Header() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const logoUrl = settings.logo_url;
   const siteName =
-    settings.site_name || (lang === "ar" ? "الوادي الأخضر — Elwadi Alakhdar" : "Elwadi Alakhdar");
+    settings.site_name || (lang === "ar" ? BRAND_NAME_AR : BRAND_NAME_EN);
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -52,7 +53,7 @@ export function Header() {
           {logoUrl ? (
             <img src={logoUrl} alt={siteName} className="h-8 w-auto object-contain" />
           ) : (
-            <Leaf className="h-5 w-5 text-emerald-600" strokeWidth={2} />
+            <Store className="h-5 w-5 text-primary" strokeWidth={2} />
           )}
           <span className="truncate text-base font-black tracking-tight text-foreground sm:text-lg font-display">
             {siteName}

@@ -1,6 +1,6 @@
 {
-  "name": "elwadi-alakhdar",
-  "description": "Elwadi Alakhdar e-commerce storefront and admin dashboard",
+  "name": "smart-store",
+  "description": "Smart Store e-commerce storefront and admin dashboard",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

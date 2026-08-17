@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, lineSubtotal } from "@/lib/cart-context";
@@ -40,18 +41,18 @@ import { Truck as TruckIcon } from "lucide-react";
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "سلة المشتريات — الوادي الأخضر" },
-      { name: "description", content: "أتمم طلبك من متجر الوادي الأخضر مع توصيل سريع لمنطقتك" },
-      { property: "og:title", content: "سلة المشتريات — الوادي الأخضر" },
+      { title: "سلة المشتريات — سمارت ستور" },
+      { name: "description", content: "أتمم طلبك من متجر سمارت ستور مع توصيل سريع لمنطقتك" },
+      { property: "og:title", content: "سلة المشتريات — سمارت ستور" },
       {
         property: "og:description",
         content: "راجع منتجاتك وأكمل الطلب مع توصيل سريع لمنطقتك.",
       },
-      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/cart" },
-      { name: "twitter:title", content: "سلة المشتريات — الوادي الأخضر" },
+      { property: "og:url", content: `${SITE_URL}/cart` },
+      { name: "twitter:title", content: "سلة المشتريات — سمارت ستور" },
       { name: "robots", content: "noindex,follow" },
     ],
-    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/cart" }],
+    links: [{ rel: "canonical", href: `${SITE_URL}/cart` }],
   }),
 
   component: CartPage,
@@ -336,7 +337,7 @@ function CartPage() {
     setSubmitting(true);
     const ref = (() => {
       try {
-        return sessionStorage.getItem("alwadi_ref");
+        return sessionStorage.getItem("store_ref");
       } catch {
         return null;
       }
@@ -364,7 +365,7 @@ function CartPage() {
       return;
     }
     playSuccessSound();
-    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
+    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق سمارت ستور قريباً" });
     clear();
     navigate({ to: "/" });
   };
@@ -384,7 +385,7 @@ function CartPage() {
             <div className="grid h-9 w-9 place-items-center rounded-xl hero-gradient text-primary-foreground">
               <Leaf className="h-4 w-4" />
             </div>
-            <span className="hidden font-display text-base font-bold sm:inline">الوادي الأخضر</span>
+            <span className="hidden font-display text-base font-bold sm:inline">سمارت ستور</span>
           </Link>
           <h1 className="flex items-center gap-2 font-display text-base font-bold">
             <ShoppingBag className="h-4 w-4 text-primary" />
@@ -429,7 +430,7 @@ function CartPage() {
               <p
                 className={`relative z-10 font-display text-sm font-medium ${bg.empty ? "text-white/80" : "text-muted-foreground"}`}
               >
-                ابدأ رحلة تسوّقك من "الوادي الأخضر" — منتجات طازجة تصلك سريعاً 🌿
+                ابدأ رحلة تسوّقك من "سمارت ستور" — منتجات طازجة تصلك سريعاً 🌿
               </p>
               <Link to="/" className="relative z-10">
                 <Button className="mt-2 rounded-full hero-gradient text-primary-foreground">

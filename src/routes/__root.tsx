@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/brand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -86,26 +87,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { property: "og:site_name", content: "الوادي الأخضر" },
+      { property: "og:site_name", content: "سمارت ستور" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
-      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
-      { name: "twitter:title", content: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
+      { title: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
+      { property: "og:title", content: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
+      { name: "twitter:title", content: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
       {
         name: "description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق البقالة واللحوم والدواجن والعطارة من سمارت ستور بأسعار مناسبة مع توصيل سريع لباب بيتك.",
       },
       {
         property: "og:description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق البقالة واللحوم والدواجن والعطارة من سمارت ستور بأسعار مناسبة مع توصيل سريع لباب بيتك.",
       },
       {
         name: "twitter:description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق البقالة واللحوم والدواجن والعطارة من سمارت ستور بأسعار مناسبة مع توصيل سريع لباب بيتك.",
       },
       {
         property: "og:image",
@@ -133,9 +134,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "الوادي الأخضر",
-          url: "https://elwadi-alakhdar.lovable.app/",
-          logo: "https://elwadi-alakhdar.lovable.app/favicon.svg",
+          name: "سمارت ستور",
+          url: `${SITE_URL}/`,
+          logo: `${SITE_URL}/favicon.svg`,
           description:
             "سوبر ماركت ومحل عطارة أونلاين: بقالة، لحوم، خضار وفاكهة وعطارة مع توصيل سريع.",
         }),
