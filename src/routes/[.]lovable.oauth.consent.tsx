@@ -30,7 +30,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "منح الوصول — الوادي الأخضر" },
+      { title: "منح الوصول — سمارت ستور" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),

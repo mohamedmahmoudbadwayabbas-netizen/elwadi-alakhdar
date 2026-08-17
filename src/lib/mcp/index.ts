@@ -11,10 +11,10 @@ const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unse
 
 export default defineMcp({
   name: "al-wadi-al-akhdar-mcp",
-  title: "الوادي الأخضر — MCP",
+  title: "سمارت ستور — MCP",
   version: "0.1.0",
   instructions:
-    "Tools for the Al-Wadi Al-Akhdar (الوادي الأخضر) grocery & herbal store. Use search_products / list_categories / get_product to browse the catalog. Signed-in users can view list_my_orders, list_my_wishlist, and add_to_wishlist.",
+    "Tools for the Smart Store (سمارت ستور) online grocery store. Use search_products / list_categories / get_product to browse the catalog. Signed-in users can view list_my_orders, list_my_wishlist, and add_to_wishlist.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

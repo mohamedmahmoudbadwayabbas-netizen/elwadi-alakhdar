@@ -10,7 +10,7 @@ import { ShieldAlert, Loader2 } from "lucide-react";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "لوحة التحكم — الوادي الأخضر" },
+      { title: "لوحة التحكم — سمارت ستور" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),

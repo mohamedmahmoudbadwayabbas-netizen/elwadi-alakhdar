@@ -84,7 +84,7 @@ type Settings = {
 
 const DEFAULT_SETTINGS: Settings = {
   whatsapp_number: "+201234567890",
-  hero_title: "الوادي الأخضر — هايبر ماركت أونلاين متكامل 🛒",
+  hero_title: "سمارت ستور — هايبر ماركت أونلاين متكامل 🛒",
   hero_subtitle:
     "تسوّق جميع سلع البقالة، اللحوم البلدية الطازجة، الأجبان، المشروبات والمنظفات بأسعار الجملة التنافسية وتوصيل سريع لباب المنزل.",
   hero_image_url:
@@ -93,7 +93,7 @@ const DEFAULT_SETTINGS: Settings = {
   store_address: "القاهرة، مصر — شارع التحرير",
   store_lat: 30.0444,
   store_lng: 31.2357,
-  site_name: "الوادي الأخضر — هايبر ماركت",
+  site_name: "سمارت ستور — هايبر ماركت",
   logo_url: null,
   favicon_url: null,
   primary_color: "142 76% 24%",
@@ -101,7 +101,7 @@ const DEFAULT_SETTINGS: Settings = {
   background_color: "48 33% 97%",
   foreground_color: "120 18% 12%",
   announcement_text:
-    "🛒 هايبر ماركت الوادي الأخضر — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
+    "🛒 هايبر ماركت سمارت ستور — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
   announcement_enabled: true,
   announcement_bg_color: "142 76% 24%",
   ga4_id: null,
@@ -414,7 +414,7 @@ function SettingsPage() {
                   <Input
                     value={s.site_name ?? ""}
                     onChange={(e) => updateSetting("site_name", e.target.value)}
-                    placeholder="الوادي الأخضر — هايبر ماركت"
+                    placeholder="سمارت ستور — هايبر ماركت"
                     className="h-10 rounded-xl font-bold text-xs"
                   />
                 </Field>
@@ -455,7 +455,7 @@ function SettingsPage() {
                   <Input
                     value={s.hero_title ?? ""}
                     onChange={(e) => updateSetting("hero_title", e.target.value)}
-                    placeholder="الوادي الأخضر — هايبر ماركت"
+                    placeholder="سمارت ستور — هايبر ماركت"
                     className="h-10 rounded-xl font-bold text-xs"
                   />
                 </Field>
@@ -669,7 +669,7 @@ function SettingsPage() {
                         rows={2}
                         value={s.announcement_text ?? ""}
                         onChange={(e) => updateSetting("announcement_text", e.target.value)}
-                        placeholder="🛒 هايبر ماركت الوادي الأخضر — توصيل فورى..."
+                        placeholder="🛒 هايبر ماركت سمارت ستور — توصيل فورى..."
                         className="rounded-xl font-bold text-xs"
                       />
                     </Field>
@@ -878,7 +878,7 @@ function LiveMobileSimulator({ s }: { s: Settings }) {
                 </div>
               )}
               <span className="font-extrabold text-xs truncate max-w-[120px]">
-                {s.site_name || "الوادي الأخضر"}
+                {s.site_name || "سمارت ستور"}
               </span>
             </div>
 
@@ -915,7 +915,7 @@ function LiveMobileSimulator({ s }: { s: Settings }) {
                   طازج يومياً ✨
                 </span>
                 <h4 className="font-black text-sm leading-snug line-clamp-1">
-                  {s.hero_title || "الوادي الأخضر"}
+                  {s.hero_title || "سمارت ستور"}
                 </h4>
                 <p className="text-[10px] opacity-90 line-clamp-2 mt-0.5 leading-tight">
                   {s.hero_subtitle || "منتجات طازجة وتوصيل سريع لباب البيت"}

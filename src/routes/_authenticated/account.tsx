@@ -37,7 +37,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/account")({
   ssr: false,
   head: () => ({
-    meta: [{ title: "حسابي — الوادي الأخضر" }, { name: "robots", content: "noindex,nofollow" }],
+    meta: [{ title: "حسابي — سمارت ستور" }, { name: "robots", content: "noindex,nofollow" }],
   }),
   component: AccountPage,
 });
@@ -67,7 +67,7 @@ function AccountPage() {
               <Leaf className="h-4 w-4" />
             </div>
             <span className="hidden font-display text-base font-extrabold sm:inline">
-              الوادي الأخضر
+              سمارت ستور
             </span>
           </Link>
           <div className="flex items-center gap-3">

@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,21 +26,21 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/categories")({
   head: () => ({
     meta: [
-      { title: "دليل الأقسام الشامل — الوادي الأخضر" },
+      { title: "دليل الأقسام الشامل — سمارت ستور" },
       {
         name: "description",
         content:
-          "تصفّح أقسام متجر الوادي الأخضر الشاملة بأعلى جودة وصور احترافية: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات",
+          "تصفّح أقسام متجر سمارت ستور الشاملة بأعلى جودة وصور احترافية: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات",
       },
-      { property: "og:title", content: "دليل الأقسام الشامل — الوادي الأخضر" },
+      { property: "og:title", content: "دليل الأقسام الشامل — سمارت ستور" },
       {
         property: "og:description",
-        content: "كل أقسام متجر الوادي الأخضر: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات.",
+        content: "كل أقسام متجر سمارت ستور: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات.",
       },
-      { property: "og:url", content: "https://elwadi-alakhdar.lovable.app/categories" },
-      { name: "twitter:title", content: "دليل الأقسام الشامل — الوادي الأخضر" },
+      { property: "og:url", content: `${SITE_URL}/categories` },
+      { name: "twitter:title", content: "دليل الأقسام الشامل — سمارت ستور" },
     ],
-    links: [{ rel: "canonical", href: "https://elwadi-alakhdar.lovable.app/categories" }],
+    links: [{ rel: "canonical", href: `${SITE_URL}/categories` }],
   }),
 
   component: CategoriesPage,
@@ -129,7 +130,7 @@ export function CategoriesPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background pb-28 text-right">
-      <h1 className="sr-only">دليل الأقسام الشامل — كل أقسام متجر الوادي الأخضر</h1>
+      <h1 className="sr-only">دليل الأقسام الشامل — كل أقسام متجر سمارت ستور</h1>
 
       {/* هيدر الصفحة الرئيسي */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-xl">
@@ -140,7 +141,7 @@ export function CategoriesPage() {
             </div>
             <div>
               <span className="font-display text-base font-black text-foreground block leading-tight">
-                الوادي الأخضر
+                سمارت ستور
               </span>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">
                 دليل الأقسام الشامل

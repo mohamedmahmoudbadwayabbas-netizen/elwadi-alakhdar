@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
     meta: [
-      { title: "تسجيل دخول الإدارة — الوادي الأخضر" },
+      { title: "تسجيل دخول الإدارة — سمارت ستور" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
@@ -116,7 +116,7 @@ function AdminLogin() {
             <Leaf className="h-6 w-6" />
           </div>
           <div>
-            <div className="font-display text-xl font-bold">الوادي الأخضر</div>
+            <div className="font-display text-xl font-bold">سمارت ستور</div>
             <div className="text-[11px] text-muted-foreground">دخول لوحة الإدارة</div>
           </div>
         </div>

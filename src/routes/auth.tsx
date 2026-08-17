@@ -14,8 +14,8 @@ function safeRelative(path: string) {
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "تسجيل الدخول / حساب جديد — الوادي الأخضر" },
-      { name: "description", content: "سجّل دخولك أو أنشئ حساباً جديداً في متجر الوادي الأخضر" },
+      { title: "تسجيل الدخول / حساب جديد — سمارت ستور" },
+      { name: "description", content: "سجّل دخولك أو أنشئ حساباً جديداً في متجر سمارت ستور" },
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
@@ -135,7 +135,7 @@ export function AuthPage() {
           </div>
           <div>
             <div className="font-display text-xl font-extrabold" style={{ color: "#036233" }}>
-              الوادي الأخضر
+              سمارت ستور
             </div>
             <div className="text-[11px] font-semibold text-muted-foreground">
               سوبر ماركت وعطارة طازجة
@@ -177,7 +177,7 @@ export function AuthPage() {
           </div>
 
           <h1 className="text-center font-display text-xl font-black text-foreground">
-            {mode === "signin" ? "مرحباً بعودتك إلى متجرك 🌿" : "انضم لعائلة الوادي الأخضر 🎉"}
+            {mode === "signin" ? "مرحباً بعودتك إلى متجرك 🌿" : "انضم لعائلة سمارت ستور 🎉"}
           </h1>
           <p className="mt-1 text-center text-xs text-muted-foreground font-semibold">
             {mode === "signin"
@@ -400,7 +400,7 @@ export function AuthPage() {
               className="text-xs font-extrabold text-emerald-800 hover:underline"
             >
               {mode === "signin"
-                ? "جديد في الوادي الأخضر؟ أنشئ حسابك من هنا"
+                ? "جديد في سمارت ستور؟ أنشئ حسابك من هنا"
                 : "لديك حساب بالفعل؟ سجل دخولك"}
             </button>
           </div>

@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/brand";
 import { NumberInput } from "@/components/ui/number-input";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
@@ -89,13 +90,13 @@ export const Route = createFileRoute("/products/$productId")({
     return { seo: data ?? null };
   },
   head: ({ params, loaderData }) => {
-    const url = `https://elwadi-alakhdar.lovable.app/products/${params.productId}`;
+    const url = `${SITE_URL}/products/${params.productId}`;
     const p = loaderData?.seo;
     const name = p?.name ?? "منتج";
-    const title = `${name} — الوادي الأخضر`.slice(0, 60);
+    const title = `${name} — سمارت ستور`.slice(0, 60);
     const description = (
       p?.description?.trim() ||
-      `اشترِ ${name} طازجًا من متجر الوادي الأخضر بأفضل سعر مع توصيل سريع لباب بيتك.`
+      `اشترِ ${name} طازجًا من متجر سمارت ستور بأفضل سعر مع توصيل سريع لباب بيتك.`
     ).slice(0, 158);
     return {
       meta: [
