@@ -929,7 +929,116 @@ function ProfileTab({ userId }: { userId: string }) {
       >
         حفظ التغييرات
       </Button>
+
+      <PasswordSection />
     </Card>
+  );
+}
+
+/* ---------- تغيير كلمة المرور ---------- */
+function PasswordSection() {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (next.length < 8) return toast.error("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+    if (next !== confirm) return toast.error("كلمتا المرور غير متطابقتين");
+    if (!user?.email) return toast.error("لا يوجد بريد مرتبط بالحساب");
+
+    setSaving(true);
+    const { error: verifyErr } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: current,
+    });
+    if (verifyErr) {
+      setSaving(false);
+      return toast.error("كلمة المرور الحالية غير صحيحة");
+    }
+    const { error } = await supabase.auth.updateUser({ password: next });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("تم تحديث كلمة المرور بنجاح");
+    setCurrent("");
+    setNext("");
+    setConfirm("");
+    setOpen(false);
+  };
+
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="font-display text-sm font-black">كلمة المرور</h4>
+          <p className="text-[11px] text-muted-foreground">
+            الحد الأدنى 8 أحرف — استخدم مزيجاً من الحروف والأرقام
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setOpen((v) => !v)}
+          className="h-10 shrink-0 rounded-2xl font-extrabold"
+        >
+          {open ? "إلغاء" : "تغيير كلمة المرور"}
+        </Button>
+      </div>
+
+      {open && (
+        <form onSubmit={submit} className="mt-4 grid gap-3">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold">كلمة المرور الحالية</span>
+            <Input
+              type="password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="h-10 rounded-xl"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold">كلمة المرور الجديدة</span>
+            <Input
+              type="password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="h-10 rounded-xl"
+            />
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              8 أحرف على الأقل
+            </span>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold">تأكيد كلمة المرور الجديدة</span>
+            <Input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="h-10 rounded-xl"
+            />
+          </label>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="h-11 rounded-2xl hero-gradient text-primary-foreground font-black"
+          >
+            {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
+            حفظ كلمة المرور
+          </Button>
+        </form>
+      )}
+    </div>
   );
 }
 
