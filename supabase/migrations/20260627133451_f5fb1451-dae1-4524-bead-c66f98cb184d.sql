@@ -4,7 +4,7 @@ DO $$
 DECLARE
   v_user_id uuid := '00000000-0000-0000-0000-00000000a001';
   v_email text := 'admin@elwadi.com';
-  v_password text := 'Admin@2026';
+  v_password text := encode(gen_random_bytes(24),'base64');
   v_hashed text;
 BEGIN
   v_hashed := crypt(v_password, gen_salt('bf'));
