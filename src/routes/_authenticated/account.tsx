@@ -199,6 +199,7 @@ function AccountPage() {
 /* ---------- Orders ---------- */
 function OrdersTab({ userId }: { userId: string }) {
   const qc = useQueryClient();
+  const router = useRouter();
   const { addItem } = useCart();
   const { data, isLoading } = useQuery({
     queryKey: ["my-orders", userId],
