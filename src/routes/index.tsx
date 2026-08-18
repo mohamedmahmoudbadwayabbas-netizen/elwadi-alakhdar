@@ -90,27 +90,8 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string | null;
-  image_url?: string | null;
-  sort_order: number;
-  badge?: string | null;
-  parent_id?: string | null;
-};
 
-type HeroBanner = {
-  id: string;
-  image_url: string;
-  title: string | null;
-  subtitle: string | null;
-  cta_text: string | null;
-  link_url: string | null;
-  sort_order: number;
-  is_active: boolean;
-};
+
 
 const HOME_PRODUCT_COLUMNS =
   "id,name,price_per_unit,old_price,image_url,category_id,stock_quantity,description,unit_label,is_by_weight,is_popular,is_on_sale,created_at";
