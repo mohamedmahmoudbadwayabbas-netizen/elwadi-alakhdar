@@ -401,6 +401,8 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
       is_featured: !!editing.is_featured,
       stock_quantity: Number(editing.stock_quantity ?? 0),
       low_stock_threshold: Number(editing.low_stock_threshold ?? 10),
+      cooking_tip: (editing.cooking_tip || (editing as any).cookingTip || "").trim() || null,
+      is_top_seller: !!(editing.is_top_seller ?? (editing as any).isTopSeller),
     };
 
     const res = editing.id
