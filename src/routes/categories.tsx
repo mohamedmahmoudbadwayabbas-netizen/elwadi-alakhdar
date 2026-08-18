@@ -22,6 +22,7 @@ import {
   getMergedCategories,
 } from "@/lib/categories-data";
 import { cn } from "@/lib/utils";
+import { useStoreCategories, type Category } from "@/lib/store-data-hooks";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -60,47 +61,24 @@ type Cat = {
 
 export function CategoriesPage() {
   const navigate = useNavigate();
-  const [cats, setCats] = useState<Cat[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: cachedCats, isLoading } = useStoreCategories();
+  const cats: Cat[] = (cachedCats ?? (COMPREHENSIVE_CATEGORIES as Category[])).map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    icon: c.icon,
+    image_url: c.image_url ?? null,
+    parent_id: c.parent_id ?? null,
+    sort_order: c.sort_order,
+    badge: c.badge,
+    description: c.description,
+  }));
+  const loading = isLoading && (!cachedCats || cachedCats.length === 0);
+
   const [searchFilter, setSearchFilter] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "horizontal-tabs">("grid");
   const tabScrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("categories")
-        .select("id,name,slug,icon,image_url,parent_id,sort_order")
-        .order("sort_order", { ascending: true });
-
-      const dbCats = (data ?? []) as Cat[];
-      const merged = getMergedCategories(dbCats);
-      setCats(
-        merged.map((c) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          icon: c.icon,
-          image_url: c.image_url,
-          parent_id: null,
-          sort_order: c.sort_order,
-          badge: c.badge,
-          description: c.description,
-        })),
-      );
-      setLoading(false);
-    };
-    load();
-
-    const ch = supabase
-      .channel("categories-page")
-      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, load)
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, []);
 
   const parents = cats.filter((c) => !c.parent_id);
   const childrenOf = (pid: string) => cats.filter((c) => c.parent_id === pid);
@@ -279,14 +257,7 @@ export function CategoriesPage() {
           </div>
         </div>
 
-        {/* عرض حالة التحميل */}
-        {loading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <SkeletonBox key={i} className="h-56 w-full rounded-3xl" />
-            ))}
-          </div>
-        ) : filteredParents.length === 0 ? (
+        {filteredParents.length === 0 ? (
           <EmptyState
             icon={<LayoutGrid className="h-8 w-8 text-emerald-600" />}
             title="لم نجد أقسام تطابق بحثك"

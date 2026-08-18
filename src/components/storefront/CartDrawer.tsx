@@ -22,6 +22,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  SubstitutionPreferencePicker,
+  type SubstitutionPreference,
+} from "./SubstitutionPreferencePicker";
 
 type PaymentMethod = "cod" | "instapay" | "bank";
 
@@ -42,6 +46,8 @@ export function CartDrawer() {
     useCart();
   const settings = useSettings();
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
+  const [substitutionPreference, setSubstitutionPreference] =
+    useState<SubstitutionPreference>("call_me");
   const [form, setForm] = useState({
     customer_name: "",
     phone: "",
@@ -96,11 +102,26 @@ export function CartDrawer() {
         return null;
       }
     })();
+
+    const substitutionLabel =
+      substitutionPreference === "call_me"
+        ? "[تفضيل البديل: الاتصال هاتفياً بالعميل]"
+        : substitutionPreference === "auto_best"
+          ? "[تفضيل البديل: اختيار أفضل بديل تلقائياً]"
+          : "[تفضيل البديل: عدم الاستبدال وحذف الصنف]";
+
+    const combinedNotes = [
+      substitutionLabel,
+      parsed.data.notes?.trim(),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     const { error } = await (supabase as any).rpc("create_order", {
       p_customer_name: parsed.data.customer_name,
       p_phone: parsed.data.phone,
       p_address: parsed.data.address,
-      p_notes: parsed.data.notes || null,
+      p_notes: combinedNotes || null,
       p_items: items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
       p_delivery_zone_id: null,
       p_delivery_method: "delivery",
@@ -357,6 +378,14 @@ export function CartDrawer() {
                   className="rounded-xl font-bold text-xs"
                 />
               </Field>
+
+              {/* تفضيل بدائل المنتجات عند النقص */}
+              <div className="pt-1">
+                <SubstitutionPreferencePicker
+                  value={substitutionPreference}
+                  onChange={setSubstitutionPreference}
+                />
+              </div>
 
               <div className="space-y-2 pt-1">
                 <span className="block text-xs font-black text-foreground">

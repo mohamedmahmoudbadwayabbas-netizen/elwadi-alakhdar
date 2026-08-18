@@ -33,6 +33,8 @@ import {
   Sparkles,
   ShoppingBag,
   Radio,
+  PhoneCall,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -551,11 +553,53 @@ function OrdersPage() {
                       </div>
                     </div>
 
-                    {/* Order Notes / Driver Info */}
+                    {/* Order Notes / Substitution Policy / Driver Info */}
                     {o.notes && (
-                      <div className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl border border-amber-500/20 font-bold flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 shrink-0" />
-                        <span>ملاحظات: {o.notes}</span>
+                      <div className="space-y-1.5">
+                        {o.notes.includes("الاتصال هاتفياً") ? (
+                          <div className="text-xs bg-amber-500/15 text-amber-900 dark:text-amber-200 p-2.5 rounded-xl border border-amber-500/30 font-bold flex items-center gap-2">
+                            <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
+                            <span>
+                              <strong>تعليمات التجهيز:</strong> اتصل هاتفياً بالعميل ({o.phone}) عند
+                              نقص أي صنف لاعتماد البديل 📞
+                            </span>
+                          </div>
+                        ) : o.notes.includes("أفضل بديل") ? (
+                          <div className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 p-2.5 rounded-xl border border-emerald-500/30 font-bold flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span>
+                              <strong>تعليمات التجهيز:</strong> استبدل الأصناف الناقصة بأفضل بديل
+                              متاح بنفس السعر والجودة تلقائياً ⚡
+                            </span>
+                          </div>
+                        ) : o.notes.includes("عدم الاستبدال") ? (
+                          <div className="text-xs bg-rose-500/15 text-rose-900 dark:text-rose-200 p-2.5 rounded-xl border border-rose-500/30 font-bold flex items-center gap-2">
+                            <Ban className="h-4 w-4 text-rose-600 shrink-0" />
+                            <span>
+                              <strong>تعليمات التجهيز:</strong> لا تقم باستبدال أي صنف ناقص — احذف
+                              الصنف وعدل قيمة الفاتورة 🚫
+                            </span>
+                          </div>
+                        ) : null}
+
+                        {/* ملاحظات العميل الخاصة */}
+                        {o.notes
+                          .split("\n")
+                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                          .join("\n")
+                          .trim() && (
+                          <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span>
+                              <strong>ملاحظات العميل:</strong>{" "}
+                              {o.notes
+                                .split("\n")
+                                .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                                .join("\n")
+                                .trim()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -661,6 +705,51 @@ function OrdersPage() {
                   <strong>عنوان التوصيل:</strong> {preview.address}
                 </p>
               </div>
+
+              {preview.notes && (
+                <div className="space-y-1.5">
+                  {preview.notes.includes("الاتصال هاتفياً") ? (
+                    <div className="text-xs bg-amber-500/15 text-amber-900 dark:text-amber-200 p-2.5 rounded-xl border border-amber-500/30 font-bold flex items-center gap-2">
+                      <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>
+                        <strong>تعليمات التجهيز:</strong> الاتصال بالعميل قبل استبدال أي صنف
+                      </span>
+                    </div>
+                  ) : preview.notes.includes("أفضل بديل") ? (
+                    <div className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 p-2.5 rounded-xl border border-emerald-500/30 font-bold flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>
+                        <strong>تعليمات التجهيز:</strong> اختيار أفضل بديل متاح بنفس الجودة والسعر
+                      </span>
+                    </div>
+                  ) : preview.notes.includes("عدم الاستبدال") ? (
+                    <div className="text-xs bg-rose-500/15 text-rose-900 dark:text-rose-200 p-2.5 rounded-xl border border-rose-500/30 font-bold flex items-center gap-2">
+                      <Ban className="h-4 w-4 text-rose-600 shrink-0" />
+                      <span>
+                        <strong>تعليمات التجهيز:</strong> عدم استبدال أي صنف وحذف الناقص من الفاتورة
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {preview.notes
+                    .split("\n")
+                    .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                    .join("\n")
+                    .trim() && (
+                    <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>
+                        <strong>ملاحظات العميل:</strong>{" "}
+                        {preview.notes
+                          .split("\n")
+                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                          .join("\n")
+                          .trim()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-foreground block">

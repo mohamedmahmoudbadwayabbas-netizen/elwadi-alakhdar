@@ -31,6 +31,9 @@ import {
   AlertCircle,
   LayoutDashboard,
   ShieldCheck,
+  PhoneCall,
+  Sparkles,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -202,7 +205,7 @@ function OrdersTab({ userId }: { userId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, created_at, status, total_price, items, payment_method, address")
+        .select("id, created_at, status, total_price, items, payment_method, address, notes")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -248,29 +251,33 @@ function OrdersTab({ userId }: { userId: string }) {
   ) => {
     let count = 0;
     for (const item of items) {
-      if (item.id) {
-        addItem(
-          {
-            id: item.id,
-            name: item.name,
-            price_per_unit: item.price,
-            is_by_weight: item.is_by_weight ?? false,
-            unit_label: item.unit_label ?? "قطعة",
-            category_id: "",
-            description: null,
-            old_price: null,
-            image_url: null,
-            stock_quantity: 100,
-          } as any,
-          item.quantity,
-        );
-        count++;
-      }
+      const prodId = item.id || `reorder-${item.name.replace(/\s+/g, "-")}`;
+      addItem(
+        {
+          id: prodId,
+          name: item.name,
+          price_per_unit: item.price ?? 0,
+          is_by_weight: item.is_by_weight ?? false,
+          unit_label: item.unit_label ?? (item.is_by_weight ? "كجم" : "قطعة"),
+          category_id: "",
+          description: null,
+          old_price: null,
+          image_url: null,
+          stock_quantity: 100,
+        } as any,
+        item.quantity || 1,
+      );
+      count++;
     }
     if (count > 0) {
-      toast.success("تمت إعادة إضافة المنتجات إلى السلة 🛒");
+      toast.success(`تمت إضافة ${count} منتجات من هذا الطلب إلى سلة المشتريات 🛒`, {
+        action: {
+          label: "فتح السلة والطلب 🛍️",
+          onClick: () => router.history.push("/cart"),
+        },
+      });
     } else {
-      toast.error("تعذر إضافة المنتجات إلى السلة");
+      toast.error("لا توجد منتجات صالحة في هذا الطلب");
     }
   };
 
@@ -340,6 +347,53 @@ function OrdersTab({ userId }: { userId: string }) {
             {/* خط الزمني للطلب */}
             <OrderStepper status={o.status} />
 
+            {/* تفضيل استبدال المنتجات والملاحظات */}
+            {o.notes && (
+              <div className="mt-3.5 space-y-1.5">
+                {o.notes.includes("الاتصال هاتفياً") ? (
+                  <div className="flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800/60 p-3 text-xs text-amber-900 dark:text-amber-200">
+                    <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
+                    <div>
+                      <span className="font-black">تفضيل الاستبدال:</span>{" "}
+                      <span>الاتصال هاتفياً بك قبل استبدال أي صنف غير متوفر 📞</span>
+                    </div>
+                  </div>
+                ) : o.notes.includes("أفضل بديل") ? (
+                  <div className="flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800/60 p-3 text-xs text-emerald-900 dark:text-emerald-200">
+                    <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="font-black">تفضيل الاستبدال:</span>{" "}
+                      <span>اختيار أفضل بديل تلقائياً بنفس الجودة والسعر ⚡</span>
+                    </div>
+                  </div>
+                ) : o.notes.includes("عدم الاستبدال") ? (
+                  <div className="flex items-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-800/60 p-3 text-xs text-rose-900 dark:text-rose-200">
+                    <Ban className="h-4 w-4 text-rose-600 shrink-0" />
+                    <div>
+                      <span className="font-black">تفضيل الاستبدال:</span>{" "}
+                      <span>عدم الاستبدال وحذف الصنف الناقص من الفاتورة 🚫</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* الملاحظات الإضافية للعميل إن وجدت بدون علامة التفضيل */}
+                {o.notes
+                  .split("\n")
+                  .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                  .join("\n")
+                  .trim() && (
+                  <div className="rounded-xl bg-secondary/50 p-2.5 text-xs text-muted-foreground font-semibold">
+                    <span className="font-bold text-foreground">ملاحظاتك: </span>
+                    {o.notes
+                      .split("\n")
+                      .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                      .join("\n")
+                      .trim()}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* قائمة المنتجات في الطلب */}
             {items.length > 0 && (
               <div className="mt-4 space-y-2 rounded-2xl bg-secondary/40 p-4">
@@ -371,11 +425,11 @@ function OrdersTab({ userId }: { userId: string }) {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
               <Button
                 size="sm"
-                variant="outline"
                 onClick={() => reorder(items)}
-                className="gap-1.5 rounded-2xl border-emerald-200 hover:bg-emerald-50 text-emerald-700 dark:border-emerald-800 text-xs font-bold"
+                className="gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs py-2 px-3.5"
               >
-                <RotateCcw className="h-3.5 w-3.5" /> إعادة الطلب
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>إعادة طلب هذه المنتجات بنقرة واحدة 🛒</span>
               </Button>
 
               {canCancel && (

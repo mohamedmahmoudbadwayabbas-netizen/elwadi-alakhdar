@@ -106,12 +106,26 @@ function applyTheme(s: StoreSettings) {
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
+  const [settings, setSettings] = useState<StoreSettings>(() => {
+    if (typeof window === "undefined") return DEFAULTS;
+    try {
+      const cached = localStorage.getItem("alwadi_store_settings_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        applyTheme(parsed);
+        return parsed;
+      }
+    } catch {}
+    return DEFAULTS;
+  });
 
   const updateLocalSettings = (updated: Partial<StoreSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...updated };
       applyTheme(next);
+      try {
+        localStorage.setItem("alwadi_store_settings_cache", JSON.stringify(next));
+      } catch {}
       return next;
     });
   };
@@ -152,6 +166,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
       setSettings(merged);
       applyTheme(merged);
+      try {
+        localStorage.setItem("alwadi_store_settings_cache", JSON.stringify(merged));
+      } catch {}
     };
 
     void load();

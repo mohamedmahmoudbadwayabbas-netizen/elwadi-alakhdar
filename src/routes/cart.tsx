@@ -37,6 +37,10 @@ import { useTheme } from "@/lib/theme-context";
 import { useSettings } from "@/lib/settings-context";
 import { playSuccessSound } from "@/lib/sounds";
 import { Truck as TruckIcon } from "lucide-react";
+import {
+  SubstitutionPreferencePicker,
+  SubstitutionPreference,
+} from "@/components/storefront/SubstitutionPreferencePicker";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -115,6 +119,8 @@ function CartPage() {
     payment_method: "cod" as PaymentMethod,
     payment_reference: "",
   });
+  const [substitutionPreference, setSubstitutionPreference] =
+    useState<SubstitutionPreference>("call_me");
   const [submitting, setSubmitting] = useState(false);
 
   // كوبون الخصم
@@ -343,6 +349,20 @@ function CartPage() {
       }
     })();
 
+    const substitutionLabel =
+      substitutionPreference === "call_me"
+        ? "[تفضيل البديل: الاتصال هاتفياً بالعميل]"
+        : substitutionPreference === "auto_best"
+          ? "[تفضيل البديل: اختيار أفضل بديل تلقائياً]"
+          : "[تفضيل البديل: عدم الاستبدال وحذف الصنف]";
+
+    const combinedNotes = [
+      substitutionLabel,
+      parsed.data.notes?.trim(),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     const { error } = await (supabase as any).rpc("create_order", {
       p_customer_name: parsed.data.customer_name,
       p_phone: parsed.data.phone,
@@ -350,7 +370,7 @@ function CartPage() {
         deliveryMethod === "pickup"
           ? `[استلام من الفرع] ${pay.store_address ?? ""}`.trim()
           : parsed.data.address,
-      p_notes: parsed.data.notes || null,
+      p_notes: combinedNotes || null,
       p_items: items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
       p_delivery_zone_id: deliveryMethod === "delivery" ? zoneId || null : null,
       p_delivery_method: deliveryMethod,
@@ -740,6 +760,12 @@ function CartPage() {
                   </div>
                 </div>
               </Card>
+
+              {/* خيارات ونظام البدائل في حال نفاد الأصناف */}
+              <SubstitutionPreferencePicker
+                value={substitutionPreference}
+                onChange={setSubstitutionPreference}
+              />
 
               <Card className="rounded-3xl border-border p-4 sm:p-5">
                 <h2 className="mb-3 font-display text-base font-bold">طريقة الدفع</h2>

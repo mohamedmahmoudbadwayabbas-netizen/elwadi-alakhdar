@@ -38,6 +38,13 @@ import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { SmartSearchBar } from "@/components/storefront/SmartSearchBar";
 import { searchProductsFuzzy } from "@/lib/fuzzy-search";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  useStoreProducts,
+  useStoreCategories,
+  useHeroBanners,
+  type Category,
+  type HeroBanner,
+} from "@/lib/store-data-hooks";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -116,10 +123,16 @@ function HomePage() {
   const { user } = useAuth();
   const { query: searchQuery } = useSearch();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [heroBanners, setHeroBanners] = useState<HeroBanner[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Instant cached data queries
+  const { data: productsData, isLoading: isProductsLoading } = useStoreProducts();
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useStoreCategories();
+  const { data: bannersData } = useHeroBanners();
+
+  const products = productsData ?? (MOCK_PRODUCTS as unknown as Product[]);
+  const categories = categoriesData ?? (COMPREHENSIVE_CATEGORIES as Category[]);
+  const heroBanners = useMemo(() => bannersData ?? [], [bannersData]);
+  const loading = isProductsLoading && (!productsData || productsData.length === 0);
+
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [wishlist, setWishlist] = useState<Record<string, string>>({});
   const [savedDeliveryTime, setSavedDeliveryTime] = useState("30 - 45 دقيقة ⚡");
@@ -151,75 +164,8 @@ function HomePage() {
       if (zone === "far") setSavedDeliveryTime("2 - 3 ساعات 🚚");
     }
 
-    const loadAllData = async () => {
-      setLoading(true);
-      try {
-        autoSeedDatabaseIfNeeded();
-
-        const [{ data: prods }, { data: cats }, { data: banners }] = await Promise.all([
-          supabase
-            .from("products")
-            .select(HOME_PRODUCT_COLUMNS)
-            .order("created_at", { ascending: false })
-            .limit(HOME_PRODUCTS_LIMIT),
-          supabase
-            .from("categories")
-            .select("id,name,slug,icon,image_url,sort_order,parent_id")
-            .order("sort_order", { ascending: true }),
-          supabase
-            .from("hero_banners")
-            .select("*")
-            .eq("is_active", true)
-            .order("sort_order", { ascending: true }),
-        ]);
-
-        const dbProds = (prods ?? []) as Product[];
-        const mergedMap = new Map<string, Product>();
-        for (const m of MOCK_PRODUCTS as unknown as Product[]) {
-          mergedMap.set(m.id, m);
-        }
-        for (const p of dbProds) {
-          mergedMap.set(p.id, p);
-        }
-        setProducts(Array.from(mergedMap.values()));
-
-        const dbCats = (cats ?? []) as Category[];
-        const mergedCats = getMergedCategories(dbCats);
-        setCategories(
-          mergedCats.map((c) => ({
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            icon: c.icon,
-            image_url: c.image_url,
-            sort_order: c.sort_order,
-            badge: c.badge,
-            parent_id: c.parent_id,
-          })),
-        );
-
-        if (banners) {
-          setHeroBanners(banners as HeroBanner[]);
-        }
-      } catch (err: any) {
-        toast.error(`خطأ في جلب البيانات: ${err.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAllData();
-
-    const channel = supabase
-      .channel("storefront-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, loadAllData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, loadAllData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "hero_banners" }, loadAllData)
-      .subscribe();
-
     return () => {
       window.removeEventListener("popstate", checkUrlCat);
-      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -374,8 +320,6 @@ function HomePage() {
 
   const bestSellers = useMemo(() => filteredProducts.slice(0, 5), [filteredProducts]);
   const latestProducts = useMemo(() => filteredProducts.slice(5, 15), [filteredProducts]);
-
-  if (loading) return <HomePageSkeleton />;
 
   return (
     <div className="min-h-screen bg-background pb-20 text-right font-sans" dir="rtl">

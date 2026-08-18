@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +128,7 @@ interface ProductsPageProps {
 }
 
 function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
+  const queryClient = useQueryClient();
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +137,16 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isGeneratingTip, setIsGeneratingTip] = useState(false);
+
+  const syncStorefrontPreview = (prodId?: string) => {
+    try {
+      localStorage.removeItem("alwadi_products_cache");
+    } catch {}
+    queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    if (prodId) {
+      queryClient.invalidateQueries({ queryKey: ["store-product", prodId] });
+    }
+  };
 
   // الفلاتر والبحث
   const [searchQuery, setSearchQuery] = useState("");
@@ -279,6 +291,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
         prev.map((item) => (item.id === id ? { ...item, [field]: numValue } : item)),
       );
       setRecentlySavedId(id);
+      syncStorefrontPreview(id);
       toast.success(
         field === "price_per_unit" ? "تم تحديث السعر بنجاح ✨" : "تم تحديث كمية المخزون ✨",
       );
@@ -298,6 +311,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
       toast.error(error.message);
       load();
     } else {
+      syncStorefrontPreview(p.id);
       toast.success(newVal ? "تم وضع علامة عرض خاص 🔥" : "تم إلغاء العرض الخاص");
     }
   };
@@ -401,7 +415,9 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
     }
 
     toast.success(editing.id ? "تم تحديث بيانات المنتج بنجاح ✨" : "تمت إضافة المنتج بنجاح 🎉");
+    const savedId = editing.id;
     setEditing(null);
+    syncStorefrontPreview(savedId);
     load();
   };
 
@@ -415,6 +431,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
     } else {
       toast.success("تم حذف المنتج");
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      syncStorefrontPreview(id);
     }
   };
 

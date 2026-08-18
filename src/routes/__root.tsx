@@ -202,12 +202,7 @@ function StorefrontHeader() {
   return <Header />;
 }
 
-// Fade transition on route change — respects prefers-reduced-motion.
+// Smooth route layout container without forced unmount
 function RouteFade({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  return (
-    <div key={pathname} className="motion-safe:animate-fade-in">
-      {children}
-    </div>
-  );
+  return <div className="transition-opacity duration-150">{children}</div>;
 }

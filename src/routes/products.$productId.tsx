@@ -51,6 +51,7 @@ import { flyToCart } from "@/lib/fly-to-cart";
 import { MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { motion, AnimatePresence } from "motion/react";
+import { useStoreProduct, useStoreProducts } from "@/lib/store-data-hooks";
 
 // ─── الأنواع ───────────────────────────────────────────────────────────────────
 type Review = {
@@ -242,11 +243,42 @@ function ProductPage() {
   const { addItem } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<Product | null>(null);
+
+  // Instant cached query
+  const { data: cachedProduct, isLoading: isProdLoading } = useStoreProduct(productId);
+  const { data: allStoreProducts } = useStoreProducts();
+
+  const initialProd =
+    cachedProduct ??
+    (allStoreProducts?.find((p) => p.id === productId) ||
+      (MOCK_PRODUCTS as unknown as Product[]).find((p) => p.id === productId) ||
+      null);
+
+  const [product, setProduct] = useState<Product | null>(initialProd);
   const [similar, setSimilar] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [qty, setQty] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [qty, setQty] = useState(() => (initialProd?.is_by_weight ? 0.5 : 1));
+  const [images, setImages] = useState<string[]>(() =>
+    initialProd?.image_url ? [initialProd.image_url] : [],
+  );
+
+  // Sync cached product instantly
+  useEffect(() => {
+    if (cachedProduct) {
+      setProduct(cachedProduct);
+      setQty(cachedProduct.is_by_weight ? 0.5 : 1);
+      setImages(cachedProduct.image_url ? [cachedProduct.image_url] : []);
+      setLoading(false);
+
+      if (allStoreProducts && cachedProduct.category_id) {
+        const simList = allStoreProducts.filter(
+          (p) => p.category_id === cachedProduct.category_id && p.id !== productId,
+        ).slice(0, 6);
+        setSimilar(simList);
+      }
+    }
+  }, [cachedProduct, allStoreProducts, productId]);
 
   // المفضلة عبر قاعدة البيانات
   const [wishlistRowId, setWishlistRowId] = useState<string | null>(null);
@@ -268,7 +300,6 @@ function ProductPage() {
   });
   const [isDetecting, setIsDetecting] = useState(false);
 
-  const [images, setImages] = useState<string[]>([]);
   const [activeImg, setActiveImg] = useState(0);
   const [zoomed, setZoomed] = useState(false);
 
@@ -426,79 +457,36 @@ function ProductPage() {
 
   useEffect(() => {
     let isMounted = true;
+    // Track real product view in database (debounced per session)
+    try {
+      const viewedKey = `viewed_prod_${productId}`;
+      if (!sessionStorage.getItem(viewedKey)) {
+        sessionStorage.setItem(viewedKey, "1");
+        (supabase as any).rpc("increment_product_views", { p_product_id: productId }).catch(() => {});
+      }
+    } catch {}
+
+    // Load reviews in background
     (async () => {
-      setLoading(true);
-
-      // Auto seed if database has no products
-      autoSeedDatabaseIfNeeded();
-
-      const [{ data: prod }, { data: revs }] = await Promise.all([
-        supabase.from("products").select("*").eq("id", productId).maybeSingle(),
-        supabase
+      try {
+        const { data: revs } = await supabase
           .from("reviews")
           .select("*")
           .eq("product_id", productId)
-          .order("created_at", { ascending: false }),
-      ]);
-      if (!isMounted) return;
+          .order("created_at", { ascending: false });
 
-      let foundProd = prod as Product | null;
-      if (!foundProd) {
-        // Fallback to MOCK_PRODUCTS if DB entry doesn't exist yet
-        const mockMatch = MOCK_PRODUCTS.find((m) => m.id === productId);
-        if (mockMatch) {
-          foundProd = {
-            id: mockMatch.id,
-            name: mockMatch.name,
-            description: mockMatch.description || null,
-            category_id: mockMatch.category_id || null,
-            price_per_unit: mockMatch.price_per_unit,
-            old_price: mockMatch.old_price || null,
-            image_url: mockMatch.image_url || null,
-            unit_label: mockMatch.unit_label || "قطعة",
-            is_by_weight: !!mockMatch.is_by_weight,
-            stock_quantity: mockMatch.stock_quantity ?? 100,
-          } as Product;
+        if (isMounted && revs) {
+          setReviews(revs as Review[]);
         }
-      }
-
-      if (foundProd) {
-        setProduct(foundProd);
-        setQty(foundProd.is_by_weight ? 0.5 : 1);
-        setImages(foundProd.image_url ? [foundProd.image_url] : []);
-
-        if (foundProd.category_id) {
-          const { data: sim } = await supabase
-            .from("products")
-            .select("*")
-            .eq("category_id", foundProd.category_id)
-            .neq("id", productId)
-            .limit(6);
-
-          if (isMounted) {
-            let list = (sim ?? []) as Product[];
-            if (list.length === 0) {
-              list = MOCK_PRODUCTS.filter(
-                (m) => m.category_id === foundProd?.category_id && m.id !== productId,
-              ) as unknown as Product[];
-            }
-            setSimilar(list);
-          }
-        }
-      }
-
-      if (isMounted) {
-        setReviews((revs ?? []) as Review[]);
-        setLoading(false);
-      }
+      } catch {}
     })();
     return () => {
       isMounted = false;
     };
   }, [productId]);
 
-  if (loading) return <ProductPageSkeleton />;
-  if (!product) return <div className="text-center py-20">المنتج غير موجود</div>;
+  if (!product && isProdLoading) return <ProductPageSkeleton />;
+  if (!product) return <div className="text-center py-20 font-bold text-muted-foreground">المنتج غير موجود أو جارٍ تحميله...</div>;
 
   const outOfStock = (product.stock_quantity ?? 1) <= 0;
   const step = product.is_by_weight ? 0.25 : 1;

@@ -1,4 +1,4 @@
-import { Plus, Minus, Award, Heart, ShoppingCart, Flame } from "lucide-react";
+import { Plus, Minus, Award, Heart, ShoppingCart, Flame, Scale, Sparkles, Leaf } from "lucide-react";
 import type { Product } from "@/lib/cart-context";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
@@ -38,11 +38,30 @@ export function ProductCard({
   const displayPrice = product.is_by_weight ? product.price_per_unit / 2 : product.price_per_unit;
   const displayUnit = product.is_by_weight ? "/ ½ كجم" : `/ ${product.unit_label ?? "قطعة"}`;
 
-  const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAdd = (e: React.MouseEvent<HTMLButtonElement>, customWeight?: number) => {
     e.stopPropagation();
-    addItem(product, step);
+    const amount = customWeight ?? step;
+    addItem(product, amount);
     flyToCart(e.currentTarget);
-    toast.success("تمت الإضافة للسلة 🛒", { description: product.name });
+    toast.success("تمت الإضافة للسلة 🛒", {
+      description: `${product.name} (${product.is_by_weight ? (amount >= 1 ? `${amount} كجم` : `${amount * 1000} جم`) : `${amount} ${product.unit_label ?? "قطعة"}`})`,
+    });
+  };
+
+  const handleQuickWeightSelect = (e: React.MouseEvent, weight: number) => {
+    e.stopPropagation();
+    if (qty > 0) {
+      updateQuantity(product.id, weight);
+      toast.success("تم تحديث الوزن في السلة ⚖️", {
+        description: `${product.name}: ${weight >= 1 ? `${weight} كجم` : `${weight * 1000} جم`}`,
+      });
+    } else {
+      addItem(product, weight);
+      flyToCart(e.currentTarget as HTMLElement);
+      toast.success("تمت الإضافة للسلة بالوزن المحدد ⚖️", {
+        description: `${product.name}: ${weight >= 1 ? `${weight} كجم` : `${weight * 1000} جم`}`,
+      });
+    }
   };
 
   const handleInc = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -91,6 +110,7 @@ export function ProductCard({
             src={product.image_url}
             alt={product.name}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -133,10 +153,16 @@ export function ProductCard({
           <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
         </button>
 
+        {/* شارات منتجات الوزن والطزاجة */}
         {product.is_by_weight && (
-          <span className="absolute bottom-2 start-2 z-10 rounded-lg bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white">
-            ⚖️ يباع بالوزن
-          </span>
+          <div className="absolute bottom-2 start-2 z-10 flex flex-wrap gap-1">
+            <span className="flex items-center gap-1 rounded-lg bg-emerald-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-emerald-200 border border-emerald-400/30 shadow-xs">
+              <Scale className="h-3 w-3 text-emerald-400" /> يباع بالوزن
+            </span>
+            <span className="flex items-center gap-1 rounded-lg bg-amber-950/80 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-bold text-amber-200 border border-amber-400/30">
+              <Leaf className="h-2.5 w-2.5 text-amber-400" /> طازج يومياً
+            </span>
+          </div>
         )}
       </div>
 
@@ -168,6 +194,33 @@ export function ProductCard({
             </span>
           )}
         </div>
+
+        {/* خيارات التحديد السريع للوزن في البطاقة (Quick Weight Chips) */}
+        {product.is_by_weight && (
+          <div className="flex items-center justify-between gap-1 pt-1">
+            <span className="text-[10px] font-extrabold text-muted-foreground">تحديد سريع:</span>
+            <div className="flex items-center gap-1">
+              {[
+                { label: "250 جم", val: 0.25 },
+                { label: "500 جم", val: 0.5 },
+                { label: "1 كجم", val: 1 },
+              ].map((w) => (
+                <button
+                  key={w.val}
+                  onClick={(e) => handleQuickWeightSelect(e, w.val)}
+                  className={cn(
+                    "px-1.5 py-0.5 rounded-md text-[10px] font-bold border transition-all active:scale-95",
+                    qty === w.val
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                      : "bg-secondary/70 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-foreground border-border/60",
+                  )}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* زر الإضافة */}
         <div className="mt-auto pt-2">
