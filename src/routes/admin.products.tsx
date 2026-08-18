@@ -43,6 +43,7 @@ import {
   Eye,
   CheckSquare,
   Layers,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -75,6 +76,18 @@ type Product = {
   is_featured: boolean;
   stock_quantity: number;
   low_stock_threshold: number;
+  cooking_tip?: string | null;
+  cookingTip?: string | null;
+  views_count?: number | null;
+  viewsCount?: number | null;
+  purchase_count?: number | null;
+  purchaseCount?: number | null;
+  avg_rating?: number | null;
+  avgRating?: number | null;
+  reviews_count?: number | null;
+  reviewsCount?: number | null;
+  is_top_seller?: boolean | null;
+  isTopSeller?: boolean | null;
 };
 
 type Category = { id: string; name: string };
@@ -99,6 +112,8 @@ const emptyProduct: Partial<Product> = {
   is_featured: false,
   stock_quantity: 100,
   low_stock_threshold: 10,
+  cooking_tip: "",
+  cookingTip: "",
 };
 
 function normalizeNumber(v: string | number): number {
@@ -107,7 +122,11 @@ function normalizeNumber(v: string | number): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function ProductsPage() {
+interface ProductsPageProps {
+  onGenerateCookingTip?: (productName?: string) => void;
+}
+
+function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +134,7 @@ function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isGeneratingTip, setIsGeneratingTip] = useState(false);
 
   // الفلاتر والبحث
   const [searchQuery, setSearchQuery] = useState("");
@@ -266,25 +286,6 @@ function ProductsPage() {
     }
   };
 
-  // تبديل سريع لخاصية الأكثر مبيعاً (is_featured)
-  const toggleFeatured = async (p: Product) => {
-    const newVal = !p.is_featured;
-    setProducts((prev) =>
-      prev.map((item) => (item.id === p.id ? { ...item, is_featured: newVal } : item)),
-    );
-
-    const { error } = await supabase
-      .from("products")
-      .update({ is_featured: newVal })
-      .eq("id", p.id);
-    if (error) {
-      toast.error(error.message);
-      load(); // إعادة الجلب في حال الخلل
-    } else {
-      toast.success(newVal ? "تم تثبيت المنتج كأكثر مبيعاً ⭐" : "تم إلغاء التثبيت");
-    }
-  };
-
   // تبديل سريع للعرض الخاص (is_on_sale)
   const toggleOnSale = async (p: Product) => {
     const newVal = !p.is_on_sale;
@@ -298,6 +299,46 @@ function ProductsPage() {
       load();
     } else {
       toast.success(newVal ? "تم وضع علامة عرض خاص 🔥" : "تم إلغاء العرض الخاص");
+    }
+  };
+
+  // توليد نصيحة طبخ بالذكاء الاصطناعي (محاكاة تفاعلية للـ UX)
+  const handleGenerateCookingTip = async () => {
+    if (!editing) return;
+    setIsGeneratingTip(true);
+    try {
+      if (onGenerateCookingTip) {
+        await Promise.resolve(onGenerateCookingTip(editing.name));
+      }
+      // محاكاة تأخير زمني للاستدعاء (~800ms) لإظهار الـ Loading state
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      const productName = editing.name?.trim() || "هذا المنتج";
+      const sampleTips = [
+        `للحصول على ألذ نكهة لـ (${productName})، يُفضل غسله وتجفيفه بعناية قبل الطهي وإضافة لمسة من زيت الزيتون البكر والأعشاب الطازجة.`,
+        `يُحفظ (${productName}) في مكان جاف وبارد، ويُفضل طهيه على نار هادئة لضمان النضج المثالي والاحتفاظ بالقيمة الغذائية العالية.`,
+        `لأفضل قوام ونكهة غنية، انقع (${productName}) في تتبيلة الليمون والتوابل الخاصة لمدة 15 دقيقة قبل الشواء أو التقديم.`,
+        `يُفضل تقديمه طازجاً مع رشة ملح بحري ورذاذ ليمون لتعزيز النكهة الطبيعية الشهية لـ (${productName}).`,
+      ];
+      const generatedPlaceholder =
+        sampleTips[Math.floor(Math.random() * sampleTips.length)];
+
+      setEditing((prev) =>
+        prev
+          ? {
+              ...prev,
+              cooking_tip: generatedPlaceholder,
+              cookingTip: generatedPlaceholder,
+            }
+          : null,
+      );
+      toast.success("تم توليد نصيحة الطبخ بالذكاء الاصطناعي بنجاح ✨", {
+        description: `تم إدراج النصيحة الخاصة بـ "${productName}" في الحقل لمعاينتها.`,
+      });
+    } catch {
+      toast.error("تعذر توليد النصيحة في الوقت الحالي، يرجى المحاولة لاحقاً.");
+    } finally {
+      setIsGeneratingTip(false);
     }
   };
 
@@ -791,21 +832,18 @@ function ProductsPage() {
                       )}
                     </td>
 
-                    {/* مفتاح الأكثر مبيعاً (Star Toggle) */}
+                    {/* حالة الأكثر مبيعاً (قراءة تلقائية بدون زر يدوي) */}
                     <td className="p-3.5 text-center">
-                      <button
-                        onClick={() => toggleFeatured(p)}
-                        className="p-1.5 rounded-xl hover:bg-secondary transition-colors"
-                        title={p.is_featured ? "إلغاء التثبيت" : "تثبيت كأكثر مبيعاً"}
-                      >
-                        <Star
-                          className={`h-5 w-5 transition-transform hover:scale-125 ${
-                            p.is_featured
-                              ? "fill-amber-400 text-amber-500"
-                              : "text-muted-foreground/40"
-                          }`}
-                        />
-                      </button>
+                      {Boolean(p.is_top_seller || p.isTopSeller || p.is_featured) ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] px-2 py-0.5 border border-amber-500/20 shadow-2xs"
+                          title="شارة الأكثر مبيعاً (تلقائية)"
+                        >
+                          <Flame className="h-3 w-3 fill-amber-500/20 text-amber-500" /> أكثر مبيعاً
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground/40 font-medium">—</span>
+                      )}
                     </td>
 
                     {/* مفتاح العرض الخاص (Sale Toggle) */}
@@ -1012,8 +1050,51 @@ function ProductsPage() {
                 />
               </Field>
 
+              {/* حقل نصيحة الطبخ والتحضير مع زر التوليد بالذكاء الاصطناعي */}
+              <div className="sm:col-span-2 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                    <span>نصيحة الطبخ والتحضير (Cooking Tip)</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isGeneratingTip}
+                    onClick={handleGenerateCookingTip}
+                    className="h-8 rounded-xl border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 hover:text-amber-800 text-[11px] font-black gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {isGeneratingTip ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600 dark:text-amber-400" />
+                        <span>جاري التوليد...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        <span>توليد نصيحة طبخ بالذكاء الاصطناعي</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <Textarea
+                  rows={2}
+                  value={editing.cooking_tip || editing.cookingTip || ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      cooking_tip: e.target.value,
+                      cookingTip: e.target.value,
+                    })
+                  }
+                  placeholder="اكتب نصيحة طبخ أو اقتراح تحضير مميز للعملاء..."
+                  className="rounded-xl font-bold text-xs bg-background"
+                />
+              </div>
+
               {/* الخيارات والتغييرات السريعة */}
-              <div className="sm:col-span-2 grid grid-cols-3 gap-2.5 rounded-2xl border border-border bg-secondary/30 p-3">
+              <div className="sm:col-span-2 grid grid-cols-2 gap-2.5 rounded-2xl border border-border bg-secondary/30 p-3">
                 <Toggle
                   label="موزون (كجم)"
                   checked={!!editing.is_by_weight}
@@ -1024,11 +1105,6 @@ function ProductsPage() {
                       unit_label: v ? "كجم" : editing.unit_label || "قطعة",
                     })
                   }
-                />
-                <Toggle
-                  label="الأكثر مبيعاً"
-                  checked={!!editing.is_featured}
-                  onChange={(v) => setEditing({ ...editing, is_featured: v })}
                 />
                 <Toggle
                   label="عرض خاص"

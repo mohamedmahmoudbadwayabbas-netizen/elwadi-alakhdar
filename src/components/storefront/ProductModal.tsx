@@ -41,6 +41,15 @@ export function ProductModal({
           ) : (
             <div className="grid h-full w-full place-items-center text-6xl">🌿</div>
           )}
+          {Boolean(
+            (product as any).isTopSeller ||
+              (product as any).is_top_seller ||
+              product.is_featured,
+          ) && (
+            <span className="absolute top-3 end-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-black text-white shadow">
+              الأكثر مبيعاً 🔥
+            </span>
+          )}
           {product.is_on_sale && (
             <span className="absolute top-3 start-3 rounded-full sale-gradient px-3 py-1 text-xs font-black text-sale-foreground shadow">
               عرض خاص

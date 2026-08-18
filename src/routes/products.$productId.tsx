@@ -46,6 +46,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { ProductPageSkeleton } from "@/components/storefront/Skeletons";
+import { ProductStatsAndTip } from "@/components/storefront/ProductStatsAndTip";
 import { flyToCart } from "@/lib/fly-to-cart";
 import { MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
@@ -634,8 +635,17 @@ function ProductPage() {
               <div className="grid h-full w-full place-items-center text-6xl">🌿</div>
             )}
 
-            {/* شارات الجودة والتخفيض ─── */}
+            {/* شارات الجودة والتخفيض والأكثر مبيعاً ─── */}
             <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+              {Boolean(
+                (product as any).isTopSeller ||
+                  (product as any).is_top_seller ||
+                  product.is_featured,
+              ) && (
+                <span className="rounded-full bg-amber-500 text-white font-black text-[11px] px-3 py-1 shadow-md flex items-center gap-1">
+                  <Flame className="h-3.5 w-3.5" /> الأكثر مبيعاً
+                </span>
+              )}
               {product.old_price && product.old_price > product.price_per_unit && (
                 <span className="rounded-full bg-red-500 text-white font-black text-[11px] px-3 py-1 shadow-md">
                   خصم{" "}
@@ -718,21 +728,6 @@ function ProductPage() {
             </div>
           </div>
 
-          {/* مؤشرات الشراء والتقييم والسعادة ─── */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-xl">
-              <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-              <span>4.9</span>
-              <span className="text-muted-foreground font-normal">
-                ({reviews.length || 18} تقييم)
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-emerald-600 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-xl">
-              <Eye className="h-3.5 w-3.5" />
-              <span>يشاهده 14 شخصاً الآن</span>
-            </div>
-          </div>
-
           {/* تأثير الـ FOMO للمخزون المتبقي */}
           {!outOfStock && product.stock_quantity && product.stock_quantity <= 5 && (
             <div className="rounded-xl bg-orange-500/10 p-3 border border-orange-500/20 text-center animate-pulse">
@@ -743,6 +738,26 @@ function ProductPage() {
             </div>
           )}
         </div>
+
+        {/* ─── مكون إحصاءات المنتج والمشاهدات والمشترين ونظرة الشيف والطبخ ─── */}
+        <ProductStatsAndTip
+          viewsCount={(product as any).viewsCount ?? (product as any).views_count ?? 0}
+          purchaseCount={(product as any).purchaseCount ?? (product as any).purchase_count ?? 0}
+          avgRating={
+            (product as any).avgRating ??
+            (product as any).avg_rating ??
+            (reviews.length > 0
+              ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+              : 0)
+          }
+          reviewsCount={
+            (product as any).reviewsCount ?? (product as any).reviews_count ?? reviews.length
+          }
+          cookingTip={(product as any).cookingTip ?? (product as any).cooking_tip ?? null}
+          isTopSeller={Boolean(
+            (product as any).isTopSeller ?? (product as any).is_top_seller ?? product.is_featured,
+          )}
+        />
 
         {/* ─── تبويبات تفاصيل المنتج التفاعلية (الوصف / التخزين / الجودة) ─── */}
         <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">

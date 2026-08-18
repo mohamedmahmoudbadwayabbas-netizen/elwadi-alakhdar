@@ -26,6 +26,19 @@ export type Product = {
   is_featured?: boolean;
   stock_quantity?: number;
   low_stock_threshold?: number;
+  /** إحصاءات المنتج ونصيحة الطبخ (تغذية مرنة للواجهة) */
+  views_count?: number | null;
+  purchase_count?: number | null;
+  avg_rating?: number | null;
+  reviews_count?: number | null;
+  cooking_tip?: string | null;
+  is_top_seller?: boolean | null;
+  viewsCount?: number | null;
+  purchaseCount?: number | null;
+  avgRating?: number | null;
+  reviewsCount?: number | null;
+  cookingTip?: string | null;
+  isTopSeller?: boolean | null;
 };
 
 export type CartItem = {

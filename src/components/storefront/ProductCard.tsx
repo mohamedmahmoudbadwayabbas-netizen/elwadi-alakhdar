@@ -1,4 +1,4 @@
-import { Plus, Minus, Award, Heart, ShoppingCart } from "lucide-react";
+import { Plus, Minus, Award, Heart, ShoppingCart, Flame } from "lucide-react";
 import type { Product } from "@/lib/cart-context";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
@@ -10,14 +10,23 @@ import { useState } from "react";
 export function ProductCard({
   product,
   onOpen,
+  isTopSeller,
 }: {
   product: Product;
   onOpen: (p: Product) => void;
+  isTopSeller?: boolean;
 }) {
   const { addItem, updateQuantity, removeItem, items } = useCart();
   const inCart = items.find((i) => i.product.id === product.id);
   const qty = inCart?.quantity ?? 0;
   const [isLiked, setIsLiked] = useState(false);
+
+  const isTopSellerActive = Boolean(
+    isTopSeller ??
+      product.isTopSeller ??
+      product.is_top_seller ??
+      product.is_featured,
+  );
 
   const discount =
     product.old_price && product.old_price > product.price_per_unit
@@ -91,14 +100,19 @@ export function ProductCard({
         {/* تدرج ظلي خفيف لتعزيز وضوح الشارات */}
         <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/20 via-transparent to-transparent opacity-80" />
 
-        {/* شارة الخصم والمميز */}
+        {/* شارة الخصم والأكثر مبيعاً والمميز */}
         <div className="absolute top-2.5 start-2.5 z-10 flex flex-wrap gap-1.5">
+          {isTopSellerActive && (
+            <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-0.5 text-[10px] font-black text-white shadow-md">
+              <Flame className="h-3 w-3" /> الأكثر مبيعاً
+            </span>
+          )}
           {discount > 0 && (
             <span className="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-2.5 py-0.5 text-[10px] font-black text-white shadow-md">
               خصم {discount}%
             </span>
           )}
-          {(product.is_featured || product.is_popular) && (
+          {product.is_popular && !isTopSellerActive && (
             <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
               <Award className="h-3 w-3" /> مميز
             </span>
