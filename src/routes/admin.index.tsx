@@ -65,6 +65,7 @@ type OrderRow = {
   total_price: number;
   status: string;
   created_at: string;
+  notes?: string | null;
   items?: { id?: string; name: string; quantity: number; subtotal: number }[];
 };
 
