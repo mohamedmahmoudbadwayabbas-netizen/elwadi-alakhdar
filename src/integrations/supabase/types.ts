@@ -308,7 +308,9 @@ export type Database = {
       }
       products: {
         Row: {
+          avg_rating: number
           category_id: string | null
+          cooking_tip: string | null
           created_at: string
           description: string | null
           id: string
@@ -317,16 +319,22 @@ export type Database = {
           is_featured: boolean
           is_on_sale: boolean
           is_popular: boolean
+          is_top_seller: boolean
           low_stock_threshold: number
           name: string
           old_price: number | null
           price_per_unit: number
+          purchase_count: number
+          reviews_count: number
           stock_quantity: number
           unit_label: string
           updated_at: string
+          views_count: number
         }
         Insert: {
+          avg_rating?: number
           category_id?: string | null
+          cooking_tip?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -335,16 +343,22 @@ export type Database = {
           is_featured?: boolean
           is_on_sale?: boolean
           is_popular?: boolean
+          is_top_seller?: boolean
           low_stock_threshold?: number
           name: string
           old_price?: number | null
           price_per_unit: number
+          purchase_count?: number
+          reviews_count?: number
           stock_quantity?: number
           unit_label?: string
           updated_at?: string
+          views_count?: number
         }
         Update: {
+          avg_rating?: number
           category_id?: string | null
+          cooking_tip?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -353,13 +367,17 @@ export type Database = {
           is_featured?: boolean
           is_on_sale?: boolean
           is_popular?: boolean
+          is_top_seller?: boolean
           low_stock_threshold?: number
           name?: string
           old_price?: number | null
           price_per_unit?: number
+          purchase_count?: number
+          reviews_count?: number
           stock_quantity?: number
           unit_label?: string
           updated_at?: string
+          views_count?: number
         }
         Relationships: [
           {
@@ -770,6 +788,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      increment_product_views: {
+        Args: { p_product_id: string }
+        Returns: undefined
       }
       validate_coupon: {
         Args: { p_code: string; p_subtotal: number }
