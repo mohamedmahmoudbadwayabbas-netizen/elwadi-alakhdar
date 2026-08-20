@@ -652,7 +652,8 @@ export const MOCK_PRODUCTS: any[] = [
     category_id: "cat-meat",
     price_per_unit: 380,
     old_price: 420,
-    image_url: "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
@@ -670,8 +671,10 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.9,
     reviews_count: 48,
     reviewsCount: 48,
-    cooking_tip: "يُفضل طهيه على نار هادئة مع إضافة حبهان وورق لورا وبصلة مشوية للحصول على ألذ شوربة ونكهة لحم غنية.",
-    cookingTip: "يُفضل طهيه على نار هادئة مع إضافة حبهان وورق لورا وبصلة مشوية للحصول على ألذ شوربة ونكهة لحم غنية.",
+    cooking_tip:
+      "يُفضل طهيه على نار هادئة مع إضافة حبهان وورق لورا وبصلة مشوية للحصول على ألذ شوربة ونكهة لحم غنية.",
+    cookingTip:
+      "يُفضل طهيه على نار هادئة مع إضافة حبهان وورق لورا وبصلة مشوية للحصول على ألذ شوربة ونكهة لحم غنية.",
     created_at: new Date().toISOString(),
   },
   {
@@ -681,7 +684,8 @@ export const MOCK_PRODUCTS: any[] = [
     category_id: "cat-meat",
     price_per_unit: 210,
     old_price: 240,
-    image_url: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
@@ -699,8 +703,10 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.8,
     reviews_count: 36,
     reviewsCount: 36,
-    cooking_tip: "يُقلى في زيت غزير ساخن لمدة 4 دقائق لكل جانب للحصول على قرمشة ذهبية مثالية ولحم طري من الداخل.",
-    cookingTip: "يُقلى في زيت غزير ساخن لمدة 4 دقائق لكل جانب للحصول على قرمشة ذهبية مثالية ولحم طري من الداخل.",
+    cooking_tip:
+      "يُقلى في زيت غزير ساخن لمدة 4 دقائق لكل جانب للحصول على قرمشة ذهبية مثالية ولحم طري من الداخل.",
+    cookingTip:
+      "يُقلى في زيت غزير ساخن لمدة 4 دقائق لكل جانب للحصول على قرمشة ذهبية مثالية ولحم طري من الداخل.",
     created_at: new Date().toISOString(),
   },
   {
@@ -710,7 +716,8 @@ export const MOCK_PRODUCTS: any[] = [
     category_id: "cat-grocery",
     price_per_unit: 165,
     old_price: 185,
-    image_url: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80",
     is_by_weight: false,
     unit_label: "شيكارة 5 كجم",
     is_popular: true,
@@ -728,18 +735,22 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 5.0,
     reviews_count: 62,
     reviewsCount: 62,
-    cooking_tip: "يُغسل جيداً ويُشوّح مع السمن الطبيعي لمدة دقيقتين قبل إضافة الماء المغلي بنسبة 1:1 لنتيجة مفلفلة رائعة.",
-    cookingTip: "يُغسل جيداً ويُشوّح مع السمن الطبيعي لمدة دقيقتين قبل إضافة الماء المغلي بنسبة 1:1 لنتيجة مفلفلة رائعة.",
+    cooking_tip:
+      "يُغسل جيداً ويُشوّح مع السمن الطبيعي لمدة دقيقتين قبل إضافة الماء المغلي بنسبة 1:1 لنتيجة مفلفلة رائعة.",
+    cookingTip:
+      "يُغسل جيداً ويُشوّح مع السمن الطبيعي لمدة دقيقتين قبل إضافة الماء المغلي بنسبة 1:1 لنتيجة مفلفلة رائعة.",
     created_at: new Date().toISOString(),
   },
   {
     id: "prod-olive-oil",
     name: "زيت زيتون بكر ممتاز معصور على البارد (1 لتر)",
-    description: "زيت زيتون بكر ممتاز درجة أولى، حموضة أقل من 0.8%، معصور على البارد من أجود ثمار الزيتون.",
+    description:
+      "زيت زيتون بكر ممتاز درجة أولى، حموضة أقل من 0.8%، معصور على البارد من أجود ثمار الزيتون.",
     category_id: "cat-grocery",
     price_per_unit: 290,
     old_price: 330,
-    image_url: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
     is_by_weight: false,
     unit_label: "زجاجة 1 لتر",
     is_popular: true,
@@ -757,8 +768,10 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.7,
     reviews_count: 19,
     reviewsCount: 19,
-    cooking_tip: "مثالي للسلطات والمقبلات وتتبيل المشويات؛ يُفضل إضافته في نهاية الطهي للحفاظ على الفوائد الصحية.",
-    cookingTip: "مثالي للسلطات والمقبلات وتتبيل المشويات؛ يُفضل إضافته في نهاية الطهي للحفاظ على الفوائد الصحية.",
+    cooking_tip:
+      "مثالي للسلطات والمقبلات وتتبيل المشويات؛ يُفضل إضافته في نهاية الطهي للحفاظ على الفوائد الصحية.",
+    cookingTip:
+      "مثالي للسلطات والمقبلات وتتبيل المشويات؛ يُفضل إضافته في نهاية الطهي للحفاظ على الفوائد الصحية.",
     created_at: new Date().toISOString(),
   },
   {
@@ -768,7 +781,8 @@ export const MOCK_PRODUCTS: any[] = [
     category_id: "cat-dairy",
     price_per_unit: 340,
     old_price: 380,
-    image_url: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
@@ -786,18 +800,22 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.9,
     reviews_count: 41,
     reviewsCount: 41,
-    cooking_tip: "يُبشر ناعماً فوق المكرونات والمعجنات الساخنة أو يُقدم مع الخبز البلدي الطازج والعسل الأبيض.",
-    cookingTip: "يُبشر ناعماً فوق المكرونات والمعجنات الساخنة أو يُقدم مع الخبز البلدي الطازج والعسل الأبيض.",
+    cooking_tip:
+      "يُبشر ناعماً فوق المكرونات والمعجنات الساخنة أو يُقدم مع الخبز البلدي الطازج والعسل الأبيض.",
+    cookingTip:
+      "يُبشر ناعماً فوق المكرونات والمعجنات الساخنة أو يُقدم مع الخبز البلدي الطازج والعسل الأبيض.",
     created_at: new Date().toISOString(),
   },
   {
     id: "prod-fresh-butter",
     name: "زبدة فلاحي طبيعي بقري صفراء",
-    description: "زبدة فلاحي نقية 100% بدون أي إضافات صناعية أو زيوت مهدرجة، طعم ورائحة فلاحي أصيلة.",
+    description:
+      "زبدة فلاحي نقية 100% بدون أي إضافات صناعية أو زيوت مهدرجة، طعم ورائحة فلاحي أصيلة.",
     category_id: "cat-dairy",
     price_per_unit: 260,
     old_price: null,
-    image_url: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
@@ -815,8 +833,10 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.6,
     reviews_count: 14,
     reviewsCount: 14,
-    cooking_tip: "تُذاب على نار هادئة جداً مع رشة ملح لتحويلها إلى سمن بلدي صافٍ برائحة ونكهة زكية تدوم طويلاً.",
-    cookingTip: "تُذاب على نار هادئة جداً مع رشة ملح لتحويلها إلى سمن بلدي صافٍ برائحة ونكهة زكية تدوم طويلاً.",
+    cooking_tip:
+      "تُذاب على نار هادئة جداً مع رشة ملح لتحويلها إلى سمن بلدي صافٍ برائحة ونكهة زكية تدوم طويلاً.",
+    cookingTip:
+      "تُذاب على نار هادئة جداً مع رشة ملح لتحويلها إلى سمن بلدي صافٍ برائحة ونكهة زكية تدوم طويلاً.",
     created_at: new Date().toISOString(),
   },
   {
@@ -826,7 +846,8 @@ export const MOCK_PRODUCTS: any[] = [
     category_id: "cat-veg-fruit",
     price_per_unit: 15,
     old_price: 20,
-    image_url: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
@@ -844,8 +865,10 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.8,
     reviews_count: 53,
     reviewsCount: 53,
-    cooking_tip: "تُحفظ خارج الثلاجة للحفاظ على حلاوتها الطبيعية، وتُستخدم للصلصات بعد تقشيرها بالغمر في ماء مغلي لثوانٍ.",
-    cookingTip: "تُحفظ خارج الثلاجة للحفاظ على حلاوتها الطبيعية، وتُستخدم للصلصات بعد تقشيرها بالغمر في ماء مغلي لثوانٍ.",
+    cooking_tip:
+      "تُحفظ خارج الثلاجة للحفاظ على حلاوتها الطبيعية، وتُستخدم للصلصات بعد تقشيرها بالغمر في ماء مغلي لثوانٍ.",
+    cookingTip:
+      "تُحفظ خارج الثلاجة للحفاظ على حلاوتها الطبيعية، وتُستخدم للصلصات بعد تقشيرها بالغمر في ماء مغلي لثوانٍ.",
     created_at: new Date().toISOString(),
   },
   {
@@ -855,7 +878,8 @@ export const MOCK_PRODUCTS: any[] = [
     category_id: "cat-roastery",
     price_per_unit: 120,
     old_price: 140,
-    image_url: "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80",
     is_by_weight: false,
     unit_label: "علبة 250 جم",
     is_popular: true,
@@ -873,8 +897,10 @@ export const MOCK_PRODUCTS: any[] = [
     avgRating: 4.9,
     reviews_count: 27,
     reviewsCount: 27,
-    cooking_tip: "يُحضر في كنكة نحاسية على نار هادئة جداً (شمعة) مع التقليب لمرة واحدة فقط لضمان وش قهوة كثيف ورغوة متماسكة.",
-    cookingTip: "يُحضر في كنكة نحاسية على نار هادئة جداً (شمعة) مع التقليب لمرة واحدة فقط لضمان وش قهوة كثيف ورغوة متماسكة.",
+    cooking_tip:
+      "يُحضر في كنكة نحاسية على نار هادئة جداً (شمعة) مع التقليب لمرة واحدة فقط لضمان وش قهوة كثيف ورغوة متماسكة.",
+    cookingTip:
+      "يُحضر في كنكة نحاسية على نار هادئة جداً (شمعة) مع التقليب لمرة واحدة فقط لضمان وش قهوة كثيف ورغوة متماسكة.",
     created_at: new Date().toISOString(),
   },
 ];

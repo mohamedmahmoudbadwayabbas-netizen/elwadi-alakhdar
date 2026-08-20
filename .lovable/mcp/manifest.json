@@ -5,9 +5,7 @@
   "auth": {
     "type": "oauth",
     "issuer": "https://nyirkanquoziravfepkf.supabase.co/auth/v1",
-    "accepted_audiences": [
-      "authenticated"
-    ]
+    "accepted_audiences": ["authenticated"]
   },
   "mcp": {
     "server": {
@@ -42,9 +40,7 @@
               "maximum": 50
             }
           },
-          "required": [
-            "query"
-          ]
+          "required": ["query"]
         },
         "outputSchema": null
       },
@@ -68,9 +64,7 @@
               "description": "Product UUID."
             }
           },
-          "required": [
-            "id"
-          ]
+          "required": ["id"]
         },
         "outputSchema": null
       },
@@ -150,9 +144,7 @@
               "description": "Product UUID to add."
             }
           },
-          "required": [
-            "product_id"
-          ]
+          "required": ["product_id"]
         },
         "outputSchema": null
       }

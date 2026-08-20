@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Product } from "@/lib/cart-context";
-import { useCart, lineSubtotal } from "@/lib/cart-context";
+import {
+  useCart,
+  lineSubtotal,
+  formatWeightLabel,
+  calculateEstimatedPrice,
+} from "@/lib/cart-context";
+import { WeightSelector } from "./WeightSelector";
 import { toast } from "sonner";
 import { flyToCart } from "@/lib/fly-to-cart";
 
@@ -42,9 +48,7 @@ export function ProductModal({
             <div className="grid h-full w-full place-items-center text-6xl">🌿</div>
           )}
           {Boolean(
-            (product as any).isTopSeller ||
-              (product as any).is_top_seller ||
-              product.is_featured,
+            (product as any).isTopSeller || (product as any).is_top_seller || product.is_featured,
           ) && (
             <span className="absolute top-3 end-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-black text-white shadow">
               الأكثر مبيعاً 🔥
@@ -74,75 +78,68 @@ export function ProductModal({
 
           {product.is_by_weight && (
             <div className="mt-4">
-              <label className="mb-2 block text-xs font-bold text-foreground">
-                أدخل الوزن المطلوب (جرام)
-              </label>
-              <div className="flex items-center gap-2">
-                <NumberInput
-                  decimal={false}
-                  value={Math.round(qty * 1000)}
-                  onValueChange={(v) => {
-                    const g = Math.max(0, parseInt(v || "0", 10) || 0);
-                    setQty(+(g / 1000).toFixed(3));
-                  }}
-                  className="h-11 flex-1 text-center text-base font-bold"
-                  placeholder="مثال: 500"
-                />
-                <span className="rounded-xl bg-secondary/50 px-3 py-2 text-xs font-bold text-muted-foreground">
-                  جرام
-                </span>
-              </div>
-              <p className="mt-1.5 text-[10px] text-muted-foreground">
-                يمكنك إدخال أي وزن (مثلاً 350 جرام، 750 جرام، 1200 جرام...)
-              </p>
+              <WeightSelector
+                product={product}
+                selectedWeight={qty}
+                onWeightChange={(w) => setQty(w)}
+                showEstimatedPrice={false}
+              />
             </div>
           )}
 
           <div className="mt-4 flex items-center justify-between">
             <div>
               <div className="font-display text-2xl font-bold text-primary">
-                {lineSubtotal(product, qty).toFixed(2)}
+                {calculateEstimatedPrice(product, qty).toFixed(2)}
                 <span className="ms-1 text-xs font-bold text-muted-foreground">ج.م</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground font-semibold">
                 {product.is_by_weight
-                  ? `${(qty * 1000).toFixed(0)} جرام`
+                  ? `الوزن المحدد: ${formatWeightLabel(qty)}`
                   : `${qty} ${product.unit_label}`}
               </div>
             </div>
 
-            <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/40 p-1">
-              <Button
-                aria-label="تقليل الكمية"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => setQty((q) => Math.max(min, +(q - step).toFixed(3)))}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="min-w-14 text-center text-sm font-black">
-                {product.is_by_weight ? (qty >= 1 ? `${qty} كجم` : `${qty * 1000}جم`) : qty}
-              </span>
-              <Button
-                aria-label="زيادة الكمية"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => setQty((q) => +(q + step).toFixed(3))}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            {!product.is_by_weight && (
+              <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/40 p-1">
+                <Button
+                  aria-label="تقليل الكمية"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setQty((q) => Math.max(min, +(q - step).toFixed(3)))}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="min-w-14 text-center text-sm font-black">{qty}</span>
+                <Button
+                  aria-label="زيادة الكمية"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setQty((q) => +(q + step).toFixed(3))}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <Button
             disabled={outOfStock}
             className="mt-5 h-12 w-full rounded-2xl hero-gradient text-base font-black text-primary-foreground shadow-card hover:opacity-95"
             onClick={(e) => {
-              addItem(product, qty);
+              const label = product.is_by_weight
+                ? formatWeightLabel(qty)
+                : `${qty} ${product.unit_label}`;
+              addItem(product, qty, {
+                selected_weight: product.is_by_weight ? qty : undefined,
+                selected_weight_label: product.is_by_weight ? label : undefined,
+              });
               flyToCart(e.currentTarget);
-              toast.success("تمت الإضافة للسلة");
+              toast.success("تمت الإضافة للسلة 🛒", {
+                description: `${product.name} (${label})`,
+              });
               onClose();
             }}
           >

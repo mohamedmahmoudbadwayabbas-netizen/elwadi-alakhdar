@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
-import { Upload, X, Image as ImageIcon, Loader2, Link2, Check } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Loader2, Link2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminAiImageGeneratorModal } from "@/components/admin/AdminAiImageGeneratorModal";
 
 interface ImageUploaderProps {
   value: string | null | undefined;
@@ -12,6 +13,8 @@ interface ImageUploaderProps {
   placeholder?: string;
   folder?: string;
   compact?: boolean;
+  promptHint?: string;
+  categoryHint?: string;
 }
 
 export function ImageUploader({
@@ -21,10 +24,13 @@ export function ImageUploader({
   placeholder = "اختر صورة من جهازك...",
   folder = "uploads",
   compact = false,
+  promptHint,
+  categoryHint,
 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (file: File) => {
@@ -151,6 +157,17 @@ export function ImageUploader({
 
           <Button
             type="button"
+            variant="outline"
+            onClick={() => setShowAiModal(true)}
+            className="h-10 px-3 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5 shrink-0"
+            title="توليد صورة بالذكاء الاصطناعي (Gemini 3.1 Flash Image)"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>AI صورة</span>
+          </Button>
+
+          <Button
+            type="button"
             variant="ghost"
             size="icon"
             onClick={() => setShowUrlInput(!showUrlInput)}
@@ -169,6 +186,17 @@ export function ImageUploader({
             className="h-9 text-xs rounded-xl font-mono mt-1"
           />
         )}
+
+        {/* AI Image Generation Modal */}
+        <AdminAiImageGeneratorModal
+          open={showAiModal}
+          onOpenChange={setShowAiModal}
+          onImageSelected={(url) => onChange(url)}
+          initialImageUrl={value}
+          initialPrompt={promptHint}
+          categoryHint={categoryHint}
+          title={label ? `توليد ${label} بالذكاء الاصطناعي` : "توليد صورة بالذكاء الاصطناعي"}
+        />
       </div>
     );
   }
@@ -247,6 +275,16 @@ export function ImageUploader({
                 </Button>
                 <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAiModal(true)}
+                  className="h-8 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>تعديل/توليد بالذكاء الاصطناعي ✨</span>
+                </Button>
+                <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowUrlInput(!showUrlInput)}
@@ -277,7 +315,7 @@ export function ImageUploader({
               </p>
             </div>
 
-            <div className="pt-1 flex justify-center gap-2">
+            <div className="pt-1 flex flex-wrap justify-center gap-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -286,7 +324,16 @@ export function ImageUploader({
                 className="h-9 px-4 rounded-xl text-xs font-black hero-gradient text-primary-foreground shadow-xs gap-2"
               >
                 <Upload className="h-3.5 w-3.5" />
-                <span>اختيار صورة من ملفات جهازك 📁</span>
+                <span>اختيار صورة من جهازك 📁</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAiModal(true)}
+                className="h-9 px-3 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>توليد بالـ AI (Gemini) ✨</span>
               </Button>
               <Button
                 type="button"
@@ -311,6 +358,17 @@ export function ImageUploader({
             />
           </div>
         )}
+
+        {/* AI Image Generation Modal for Full View */}
+        <AdminAiImageGeneratorModal
+          open={showAiModal}
+          onOpenChange={setShowAiModal}
+          onImageSelected={(url) => onChange(url)}
+          initialImageUrl={value}
+          initialPrompt={promptHint}
+          categoryHint={categoryHint}
+          title={label ? `توليد ${label} بالذكاء الاصطناعي` : "توليد صورة بالذكاء الاصطناعي"}
+        />
       </div>
     </div>
   );

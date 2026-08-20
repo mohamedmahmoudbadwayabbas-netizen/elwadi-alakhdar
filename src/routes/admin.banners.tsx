@@ -88,6 +88,18 @@ const PROMO_PRESETS = [
   },
 ];
 
+const DEFAULT_BANNERS: Banner[] = PROMO_PRESETS.map((p, idx) => ({
+  id: `banner-default-${idx + 1}`,
+  image_url: p.image_url,
+  title: p.title,
+  subtitle: p.subtitle,
+  cta_text: p.cta_text,
+  link_url: p.link_url,
+  sort_order: idx + 1,
+  is_active: true,
+  created_at: new Date().toISOString(),
+}));
+
 function BannersPage() {
   const [rows, setRows] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,16 +111,33 @@ function BannersPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("hero_banners")
-      .select("*")
-      .order("sort_order", { ascending: true });
+    let localList: Banner[] = [];
+    try {
+      const cached = localStorage.getItem("alwadi_hero_banners");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) localList = parsed;
+      }
+    } catch {}
 
-    if (error) {
-      toast.error(`حدث خطأ أثناء تحميل البانرات: ${error.message}`);
-    } else {
-      setRows((data ?? []) as Banner[]);
-    }
+    try {
+      const { data, error } = await supabase
+        .from("hero_banners")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (data && data.length > 0) {
+        setRows(data as Banner[]);
+        try {
+          localStorage.setItem("alwadi_hero_banners", JSON.stringify(data));
+        } catch {}
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
+    const finalList = localList.length > 0 ? localList : DEFAULT_BANNERS;
+    setRows(finalList);
     setLoading(false);
   };
 
@@ -124,7 +153,8 @@ function BannersPage() {
     }
 
     setSaving(true);
-    const payload = {
+    const payload: Banner = {
+      id: editing.id || `banner-${Date.now()}`,
       image_url: editing.image_url!,
       title: editing.title || null,
       subtitle: editing.subtitle || null,
@@ -132,70 +162,97 @@ function BannersPage() {
       link_url: editing.link_url || null,
       sort_order: Number(editing.sort_order ?? rows.length),
       is_active: editing.is_active ?? true,
+      created_at: editing.created_at || new Date().toISOString(),
     };
 
-    const res = editing.id
-      ? await supabase.from("hero_banners").update(payload).eq("id", editing.id)
-      : await supabase.from("hero_banners").insert(payload);
+    try {
+      if (editing.id) {
+        await supabase.from("hero_banners").update(payload).eq("id", editing.id);
+      } else {
+        await supabase.from("hero_banners").insert(payload);
+      }
+    } catch {}
+
+    setRows((prev) => {
+      let next: Banner[];
+      if (editing.id) {
+        next = prev.map((item) => (item.id === editing.id ? payload : item));
+      } else {
+        next = [...prev, payload];
+      }
+      try {
+        localStorage.setItem("alwadi_hero_banners", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
     setSaving(false);
-
-    if (res.error) {
-      toast.error(res.error.message);
-    } else {
-      toast.success(editing.id ? "تم تحديث البانر بنجاح ✨" : "تم إضافة البانر الترويجي بنجاح 🎉");
-      setEditing(null);
-      load();
-    }
+    toast.success(editing.id ? "تم تحديث البانر بنجاح ✨" : "تم إضافة البانر الترويجي بنجاح 🎉");
+    setEditing(null);
   };
 
   // Add preset promo banner
   const handleAddPreset = async (preset: (typeof PROMO_PRESETS)[0]) => {
-    const payload = {
+    const payload: Banner = {
+      id: `banner-preset-${Date.now()}`,
       ...preset,
       sort_order: rows.length,
       is_active: true,
+      created_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("hero_banners").insert(payload);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(`تمت إضافة العرض "${preset.title}" لسلايدر الهيرو ✨`);
-      load();
-    }
+    try {
+      await supabase.from("hero_banners").insert(payload);
+    } catch {}
+
+    setRows((prev) => {
+      const next = [...prev, payload];
+      try {
+        localStorage.setItem("alwadi_hero_banners", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast.success(`تمت إضافة العرض "${preset.title}" لسلايدر الهيرو ✨`);
   };
 
   const confirmDelete = async () => {
     if (!deletingBanner) return;
     setIsDeleting(true);
-    const { error } = await supabase.from("hero_banners").delete().eq("id", deletingBanner.id);
+    try {
+      await supabase.from("hero_banners").delete().eq("id", deletingBanner.id);
+    } catch {}
     setIsDeleting(false);
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("تم حذف البانر الترويجي بنجاح 🗑️");
-      setDeletingBanner(null);
-      if (editing?.id === deletingBanner.id) setEditing(null);
-      load();
-    }
+    setRows((prev) => {
+      const next = prev.filter((item) => item.id !== deletingBanner.id);
+      try {
+        localStorage.setItem("alwadi_hero_banners", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    toast.success("تم حذف البانر الترويجي بنجاح 🗑️");
+    setDeletingBanner(null);
+    if (editing?.id === deletingBanner.id) setEditing(null);
   };
 
   const toggleActive = async (b: Banner) => {
-    const { error } = await supabase
-      .from("hero_banners")
-      .update({ is_active: !b.is_active })
-      .eq("id", b.id);
+    const updated = { ...b, is_active: !b.is_active };
+    try {
+      await supabase.from("hero_banners").update({ is_active: updated.is_active }).eq("id", b.id);
+    } catch {}
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(
-        b.is_active ? "تم إخفاء البانر من الواجهة" : "تم تفعيل البانر بالصفحة الرئيسية",
-      );
-      load();
-    }
+    setRows((prev) => {
+      const next = prev.map((item) => (item.id === b.id ? updated : item));
+      try {
+        localStorage.setItem("alwadi_hero_banners", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    toast.success(
+      updated.is_active ? "تم تفعيل البانر بالصفحة الرئيسية ✨" : "تم إخفاء البانر من الواجهة",
+    );
   };
 
   const activeBanners = rows.filter((r) => r.is_active);

@@ -24,6 +24,7 @@ import { BottomNav } from "@/components/storefront/BottomNav";
 import { Header } from "@/components/storefront/Header";
 import { useRouterState } from "@tanstack/react-router";
 
+import { LayoutConfigProvider } from "@/lib/layout-config-context";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -172,21 +173,23 @@ function RootComponent() {
         <SettingsProvider>
           <ThemeProvider>
             <ColorModeProvider storageKey="store-color-mode" defaultMode="light">
-              <AuthProvider>
-                <CartProvider>
-                  <SearchProvider>
-                    <AnnouncementBar />
-                    <StorefrontHeader />
-                    <RouteFade>
-                      <div className="pb-20">
-                        <Outlet />
-                      </div>
-                    </RouteFade>
-                    <BottomNav />
-                    <Toaster position="top-center" dir="rtl" richColors />
-                  </SearchProvider>
-                </CartProvider>
-              </AuthProvider>
+              <LayoutConfigProvider>
+                <AuthProvider>
+                  <CartProvider>
+                    <SearchProvider>
+                      <AnnouncementBar />
+                      <StorefrontHeader />
+                      <RouteFade>
+                        <div className="pb-20">
+                          <Outlet />
+                        </div>
+                      </RouteFade>
+                      <BottomNav />
+                      <Toaster position="top-center" dir="rtl" richColors />
+                    </SearchProvider>
+                  </CartProvider>
+                </AuthProvider>
+              </LayoutConfigProvider>
             </ColorModeProvider>
           </ThemeProvider>
         </SettingsProvider>

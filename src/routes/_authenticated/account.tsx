@@ -34,8 +34,14 @@ import {
   PhoneCall,
   Sparkles,
   Ban,
+  BookmarkPlus,
+  Pencil,
+  Check,
+  ListOrdered,
 } from "lucide-react";
+import { formatWeightLabel } from "@/lib/cart-context";
 import { toast } from "sonner";
+import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
 
 export const Route = createFileRoute("/_authenticated/account")({
   ssr: false,
@@ -147,31 +153,38 @@ function AccountPage() {
         </div>
 
         <Tabs defaultValue="orders" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-4 rounded-2xl bg-secondary/60 p-1.5 shadow-inner">
+          <TabsList className="grid h-auto w-full grid-cols-5 rounded-2xl bg-secondary/60 p-1.5 shadow-inner">
             <TabsTrigger
               value="orders"
-              className="flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
             >
               <Package className="h-4 w-4 text-emerald-600" />
               <span>طلباتي</span>
             </TabsTrigger>
             <TabsTrigger
+              value="lists"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
+            >
+              <BookmarkPlus className="h-4 w-4 text-emerald-600" />
+              <span>قوائمي</span>
+            </TabsTrigger>
+            <TabsTrigger
               value="addresses"
-              className="flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
             >
               <MapPin className="h-4 w-4 text-emerald-600" />
               <span>العناوين</span>
             </TabsTrigger>
             <TabsTrigger
               value="wishlist"
-              className="flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
             >
               <Heart className="h-4 w-4 text-emerald-600" />
               <span>المفضلة</span>
             </TabsTrigger>
             <TabsTrigger
               value="profile"
-              className="flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm"
             >
               <User className="h-4 w-4 text-emerald-600" />
               <span>الملف الشخصي</span>
@@ -180,6 +193,9 @@ function AccountPage() {
 
           <TabsContent value="orders" className="mt-6">
             <OrdersTab userId={user.id} />
+          </TabsContent>
+          <TabsContent value="lists" className="mt-6">
+            <RecurringListsTab />
           </TabsContent>
           <TabsContent value="addresses" className="mt-6">
             <AddressesTab userId={user.id} />
@@ -675,6 +691,27 @@ function AddressesTab({ userId }: { userId: string }) {
             onChange={(v) => setEditing({ ...editing, apartment: v })}
           />
         </div>
+
+        {/* تحديد دقيق على الخريطة التفاعلية */}
+        <div className="mt-4">
+          <StoreGoogleMapsWidget
+            title="تحديد الموقع الجغرافي الدقيق على الخريطة"
+            subtitle="انقر على 'موقعي' أو ابحث لتثبيت إحداثيات التوصيل للكابتن"
+            storeAddress={`${editing.area || ""} ${editing.street || ""}`.trim() || "القاهرة، مصر"}
+            storeName={editing.label || "موقع التوصيل"}
+            isInteractivePicker={true}
+            showAiGrounding={false}
+            onLocationSelect={(lat, lng) => {
+              const currentNotes = editing.notes || "";
+              const cleanNotes = currentNotes.replace(/GPS:\s*[\d.-]+,\s*[\d.-]+/g, "").trim();
+              setEditing({
+                ...editing,
+                notes: cleanNotes ? `${cleanNotes} | GPS: ${lat}, ${lng}` : `GPS: ${lat}, ${lng}`,
+              });
+            }}
+          />
+        </div>
+
         <label className="mt-4 block">
           <span className="mb-1.5 block text-xs font-bold text-foreground">
             ملاحظات تسليم إضافية (اختياري)
@@ -683,7 +720,8 @@ function AddressesTab({ userId }: { userId: string }) {
             value={editing.notes ?? ""}
             onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
             rows={2}
-            className="rounded-xl"
+            className="rounded-xl text-xs font-bold"
+            placeholder="مثال: بجوار مسجد النور / يرجى الاتصال قبل الوصول"
           />
         </label>
         <label className="mt-4 flex items-center gap-3 rounded-2xl bg-secondary/30 p-3">
@@ -691,7 +729,9 @@ function AddressesTab({ userId }: { userId: string }) {
             checked={editing.is_default ?? false}
             onCheckedChange={(v) => setEditing({ ...editing, is_default: v })}
           />
-          <span className="text-xs font-bold text-foreground">تعيين كعنوان توصيل افتراضي</span>
+          <span className="text-xs font-bold text-foreground">
+            تعيين كعنوان توصيل افتراضي أساسي للطلبات القادمة ⭐
+          </span>
         </label>
         <div className="mt-6 flex gap-3">
           <Button
@@ -1067,9 +1107,7 @@ function PasswordSection() {
               autoComplete="new-password"
               className="h-10 rounded-xl"
             />
-            <span className="mt-1 block text-[11px] text-muted-foreground">
-              8 أحرف على الأقل
-            </span>
+            <span className="mt-1 block text-[11px] text-muted-foreground">8 أحرف على الأقل</span>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-bold">تأكيد كلمة المرور الجديدة</span>
@@ -1093,6 +1131,181 @@ function PasswordSection() {
           </Button>
         </form>
       )}
+    </div>
+  );
+}
+
+/* ---------- Recurring Lists Tab ---------- */
+function RecurringListsTab() {
+  const { savedLists, loadSavedList, deleteSavedList, renameSavedList } = useCart();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const startRename = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditingName(currentName);
+  };
+
+  const handleSaveRename = (id: string) => {
+    if (editingName.trim()) {
+      renameSavedList(id, editingName.trim());
+    }
+    setEditingId(null);
+  };
+
+  if (savedLists.length === 0) {
+    return (
+      <Empty
+        icon={BookmarkPlus}
+        text="لا توجد قوائم تسوق دورية محفوظة حالياً. يمكنك حفظ أي سلة لتكرار طلبها بضغطة زر!"
+        cta={{ label: "تصفّح المنتجات وابدأ التسوّق 🛒", to: "/" }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold text-foreground">
+            قوائم التسوق الدورية ({savedLists.length})
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            احفظ قوائمك الشهرية أو الأسبوعية لطلبها في ثوانٍ دون الحاجة للبحث مجدداً
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {savedLists.map((list) => {
+          const isExpanded = expandedId === list.id;
+          const isEditing = editingId === list.id;
+
+          return (
+            <Card
+              key={list.id}
+              className="flex flex-col justify-between rounded-3xl border-border/80 bg-card p-4 shadow-xs hover:border-emerald-400/50 transition-all"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="h-8 text-xs font-bold rounded-lg"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveRename(list.id);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                        <Button
+                          size="icon"
+                          className="h-8 w-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                          onClick={() => handleSaveRename(list.id)}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-extrabold text-sm text-foreground truncate">
+                          {list.name}
+                        </h3>
+                        <button
+                          onClick={() => startRename(list.id, list.name)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          title="تعديل الاسم"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground font-semibold">
+                      <span>{list.items.length || list.total_items_count || 0} أصناف</span>
+                      <span>•</span>
+                      <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                        {list.total_estimated_price.toFixed(2)} ج.م
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => deleteSavedList(list.id)}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    title="حذف القائمة"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* أصناف القائمة المصغرة */}
+                <div className="rounded-2xl border border-border/60 bg-secondary/30 p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                    <span>محتويات القائمة:</span>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : list.id)}
+                      className="text-emerald-600 hover:underline text-[10px] font-extrabold"
+                    >
+                      {isExpanded ? "طي التفاصيل" : "عرض كل الأصناف"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-1">
+                    {(isExpanded ? list.items : list.items.slice(0, 3)).map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs font-semibold py-0.5"
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-[10px] text-muted-foreground">•</span>
+                          <span className="truncate">{it.product.name}</span>
+                          {it.product.is_by_weight && (
+                            <span className="text-[10px] text-emerald-600 font-mono bg-emerald-500/10 px-1 rounded">
+                              {it.selected_weight_label || `${it.quantity} كجم`}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-mono text-[11px] text-muted-foreground shrink-0 ms-2">
+                          {(it.product.price_per_unit * it.quantity).toFixed(2)} ج.م
+                        </span>
+                      </div>
+                    ))}
+                    {!isExpanded && list.items.length > 3 && (
+                      <p className="text-[10px] text-muted-foreground font-bold pt-0.5">
+                        +{list.items.length - 3} أصناف إضافية...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* أزرار التحميل للسلة */}
+              <div className="mt-4 pt-3 border-t border-border/50 flex items-center gap-2">
+                <Button
+                  onClick={() => loadSavedList(list.id, "replace")}
+                  className="flex-1 h-9 rounded-xl hero-gradient text-white text-xs font-black gap-1.5 shadow-sm"
+                >
+                  <ShoppingBag className="h-3.5 w-3.5" />
+                  استبدال وتحميل للسلة
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => loadSavedList(list.id, "append")}
+                  className="h-9 rounded-xl text-xs font-bold px-3 gap-1 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40"
+                  title="إضافة منتجات هذه القائمة فوق سلتك الحالية"
+                >
+                  <Plus className="h-3 w-3" />
+                  إضافة للسلة
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

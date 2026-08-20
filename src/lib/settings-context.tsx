@@ -103,21 +103,23 @@ function applyTheme(s: StoreSettings) {
   };
   setHsl("--primary", s.primary_color);
   setHsl("--accent", s.accent_color);
+  if (s.background_color) setHsl("--background", s.background_color);
+  if (s.foreground_color) setHsl("--foreground", s.foreground_color);
+  if (s.card_radius) {
+    const radMap: Record<string, string> = {
+      "rounded-xl": "0.75rem",
+      "rounded-2xl": "1rem",
+      "rounded-3xl": "1.5rem",
+    };
+    if (radMap[s.card_radius]) {
+      root.style.setProperty("--radius", radMap[s.card_radius]);
+    }
+  }
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<StoreSettings>(() => {
-    if (typeof window === "undefined") return DEFAULTS;
-    try {
-      const cached = localStorage.getItem("alwadi_store_settings_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        applyTheme(parsed);
-        return parsed;
-      }
-    } catch {}
-    return DEFAULTS;
-  });
+  // Start with DEFAULTS on both server and initial client render to guarantee 100% hydration match
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
 
   const updateLocalSettings = (updated: Partial<StoreSettings>) => {
     setSettings((prev) => {
@@ -134,7 +136,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const load = async () => {
-      const { data, error } = await supabase
+      let localCustomizer = {};
+      let localCached = {};
+      try {
+        const cached = localStorage.getItem("alwadi_store_settings_cache");
+        if (cached) localCached = JSON.parse(cached);
+        const cust = localStorage.getItem("store_customizer_options");
+        if (cust) localCustomizer = JSON.parse(cust);
+      } catch {}
+
+      const { data } = await supabase
         .from("store_settings_public" as any)
         .select("*")
         .limit(1)
@@ -142,23 +153,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
       if (!mounted) return;
 
-      if (error) {
-        console.warn("[SettingsProvider] store settings unavailable, using defaults", error.message);
-      }
-
-      // Check saved local customizer overrides if any
-      let localCustomizer = {};
-      try {
-        const cached = localStorage.getItem("store_customizer_options");
-        if (cached) localCustomizer = JSON.parse(cached);
-      } catch {}
-
       const merged = {
         ...DEFAULTS,
+        ...localCached,
         ...((data as any) ?? {}),
         ...localCustomizer,
       } as StoreSettings;
-      // Never let NULL columns wipe a usable default value.
+
       for (const key of Object.keys(merged) as (keyof StoreSettings)[]) {
         if (merged[key] === null && DEFAULTS[key] !== null && DEFAULTS[key] !== undefined) {
           (merged as any)[key] = DEFAULTS[key];
@@ -173,22 +174,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     void load();
 
-    // Realtime: a trigger bumps `store_settings_pulse` whenever an admin saves
-    // settings, so every open storefront refetches the public settings view.
-    const channel = supabase
-      .channel("store_settings_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "store_settings_pulse" },
-        () => {
-          void load();
-        },
-      )
-      .subscribe();
-
     // Listen to custom event for real-time live preview update across admin & storefront
     const handleCustomUpdate = (e: CustomEvent<Partial<StoreSettings>>) => {
-      if (e.detail) {
+      if (e.detail && mounted) {
         updateLocalSettings(e.detail);
       }
     };
@@ -197,7 +185,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
       window.removeEventListener("store_settings_updated" as any, handleCustomUpdate);
     };
   }, []);

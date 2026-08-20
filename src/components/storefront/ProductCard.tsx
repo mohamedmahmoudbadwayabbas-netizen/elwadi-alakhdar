@@ -1,6 +1,21 @@
-import { Plus, Minus, Award, Heart, ShoppingCart, Flame, Scale, Sparkles, Leaf } from "lucide-react";
+import {
+  Plus,
+  Minus,
+  Award,
+  Heart,
+  ShoppingCart,
+  Flame,
+  Scale,
+  Sparkles,
+  Leaf,
+} from "lucide-react";
 import type { Product } from "@/lib/cart-context";
-import { useCart } from "@/lib/cart-context";
+import {
+  useCart,
+  WEIGHT_OPTIONS,
+  formatWeightLabel,
+  calculateEstimatedPrice,
+} from "@/lib/cart-context";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -16,16 +31,16 @@ export function ProductCard({
   onOpen: (p: Product) => void;
   isTopSeller?: boolean;
 }) {
-  const { addItem, updateQuantity, removeItem, items } = useCart();
+  const { addItem, updateQuantity, updateItemWeight, removeItem, items } = useCart();
   const inCart = items.find((i) => i.product.id === product.id);
   const qty = inCart?.quantity ?? 0;
   const [isLiked, setIsLiked] = useState(false);
+  const [selectedWeight, setSelectedWeight] = useState<number>(
+    inCart?.selected_weight ?? (product.is_by_weight ? 0.5 : 1),
+  );
 
   const isTopSellerActive = Boolean(
-    isTopSeller ??
-      product.isTopSeller ??
-      product.is_top_seller ??
-      product.is_featured,
+    isTopSeller ?? product.isTopSeller ?? product.is_top_seller ?? product.is_featured,
   );
 
   const discount =
@@ -34,46 +49,74 @@ export function ProductCard({
       : 0;
 
   const outOfStock = (product.stock_quantity ?? 1) <= 0;
-  const step = product.is_by_weight ? 0.5 : 1;
-  const displayPrice = product.is_by_weight ? product.price_per_unit / 2 : product.price_per_unit;
-  const displayUnit = product.is_by_weight ? "/ ½ كجم" : `/ ${product.unit_label ?? "قطعة"}`;
+  const step = product.is_by_weight ? 0.25 : 1;
 
-  const handleAdd = (e: React.MouseEvent<HTMLButtonElement>, customWeight?: number) => {
+  // Dynamic estimated price calculation
+  const currentEstPrice = product.is_by_weight
+    ? calculateEstimatedPrice(product, selectedWeight)
+    : product.price_per_unit;
+
+  const displayUnit = product.is_by_weight
+    ? `/ ${formatWeightLabel(selectedWeight)} (تقديري)`
+    : `/ ${product.unit_label ?? "قطعة"}`;
+
+  const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    const amount = customWeight ?? step;
-    addItem(product, amount);
+    const amount = product.is_by_weight ? selectedWeight : 1;
+    const label = product.is_by_weight
+      ? formatWeightLabel(selectedWeight)
+      : `${amount} ${product.unit_label ?? "قطعة"}`;
+
+    addItem(product, amount, {
+      selected_weight: product.is_by_weight ? selectedWeight : undefined,
+      selected_weight_label: product.is_by_weight ? label : undefined,
+    });
     flyToCart(e.currentTarget);
     toast.success("تمت الإضافة للسلة 🛒", {
-      description: `${product.name} (${product.is_by_weight ? (amount >= 1 ? `${amount} كجم` : `${amount * 1000} جم`) : `${amount} ${product.unit_label ?? "قطعة"}`})`,
+      description: `${product.name} (${label} — ${calculateEstimatedPrice(product, amount)} ج.م)`,
     });
   };
 
-  const handleQuickWeightSelect = (e: React.MouseEvent, weight: number) => {
+  const handleQuickWeightSelect = (e: React.MouseEvent, weight: number, label: string) => {
     e.stopPropagation();
+    setSelectedWeight(weight);
     if (qty > 0) {
-      updateQuantity(product.id, weight);
+      updateItemWeight(product.id, weight);
       toast.success("تم تحديث الوزن في السلة ⚖️", {
-        description: `${product.name}: ${weight >= 1 ? `${weight} كجم` : `${weight * 1000} جم`}`,
+        description: `${product.name}: ${label} (≈ ${calculateEstimatedPrice(product, weight)} ج.م)`,
       });
     } else {
-      addItem(product, weight);
-      flyToCart(e.currentTarget as HTMLElement);
-      toast.success("تمت الإضافة للسلة بالوزن المحدد ⚖️", {
-        description: `${product.name}: ${weight >= 1 ? `${weight} كجم` : `${weight * 1000} جم`}`,
+      toast.info(`تم اختيار الوزن: ${label}`, {
+        description: `السعر التقديري: ${calculateEstimatedPrice(product, weight)} ج.م`,
       });
     }
   };
 
   const handleInc = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    addItem(product, step);
+    if (product.is_by_weight) {
+      const next = +(qty + 0.25).toFixed(3);
+      updateItemWeight(product.id, next);
+      setSelectedWeight(next);
+    } else {
+      addItem(product, 1);
+    }
     flyToCart(e.currentTarget);
   };
+
   const handleDec = (e: React.MouseEvent) => {
     e.stopPropagation();
     const next = +(qty - step).toFixed(3);
-    if (next <= 0) removeItem(product.id);
-    else updateQuantity(product.id, next);
+    if (next <= 0) {
+      removeItem(product.id);
+    } else {
+      if (product.is_by_weight) {
+        updateItemWeight(product.id, next);
+        setSelectedWeight(next);
+      } else {
+        updateQuantity(product.id, next);
+      }
+    }
   };
 
   const toggleWishlist = (e: React.MouseEvent) => {
@@ -157,10 +200,10 @@ export function ProductCard({
         {product.is_by_weight && (
           <div className="absolute bottom-2 start-2 z-10 flex flex-wrap gap-1">
             <span className="flex items-center gap-1 rounded-lg bg-emerald-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-emerald-200 border border-emerald-400/30 shadow-xs">
-              <Scale className="h-3 w-3 text-emerald-400" /> يباع بالوزن
+              <Scale className="h-3 w-3 text-emerald-400" /> بالوزن
             </span>
             <span className="flex items-center gap-1 rounded-lg bg-amber-950/80 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-bold text-amber-200 border border-amber-400/30">
-              <Leaf className="h-2.5 w-2.5 text-amber-400" /> طازج يومياً
+              <Leaf className="h-2.5 w-2.5 text-amber-400" /> طازج
             </span>
           </div>
         )}
@@ -182,7 +225,7 @@ export function ProductCard({
         <div className="flex items-baseline justify-between mt-1">
           <div className="flex items-baseline gap-1.5">
             <span className="font-display text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400">
-              {displayPrice.toFixed(2)}
+              {currentEstPrice.toFixed(2)}
             </span>
             <span className="text-[11px] font-semibold text-muted-foreground">
               ج.م {displayUnit}
@@ -190,34 +233,41 @@ export function ProductCard({
           </div>
           {product.old_price && product.old_price > product.price_per_unit && (
             <span className="text-xs text-muted-foreground line-through decoration-rose-500/70">
-              {product.old_price.toFixed(2)}
+              {(product.old_price * (product.is_by_weight ? selectedWeight : 1)).toFixed(2)}
             </span>
           )}
         </div>
 
-        {/* خيارات التحديد السريع للوزن في البطاقة (Quick Weight Chips) */}
+        {/* خيارات التحديد السريع للوزن في البطاقة (250g, 500g, 750g, 1kg, 1.5kg) */}
         {product.is_by_weight && (
-          <div className="flex items-center justify-between gap-1 pt-1">
-            <span className="text-[10px] font-extrabold text-muted-foreground">تحديد سريع:</span>
-            <div className="flex items-center gap-1">
-              {[
-                { label: "250 جم", val: 0.25 },
-                { label: "500 جم", val: 0.5 },
-                { label: "1 كجم", val: 1 },
-              ].map((w) => (
-                <button
-                  key={w.val}
-                  onClick={(e) => handleQuickWeightSelect(e, w.val)}
-                  className={cn(
-                    "px-1.5 py-0.5 rounded-md text-[10px] font-bold border transition-all active:scale-95",
-                    qty === w.val
-                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                      : "bg-secondary/70 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-foreground border-border/60",
-                  )}
-                >
-                  {w.label}
-                </button>
-              ))}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Scale className="h-3 w-3 text-emerald-600" /> اختر الوزن:
+              </span>
+              <span className="font-black text-emerald-700 dark:text-emerald-400">
+                {formatWeightLabel(selectedWeight)}
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              {WEIGHT_OPTIONS.map((w) => {
+                const isSelected = Math.abs(selectedWeight - w.value) < 0.01;
+                return (
+                  <button
+                    key={w.value}
+                    type="button"
+                    onClick={(e) => handleQuickWeightSelect(e, w.value, w.label)}
+                    className={cn(
+                      "px-1 py-1 rounded-md text-[9px] sm:text-[10px] font-bold border transition-all text-center active:scale-95",
+                      isSelected
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-secondary/70 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-foreground border-border/60 dark:hover:bg-emerald-950/40",
+                    )}
+                  >
+                    {w.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -232,13 +282,14 @@ export function ProductCard({
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="text-xs font-black text-emerald-900 dark:text-emerald-100">
-                {product.is_by_weight
-                  ? qty >= 1
-                    ? `${qty} كجم`
-                    : `${Math.round(qty * 1000)} جم`
-                  : qty}
-              </span>
+              <div className="text-center">
+                <span className="text-xs font-black text-emerald-900 dark:text-emerald-100 block">
+                  {product.is_by_weight ? formatWeightLabel(qty) : `${qty} قطعة`}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 block">
+                  ({calculateEstimatedPrice(product, qty)} ج.م)
+                </span>
+              </div>
               <button
                 onClick={handleInc}
                 className="grid h-7 w-7 place-items-center rounded-xl text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200/50 transition"
@@ -253,7 +304,11 @@ export function ProductCard({
               className="flex w-full h-10 items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition-all duration-200 active:scale-95 shadow-md shadow-emerald-600/20 disabled:opacity-50"
             >
               <ShoppingCart className="h-4 w-4" />
-              {outOfStock ? "نفدت الكمية" : "أضف للسلة"}
+              {outOfStock
+                ? "نفدت الكمية"
+                : product.is_by_weight
+                  ? `أضف (${formatWeightLabel(selectedWeight)})`
+                  : "أضف للسلة"}
             </button>
           )}
         </div>

@@ -1,7 +1,7 @@
 import { SITE_URL } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useCart, lineSubtotal } from "@/lib/cart-context";
+import { useCart, lineSubtotal, formatWeightLabel } from "@/lib/cart-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
   Leaf,
   TicketPercent,
   X,
+  BookmarkPlus,
 } from "lucide-react";
 import {
   Select,
@@ -35,12 +36,16 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useTheme } from "@/lib/theme-context";
 import { useSettings } from "@/lib/settings-context";
+import { useAuth } from "@/lib/auth-context";
 import { playSuccessSound } from "@/lib/sounds";
 import { Truck as TruckIcon } from "lucide-react";
 import {
   SubstitutionPreferencePicker,
   SubstitutionPreference,
 } from "@/components/storefront/SubstitutionPreferencePicker";
+import { ItemSubstitutionSelector } from "@/components/storefront/ItemSubstitutionSelector";
+import { SaveShoppingListDialog } from "@/components/storefront/SaveShoppingListDialog";
+import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -93,11 +98,23 @@ function CartPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const settings = useSettings();
-  const { items, updateQuantity, removeItem, totalPrice, clear } = useCart();
+  const { user } = useAuth();
+  const {
+    items,
+    updateQuantity,
+    removeItem,
+    totalPrice,
+    clear,
+    updateItemSubstitution,
+    savedLists,
+  } = useCart();
 
+  const [saveListOpen, setSaveListOpen] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("delivery");
   const [zones, setZones] = useState<Zone[]>([]);
   const [zoneId, setZoneId] = useState<string>("");
+  const [userAddresses, setUserAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [pay, setPay] = useState<{
     instapay_handle: string | null;
     bank_account_info: string | null;
@@ -208,7 +225,48 @@ function CartPage() {
           floating: (pub as any).floating_element_image ?? null,
         });
     })();
-  }, []);
+
+    // Auto-fetch customer addresses if logged in
+    if (user?.id) {
+      supabase
+        .from("addresses")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("is_default", { ascending: false })
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setUserAddresses(data);
+            const defaultAddr = data.find((a: any) => a.is_default) || data[0];
+            if (defaultAddr) {
+              setSelectedAddressId(defaultAddr.id);
+              setForm((prev) => ({
+                ...prev,
+                customer_name:
+                  prev.customer_name ||
+                  defaultAddr.full_name ||
+                  user.user_metadata?.full_name ||
+                  "",
+                phone: prev.phone || defaultAddr.phone || user.user_metadata?.phone || "",
+                address:
+                  prev.address ||
+                  `${defaultAddr.area ? defaultAddr.area + "، " : ""}${defaultAddr.street || ""}${defaultAddr.building ? "، عمارة " + defaultAddr.building : ""}${defaultAddr.apartment ? "، شقة " + defaultAddr.apartment : ""}`.trim(),
+              }));
+            }
+          }
+        });
+    } else {
+      // Check localStorage for guests
+      try {
+        const guestSaved = localStorage.getItem("customer_default_delivery_coords");
+        if (guestSaved) {
+          const parsed = JSON.parse(guestSaved);
+          if (parsed.address) {
+            setForm((prev) => ({ ...prev, address: prev.address || parsed.address }));
+          }
+        }
+      } catch (_) {}
+    }
+  }, [user]);
 
   // Cascading options
   const countries = useMemo(
@@ -356,12 +414,7 @@ function CartPage() {
           ? "[تفضيل البديل: اختيار أفضل بديل تلقائياً]"
           : "[تفضيل البديل: عدم الاستبدال وحذف الصنف]";
 
-    const combinedNotes = [
-      substitutionLabel,
-      parsed.data.notes?.trim(),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const combinedNotes = [substitutionLabel, parsed.data.notes?.trim()].filter(Boolean).join("\n");
 
     const { error } = await (supabase as any).rpc("create_order", {
       p_customer_name: parsed.data.customer_name,
@@ -737,7 +790,54 @@ function CartPage() {
                     />
                   </Field>
                   {deliveryMethod === "delivery" && (
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-2 space-y-3">
+                      {/* اختيار سريع من العناوين المحفوظة بحساب العميل */}
+                      {userAddresses.length > 0 && (
+                        <div className="p-3 rounded-2xl bg-secondary/40 border border-border space-y-2">
+                          <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                            <span>عناوينك المحفوظة (اختر للتعبئة التلقائية):</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              ({userAddresses.length} عنوان)
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {userAddresses.map((addr) => {
+                              const isSel = selectedAddressId === addr.id;
+                              return (
+                                <button
+                                  key={addr.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedAddressId(addr.id);
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      customer_name: addr.full_name || prev.customer_name,
+                                      phone: addr.phone || prev.phone,
+                                      address:
+                                        `${addr.area ? addr.area + "، " : ""}${addr.street || ""}${addr.building ? "، عمارة " + addr.building : ""}${addr.apartment ? "، شقة " + addr.apartment : ""}`.trim(),
+                                    }));
+                                    toast.success(`تم اختيار عنوان: ${addr.label || "المحفوظ"}`);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
+                                    isSel
+                                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                                      : "bg-background text-foreground border-border hover:border-primary/50"
+                                  }`}
+                                >
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  <span>{addr.label || "عنوان"}</span>
+                                  {addr.is_default && (
+                                    <span className="text-[9px] bg-amber-400/20 text-amber-600 dark:text-amber-300 px-1.5 py-0.2 rounded font-bold">
+                                      افتراضي
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <Field label="عنوان التوصيل">
                         <Textarea
                           rows={2}
@@ -746,6 +846,25 @@ function CartPage() {
                           placeholder="المنطقة، الشارع، رقم العقار، الدور، الشقة"
                         />
                       </Field>
+
+                      {/* ويدجت خرائط Google الذكية للتوصيل */}
+                      <StoreGoogleMapsWidget
+                        title="خريطة التوصيل المباشرة (Google Maps)"
+                        subtitle="تأكيد نطاق التغطية وتتبع المسار وموقع التسليم بدقة"
+                        storeAddress={
+                          form.address ||
+                          (zone?.name ? `${zone.name}، مصر` : pay.store_address || "القاهرة، مصر")
+                        }
+                        storeName="موقع تسليم طلبك — سمارت ستور"
+                        isInteractivePicker={true}
+                        showAiGrounding={true}
+                        allowSaveAsDefault={true}
+                        customerFullName={form.customer_name}
+                        customerPhone={form.phone}
+                        onLocationSelect={(lat, lng) => {
+                          // Update address note or form
+                        }}
+                      />
                     </div>
                   )}
                   <div className="sm:col-span-2">

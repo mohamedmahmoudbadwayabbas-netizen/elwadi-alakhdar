@@ -41,16 +41,63 @@ export type Product = {
   isTopSeller?: boolean | null;
 };
 
+export type SubstitutionPreference = "call_me" | "auto_best" | "do_not_substitute";
+
 export type CartItem = {
   product: Product;
   /** قطعة count OR كجم weight (decimal) depending on is_by_weight */
   quantity: number;
+  /** الوزن المحدد بالكيلوجرام إذا كان المنتج بالوزن (مثال: 0.25، 0.5، 0.75، 1، 1.5) */
+  selected_weight?: number;
+  /** نص وصفي للوزن (مثال: "250 جم" أو "1 كجم") */
+  selected_weight_label?: string;
+  /** خيار تفضيل الاستبدال الخاص بهذا المنتج تحديداً */
+  substitution_preference?: SubstitutionPreference;
+  /** السعر المقدر المحسوب ديناميكياً بناءً على الوزن أو الكمية */
+  estimated_price?: number;
+};
+
+export type SavedShoppingList = {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at?: string;
+  items: CartItem[];
+  total_estimated_price: number;
+  total_items_count: number;
+};
+
+export const WEIGHT_OPTIONS = [
+  { value: 0.25, label: "250 جم", grams: 250 },
+  { value: 0.5, label: "500 جم", grams: 500 },
+  { value: 0.75, label: "750 جم", grams: 750 },
+  { value: 1.0, label: "1 كجم", grams: 1000 },
+  { value: 1.5, label: "1.5 كجم", grams: 1500 },
+] as const;
+
+export function formatWeightLabel(weightInKg: number): string {
+  if (weightInKg >= 1) {
+    return Number.isInteger(weightInKg) ? `${weightInKg} كجم` : `${weightInKg.toFixed(2)} كجم`;
+  }
+  return `${Math.round(weightInKg * 1000)} جم`;
+}
+
+export function calculateEstimatedPrice(product: Product, quantityOrWeight: number): number {
+  return +(product.price_per_unit * quantityOrWeight).toFixed(2);
+}
+
+type AddItemMeta = {
+  selected_weight?: number;
+  selected_weight_label?: string;
+  substitution_preference?: SubstitutionPreference;
 };
 
 type CartContextValue = {
   items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
+  addItem: (product: Product, quantity?: number, meta?: AddItemMeta) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updateItemPreference: (productId: string, preference: SubstitutionPreference) => void;
+  updateItemWeight: (productId: string, weightInKg: number) => void;
   removeItem: (productId: string) => void;
   clear: () => void;
   totalPrice: number;
@@ -58,16 +105,35 @@ type CartContextValue = {
   isOpen: boolean;
   setOpen: (v: boolean) => void;
   isMerging: boolean;
+  // Recurring Shopping Lists
+  savedLists: SavedShoppingList[];
+  saveCurrentCartAsList: (listName: string) => SavedShoppingList | null;
+  loadSavedList: (listId: string, mode?: "replace" | "append") => boolean;
+  deleteSavedList: (listId: string) => void;
+  renameSavedList: (listId: string, newName: string) => void;
+  refreshSavedLists: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 const GUEST_STORAGE_KEY = "alwadi_cart_v1";
+const SAVED_LISTS_STORAGE_KEY = "alwadi_saved_shopping_lists";
 const getUserStorageKey = (uid: string) => `alwadi_cart_user_${uid}`;
 
 export function lineSubtotal(product: Product, quantity: number) {
-  return product.price_per_unit * quantity;
+  return +(product.price_per_unit * quantity).toFixed(2);
 }
+
+const DEFAULT_SAVED_LISTS: SavedShoppingList[] = [
+  {
+    id: "list-monthly-essentials",
+    name: "مشتريات البقالة الشهرية 🛒",
+    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
+    total_estimated_price: 345.5,
+    total_items_count: 4,
+    items: [],
+  },
+];
 
 /** Merges guest cart items with user's existing cart items (sums duplicate product quantities) */
 function mergeCartItems(userItems: CartItem[], guestItems: CartItem[]): CartItem[] {
@@ -84,7 +150,17 @@ function mergeCartItems(userItems: CartItem[], guestItems: CartItem[]): CartItem
       const existing = map.get(item.product.id);
       if (existing) {
         const newQty = +(existing.quantity + item.quantity).toFixed(3);
-        map.set(item.product.id, { ...existing, quantity: newQty });
+        map.set(item.product.id, {
+          ...existing,
+          quantity: newQty,
+          selected_weight: item.product.is_by_weight ? newQty : existing.selected_weight,
+          selected_weight_label: item.product.is_by_weight
+            ? formatWeightLabel(newQty)
+            : existing.selected_weight_label,
+          substitution_preference:
+            item.substitution_preference || existing.substitution_preference || "call_me",
+          estimated_price: calculateEstimatedPrice(item.product, newQty),
+        });
       } else {
         map.set(item.product.id, { ...item });
       }
@@ -96,12 +172,40 @@ function mergeCartItems(userItems: CartItem[], guestItems: CartItem[]): CartItem
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [savedLists, setSavedLists] = useState<SavedShoppingList[]>([]);
   const [isOpen, setOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isMerging, setIsMerging] = useState(false);
 
   const currentUserIdRef = useRef<string | null>(null);
+
+  // Load recurring lists from localStorage
+  const refreshSavedLists = () => {
+    try {
+      const raw = localStorage.getItem(SAVED_LISTS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setSavedLists(parsed);
+          return;
+        }
+      }
+    } catch {}
+    setSavedLists([]);
+  };
+
+  useEffect(() => {
+    refreshSavedLists();
+  }, []);
+
+  // Save updated lists to localStorage
+  const persistSavedLists = (newList: SavedShoppingList[]) => {
+    setSavedLists(newList);
+    try {
+      localStorage.setItem(SAVED_LISTS_STORAGE_KEY, JSON.stringify(newList));
+    } catch {}
+  };
 
   // Capture referral attribution parameter once
   useEffect(() => {
@@ -210,18 +314,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, hydrated, userId]);
 
   const value = useMemo<CartContextValue>(() => {
-    const addItem = (product: Product, quantity = 1) => {
+    const addItem = (product: Product, quantity = 1, meta?: AddItemMeta) => {
       playClickSound();
       setItems((prev) => {
         const existing = prev.find((i) => i.product.id === product.id);
+        const resolvedWeight =
+          meta?.selected_weight ?? (product.is_by_weight ? quantity : undefined);
+        const resolvedWeightLabel =
+          meta?.selected_weight_label ??
+          (product.is_by_weight ? formatWeightLabel(quantity) : undefined);
+        const resolvedPref =
+          meta?.substitution_preference ?? existing?.substitution_preference ?? "call_me";
+
         if (existing) {
+          const newQty = +(existing.quantity + quantity).toFixed(3);
           return prev.map((i) =>
             i.product.id === product.id
-              ? { ...i, quantity: +(i.quantity + quantity).toFixed(3) }
+              ? {
+                  ...i,
+                  quantity: newQty,
+                  selected_weight: product.is_by_weight ? newQty : i.selected_weight,
+                  selected_weight_label: product.is_by_weight
+                    ? formatWeightLabel(newQty)
+                    : i.selected_weight_label,
+                  substitution_preference:
+                    meta?.substitution_preference ?? i.substitution_preference ?? "call_me",
+                  estimated_price: calculateEstimatedPrice(product, newQty),
+                }
               : i,
           );
         }
-        return [...prev, { product, quantity }];
+
+        const newItem: CartItem = {
+          product,
+          quantity,
+          selected_weight: resolvedWeight,
+          selected_weight_label: resolvedWeightLabel,
+          substitution_preference: resolvedPref,
+          estimated_price: calculateEstimatedPrice(product, quantity),
+        };
+        return [...prev, newItem];
       });
     };
 
@@ -229,7 +361,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems((prev) =>
         quantity <= 0
           ? prev.filter((i) => i.product.id !== productId)
-          : prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i)),
+          : prev.map((i) =>
+              i.product.id === productId
+                ? {
+                    ...i,
+                    quantity,
+                    selected_weight: i.product.is_by_weight ? quantity : i.selected_weight,
+                    selected_weight_label: i.product.is_by_weight
+                      ? formatWeightLabel(quantity)
+                      : i.selected_weight_label,
+                    estimated_price: calculateEstimatedPrice(i.product, quantity),
+                  }
+                : i,
+            ),
+      );
+    };
+
+    const updateItemPreference = (productId: string, preference: SubstitutionPreference) => {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.product.id === productId ? { ...i, substitution_preference: preference } : i,
+        ),
+      );
+    };
+
+    const updateItemWeight = (productId: string, weightInKg: number) => {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.product.id === productId
+            ? {
+                ...i,
+                quantity: weightInKg,
+                selected_weight: weightInKg,
+                selected_weight_label: formatWeightLabel(weightInKg),
+                estimated_price: calculateEstimatedPrice(i.product, weightInKg),
+              }
+            : i,
+        ),
       );
     };
 
@@ -247,10 +415,80 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const totalPrice = items.reduce((s, i) => s + lineSubtotal(i.product, i.quantity), 0);
     const totalCount = items.reduce((s, i) => s + (i.product.is_by_weight ? 1 : i.quantity), 0);
 
+    // Save cart as a recurring list
+    const saveCurrentCartAsList = (listName: string): SavedShoppingList | null => {
+      if (items.length === 0) {
+        toast.error("السلة فارغة! أضف منتجات أولاً لحفظها كقائمة");
+        return null;
+      }
+      const trimmedName = listName.trim() || "قائمتي الدورية 📋";
+      const totalEst = items.reduce(
+        (sum, item) => sum + lineSubtotal(item.product, item.quantity),
+        0,
+      );
+
+      const newList: SavedShoppingList = {
+        id: `list-${Date.now()}`,
+        name: trimmedName,
+        created_at: new Date().toISOString(),
+        items: JSON.parse(JSON.stringify(items)),
+        total_estimated_price: +totalEst.toFixed(2),
+        total_items_count: items.length,
+      };
+
+      const updated = [newList, ...savedLists.filter((l) => l.name !== trimmedName)];
+      persistSavedLists(updated);
+      toast.success(`تم حفظ السلة كقائمة "${trimmedName}" بنجاح 📋✨`, {
+        description: `تحتوي على ${items.length} منتج بإجمالي ${totalEst.toFixed(2)} ج.م`,
+      });
+      return newList;
+    };
+
+    // Load saved list into cart
+    const loadSavedList = (listId: string, mode: "replace" | "append" = "replace"): boolean => {
+      const target = savedLists.find((l) => l.id === listId);
+      if (!target || target.items.length === 0) {
+        toast.error("القائمة المطلوبة غير موجودة أو فارغة");
+        return false;
+      }
+
+      playClickSound();
+      if (mode === "replace") {
+        setItems(JSON.parse(JSON.stringify(target.items)));
+      } else {
+        setItems((prev) => mergeCartItems(prev, target.items));
+      }
+
+      toast.success(`تم استرجاع قائمة "${target.name}" إلى السلة 🛒✨`, {
+        description: `تمت إضافة ${target.items.length} منتج بنجاح`,
+      });
+      setOpen(true);
+      return true;
+    };
+
+    const deleteSavedList = (listId: string) => {
+      const target = savedLists.find((l) => l.id === listId);
+      const updated = savedLists.filter((l) => l.id !== listId);
+      persistSavedLists(updated);
+      toast.success(`تم حذف قائمة "${target?.name || "التسوق"}" 🗑️`);
+    };
+
+    const renameSavedList = (listId: string, newName: string) => {
+      const trimmed = newName.trim();
+      if (!trimmed) return;
+      const updated = savedLists.map((l) =>
+        l.id === listId ? { ...l, name: trimmed, updated_at: new Date().toISOString() } : l,
+      );
+      persistSavedLists(updated);
+      toast.success("تم تحديث اسم القائمة بنجاح ✏️");
+    };
+
     return {
       items,
       addItem,
       updateQuantity,
+      updateItemPreference,
+      updateItemWeight,
       removeItem,
       clear,
       totalPrice,
@@ -258,8 +496,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isOpen,
       setOpen,
       isMerging,
+      savedLists,
+      saveCurrentCartAsList,
+      loadSavedList,
+      deleteSavedList,
+      renameSavedList,
+      refreshSavedLists,
     };
-  }, [items, isOpen, isMerging, userId]);
+  }, [items, isOpen, isMerging, userId, savedLists]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

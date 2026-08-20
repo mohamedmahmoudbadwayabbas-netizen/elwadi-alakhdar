@@ -36,37 +36,34 @@ export const PRODUCT_COLUMNS =
 
 // ── 1. Fetch & Cache All Store Products ──
 function getInitialProducts(): Product[] {
-  if (typeof window === "undefined") return MOCK_PRODUCTS as unknown as Product[];
-  try {
-    const cached = localStorage.getItem("alwadi_products_cache");
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
   return MOCK_PRODUCTS as unknown as Product[];
 }
 
 export async function fetchStoreProducts(): Promise<Product[]> {
   try {
-    const { data, error } = await supabase
+    let cachedList: Product[] = [];
+    try {
+      const cached = localStorage.getItem("alwadi_products_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) cachedList = parsed;
+      }
+    } catch {}
+
+    const { data } = await supabase
       .from("products")
       .select(PRODUCT_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(300);
 
-    if (error) {
-      console.warn("Failed to fetch products from Supabase, falling back to mock products:", error.message);
-    }
-
     const dbProds = (data ?? []) as unknown as Product[];
     const mergedMap = new Map<string, Product>();
 
-    // Add mock products first
-    for (const m of MOCK_PRODUCTS as unknown as Product[]) {
+    // Add mock / cached products first
+    for (const m of cachedList.length > 0 ? cachedList : (MOCK_PRODUCTS as unknown as Product[])) {
       mergedMap.set(m.id, m);
     }
-    // Override / add with DB products
+    // Override / add with DB products if any
     for (const p of dbProds) {
       mergedMap.set(p.id, p);
     }
@@ -76,9 +73,8 @@ export async function fetchStoreProducts(): Promise<Product[]> {
       localStorage.setItem("alwadi_products_cache", JSON.stringify(finalProducts));
     } catch {}
     return finalProducts;
-  } catch (err) {
-    console.error("Error fetching store products:", err);
-    return getInitialProducts();
+  } catch {
+    return MOCK_PRODUCTS as unknown as Product[];
   }
 }
 
@@ -95,14 +91,6 @@ export function useStoreProducts() {
 
 // ── 2. Fetch & Cache All Store Categories ──
 function getInitialCategories(): Category[] {
-  if (typeof window === "undefined") return COMPREHENSIVE_CATEGORIES as Category[];
-  try {
-    const cached = localStorage.getItem("alwadi_categories_cache");
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
   return COMPREHENSIVE_CATEGORIES as Category[];
 }
 
@@ -136,7 +124,7 @@ export async function fetchStoreCategories(): Promise<Category[]> {
     return finalCats;
   } catch (err) {
     console.error("Error fetching store categories:", err);
-    return getInitialCategories();
+    return COMPREHENSIVE_CATEGORIES as Category[];
   }
 }
 

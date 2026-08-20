@@ -27,14 +27,15 @@ import {
   Tag,
   Image as ImageIcon,
   Sliders,
-  LayoutGrid,
-  Layers,
-  Grid,
-  Maximize2,
-  Box,
-  Sparkle,
+  RotateCcw,
+  Download,
+  Upload,
+  PhoneCall,
+  Activity,
+  Globe,
 } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { LiveStorefrontPreview } from "@/components/admin/LiveStorefrontPreview";
 
 // Lazy Load Map Component
 const StoreMapPicker = lazy(() =>
@@ -178,41 +179,31 @@ function SettingsPage() {
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
-  // Load store settings
+  // Load store settings from LocalStorage / State
   useEffect(() => {
-    let mounted = true;
+    let customizerLocal = {};
+    let cacheLocal = {};
+    try {
+      const cached = localStorage.getItem("alwadi_store_settings_cache");
+      if (cached) cacheLocal = JSON.parse(cached);
+      const cust = localStorage.getItem("store_customizer_options");
+      if (cust) customizerLocal = JSON.parse(cust);
+    } catch {}
 
-    (supabase.rpc("get_store_settings_admin" as any) as any)
-      .maybeSingle()
-      .then(({ data, error }: { data: any; error: any }) => {
-        if (!mounted) return;
-        if (error) {
-          toast.error("تعذر تحميل الإعدادات من القاعدة، تم فتح القيم الافتراضية");
-        }
+    const initial = {
+      ...DEFAULT_SETTINGS,
+      ...cacheLocal,
+      ...customizerLocal,
+    } as Settings;
 
-        let customizerLocal = {};
-        try {
-          const cached = localStorage.getItem("store_customizer_options");
-          if (cached) customizerLocal = JSON.parse(cached);
-        } catch {}
-
-        setS(
-          data
-            ? ({ ...DEFAULT_SETTINGS, ...data, ...customizerLocal } as Settings)
-            : { ...DEFAULT_SETTINGS, ...customizerLocal },
-        );
-        setLoading(false);
-        setTimeout(() => {
-          isInitialLoadRef.current = false;
-        }, 1000);
-      });
-
-    return () => {
-      mounted = false;
-    };
+    setS(initial);
+    setLoading(false);
+    setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 500);
   }, []);
 
-  // Background Auto-Save effect (2.5 seconds debounce)
+  // Background Auto-Save to LocalStorage
   useEffect(() => {
     if (isInitialLoadRef.current || !s) return;
 
@@ -222,25 +213,21 @@ function SettingsPage() {
       clearTimeout(autoSaveTimerRef.current);
     }
 
-    autoSaveTimerRef.current = setTimeout(async () => {
-      // Filter out non-DB customizer keys before saving to Supabase
-      const { id, categories_style, products_style, card_radius, hero_style, free_shipping_threshold, font_family, ...payload } = s;
-      const dbPayload = payload as any;
+    autoSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem("alwadi_store_settings_cache", JSON.stringify(s));
+        const customizerKeys = {
+          categories_style: s.categories_style,
+          products_style: s.products_style,
+          card_radius: s.card_radius,
+          hero_style: s.hero_style,
+        };
+        localStorage.setItem("store_customizer_options", JSON.stringify(customizerKeys));
+      } catch {}
 
-      const res = id
-        ? await supabase.from("store_settings").update(dbPayload).eq("id", id).select("id").maybeSingle()
-        : await supabase.from("store_settings").insert(dbPayload).select("id").maybeSingle();
-
-      if (!res.error) {
-        if (!id && res.data?.id) {
-          setS((prev) => (prev ? { ...prev, id: res.data!.id } : prev));
-        }
-        setAutoSaveStatus("saved");
-        setTimeout(() => setAutoSaveStatus("idle"), 2500);
-      } else {
-        setAutoSaveStatus("idle");
-      }
-    }, 2500);
+      setAutoSaveStatus("saved");
+      setTimeout(() => setAutoSaveStatus("idle"), 2000);
+    }, 1500);
 
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -252,37 +239,33 @@ function SettingsPage() {
     if (!s) return;
 
     setSaving(true);
-    setProgress(20);
-    toast.success("تم تحديث وحفظ الإعدادات والتصميم بنجاح ✨");
+    setProgress(30);
 
-    const timer1 = setTimeout(() => setProgress(60), 150);
-    const timer2 = setTimeout(() => setProgress(90), 300);
+    const timer1 = setTimeout(() => setProgress(70), 100);
+    const timer2 = setTimeout(() => setProgress(95), 200);
 
-    const { id, categories_style, products_style, card_radius, hero_style, free_shipping_threshold, font_family, ...payload } = s;
-    const dbPayload = payload as any;
-
-    const res = id
-      ? await supabase.from("store_settings").update(dbPayload).eq("id", id).select("id").maybeSingle()
-      : await supabase.from("store_settings").insert(dbPayload).select("id").maybeSingle();
+    try {
+      localStorage.setItem("alwadi_store_settings_cache", JSON.stringify(s));
+      const customizerKeys = {
+        categories_style: s.categories_style,
+        products_style: s.products_style,
+        card_radius: s.card_radius,
+        hero_style: s.hero_style,
+      };
+      localStorage.setItem("store_customizer_options", JSON.stringify(customizerKeys));
+      window.dispatchEvent(new CustomEvent("store_settings_updated", { detail: s }));
+    } catch {}
 
     clearTimeout(timer1);
     clearTimeout(timer2);
 
     setProgress(100);
+    toast.success("تم حفظ التغييرات بنجاح ✨");
 
     setTimeout(() => {
       setProgress(null);
       setSaving(false);
-    }, 400);
-
-    if (res.error) {
-      toast.error(`حدث خطأ أثناء الحفظ الفعلي: ${res.error.message}`);
-      return;
-    }
-
-    if (!id && res.data?.id) {
-      setS((prev) => (prev ? { ...prev, id: res.data!.id } : prev));
-    }
+    }, 300);
   };
 
   const updateSetting = <K extends keyof Settings>(k: K, v: Settings[K]) => {
@@ -328,6 +311,83 @@ function SettingsPage() {
     toast.success(`تم تطبيق ثيم "${preset.name}" ✨`);
   };
 
+  // Reset all settings to defaults
+  const handleResetToDefaults = () => {
+    if (!window.confirm("هل أنت متأكد من رغبتك في استعادة جميع الإعدادات الافتراضية للمتجر؟"))
+      return;
+    setS(DEFAULT_SETTINGS);
+    try {
+      localStorage.setItem("alwadi_store_settings_cache", JSON.stringify(DEFAULT_SETTINGS));
+      const customizerKeys = {
+        categories_style: DEFAULT_SETTINGS.categories_style,
+        products_style: DEFAULT_SETTINGS.products_style,
+        card_radius: DEFAULT_SETTINGS.card_radius,
+        hero_style: DEFAULT_SETTINGS.hero_style,
+      };
+      localStorage.setItem("store_customizer_options", JSON.stringify(customizerKeys));
+      window.dispatchEvent(new CustomEvent("store_settings_updated", { detail: DEFAULT_SETTINGS }));
+    } catch {}
+    toast.success("تمت استعادة الإعدادات الافتراضية بنجاح 🔄");
+  };
+
+  // Export settings as JSON file
+  const handleExportJSON = () => {
+    if (!s) return;
+    try {
+      const dataStr =
+        "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `store_settings_backup_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      toast.success("تم تصدير ملف الإعدادات الاحتياطي بنجاح 💾");
+    } catch (err: any) {
+      toast.error("فشل تصدير الإعدادات: " + (err.message || err));
+    }
+  };
+
+  // Import settings from JSON file
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (typeof parsed === "object" && parsed !== null) {
+          const merged = { ...DEFAULT_SETTINGS, ...parsed };
+          setS(merged);
+          localStorage.setItem("alwadi_store_settings_cache", JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent("store_settings_updated", { detail: merged }));
+          toast.success("تم استيراد وتطبيق الإعدادات بنجاح ✨");
+        } else {
+          toast.error("ملف غير صالح، يرجى اختيار ملف JSON صحيح");
+        }
+      } catch (err: any) {
+        toast.error("فشل قراءة الملف: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  // Test WhatsApp Link
+  const handleTestWhatsApp = () => {
+    if (!s?.whatsapp_number) {
+      toast.error("يرجى إدخال رقم واتساب صالح أولاً");
+      return;
+    }
+    const cleanNum = s.whatsapp_number.replace(/[^\d+]/g, "").replace(/^00/, "+");
+    const numOnly = cleanNum.replace("+", "");
+    window.open(
+      `https://wa.me/${numOnly}?text=${encodeURIComponent("مرحباً، هذه رسالة تجربة من إعدادات المتجر 🛒")}`,
+      "_blank",
+    );
+    toast.success("تم فتح محادثة واتساب التجريبية بنجاح 💬");
+  };
+
   if (loading) return <SettingsPageSkeleton />;
   if (!s) return null;
 
@@ -351,7 +411,7 @@ function SettingsPage() {
         )}
       </AnimatePresence>
 
-      {/* Header & Auto-Save Indicator */}
+      {/* Header & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -383,31 +443,70 @@ function SettingsPage() {
             </AnimatePresence>
           </div>
           <p className="text-xs font-bold text-muted-foreground mt-1">
-            عدّل أي عنصر أو ارفع صورة مباشرة وتفقد النتيجة فوراً على هاتف المعاينة والمتجر
+            عدّل أي عنصر أو ارفع صورة مباشرة وتفقد النتيجة فوراً على نافذة المعاينة المباشرة للمتجر
           </p>
         </div>
 
-        <Button
-          onClick={handleSaveAll}
-          disabled={saving}
-          className="rounded-2xl hero-gradient text-primary-foreground font-black text-xs gap-2 shadow-md transition-transform hover:scale-[1.02] active:scale-95 shrink-0"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          <span>حفظ التغييرات الآن</span>
-        </Button>
+        {/* Quick Action Header Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export Settings */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportJSON}
+            className="rounded-xl font-bold text-xs gap-1.5 h-9 border-border/80 hover:bg-secondary"
+            title="تصدير نسخة احتياطية من الإعدادات"
+          >
+            <Download className="h-3.5 w-3.5 text-blue-500" />
+            <span className="hidden sm:inline">تصدير</span>
+          </Button>
+
+          {/* Import Settings */}
+          <label className="cursor-pointer">
+            <input type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
+            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border/80 bg-card hover:bg-secondary font-bold text-xs text-foreground transition-colors shadow-xs">
+              <Upload className="h-3.5 w-3.5 text-amber-500" />
+              <span className="hidden sm:inline">استيراد</span>
+            </span>
+          </label>
+
+          {/* Reset to Defaults */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleResetToDefaults}
+            className="rounded-xl font-bold text-xs gap-1.5 h-9 border-border/80 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+            title="استعادة الإعدادات الأصلية الافتراضية"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">استعادة الافتراضي</span>
+          </Button>
+
+          {/* Save Button */}
+          <Button
+            onClick={handleSaveAll}
+            disabled={saving}
+            className="rounded-xl hero-gradient text-primary-foreground font-black text-xs gap-2 h-9 shadow-md transition-transform hover:scale-[1.02] active:scale-95 shrink-0 px-4"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <span>حفظ التغييرات الآن</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Main Grid: Form Controls on Right, Live Mobile Simulator on Left */}
+      {/* Main Grid: Form Controls on Right, Live Simulator on Left */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Live Mobile Simulator Sticky Preview (5 Cols on LG) */}
+        {/* Live Storefront Sticky Preview (5 Cols on LG) */}
         <div className="lg:col-span-5 lg:order-2 lg:sticky lg:top-4 z-20 space-y-3">
-          <LiveMobileSimulator s={s} />
+          <LiveStorefrontPreview s={s} />
         </div>
 
         {/* Form Controls (7 Cols on LG) */}
         <div className="lg:col-span-7 lg:order-1 space-y-5">
-          {/* 1. هوية المتجر واللوجو */}
-          <Section icon={Store} title="هوية وبيانات المتجر والشعار">
+          {/* 1. هوية وبيانات المتجر واللوجو والموقع */}
+          <Section icon={Store} title="هوية وبيانات المتجر والشعار والموقع">
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="اسم المتجر الرئيسي">
@@ -418,17 +517,100 @@ function SettingsPage() {
                     className="h-10 rounded-xl font-bold text-xs"
                   />
                 </Field>
-                <Field label="رقم واتساب للتواصل والطلبات">
-                  <Input
-                    value={s.whatsapp_number ?? ""}
-                    onChange={(e) => updateSetting("whatsapp_number", e.target.value)}
-                    placeholder="+201234567890"
-                    className="h-10 rounded-xl font-bold text-xs dir-ltr text-right"
-                  />
-                </Field>
+                <div className="space-y-1.5">
+                  <span className="block text-xs font-extrabold text-foreground">
+                    رقم واتساب للتواصل والطلبات
+                  </span>
+                  <div className="flex gap-2">
+                    <Input
+                      value={s.whatsapp_number ?? ""}
+                      onChange={(e) => updateSetting("whatsapp_number", e.target.value)}
+                      placeholder="+201234567890"
+                      className="h-10 rounded-xl font-bold text-xs dir-ltr text-right flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestWhatsApp}
+                      className="h-10 rounded-xl text-xs font-bold gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shrink-0"
+                      title="تجربة فتح محادثة واتساب بالرقم الحالي"
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" />
+                      <span>تجربة</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 pt-1 border-t border-border/50">
+              {/* Store Address & Map Location */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Field label="عنوان مقر الفرع الرئيسي أو المتجر">
+                    <Input
+                      value={s.store_address ?? ""}
+                      onChange={(e) => updateSetting("store_address", e.target.value)}
+                      placeholder="القاهرة، مصر — شارع التحرير"
+                      className="h-10 rounded-xl font-bold text-xs"
+                    />
+                  </Field>
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-secondary/20 p-3">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>إحداثيات الموقع الجغرافي للمتجر (GPS):</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-muted-foreground block dir-ltr text-start">
+                      Lat: {s.store_lat ?? 30.0444} | Lng: {s.store_lng ?? 31.2357}
+                    </span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant={showMap ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setShowMap(!showMap)}
+                    className="h-8 rounded-xl text-xs font-bold gap-1.5 border-border/80"
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>{showMap ? "إخفاء الخريطة" : "تحديد على الخريطة 🗺️"}</span>
+                  </Button>
+                </div>
+
+                <AnimatePresence>
+                  {showMap && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden rounded-2xl border border-border"
+                    >
+                      <Suspense
+                        fallback={
+                          <div className="p-8 text-center text-xs font-bold text-muted-foreground">
+                            جاري تحميل الخريطة التفاعلية...
+                          </div>
+                        }
+                      >
+                        <StoreMapPicker
+                          lat={s.store_lat}
+                          lng={s.store_lng}
+                          address={s.store_address}
+                          onChange={(lat, lng) => {
+                            updateSetting("store_lat", lat);
+                            updateSetting("store_lng", lng);
+                            toast.success("تم تحديث إحداثيات موقع المتجر بنجاح 📍");
+                          }}
+                        />
+                      </Suspense>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-border/50">
                 <ImageUploader
                   value={s.logo_url}
                   onChange={(v) => updateSetting("logo_url", v)}
@@ -488,7 +670,8 @@ function SettingsPage() {
                     updateSetting("hero_bg_image", v);
                     updateSetting("hero_image_url", v);
                   }}
-                  label="رفع صورة خلفية البانر الرئيسي من ملفاتك (Direct Image Upload)"
+                  label="خلفية البانر الرئيسي (رفع أو توليد بالذكاء الاصطناعي)"
+                  promptHint={`خلفية بانر تسويقية فائقة الجمال لمتجر سوبرماركت حديث باسم "${s.site_name || "سمارت ستور"}" تعرض تشكيلة من الخضار والفاكهة والأغذية الطازجة مع إضاءة سينمائية`}
                   folder="hero"
                 />
               </div>
@@ -779,6 +962,34 @@ function SettingsPage() {
               </div>
             </div>
           </Section>
+
+          {/* 8. أدوات التحليل والتتبع الإعلاني */}
+          <Section icon={BarChart3} title="أدوات التحليل والتتبع الإعلاني (Analytics & Pixels)">
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="معرف جوجل أناليتكس (Google Analytics 4 ID)">
+                  <Input
+                    value={s.ga4_id ?? ""}
+                    onChange={(e) => updateSetting("ga4_id", e.target.value)}
+                    placeholder="G-XXXXXXXXXX"
+                    className="h-10 rounded-xl font-mono text-xs uppercase dir-ltr text-right"
+                  />
+                </Field>
+                <Field label="معرف بكسل فيسبوك / ميتا (Meta Pixel ID)">
+                  <Input
+                    value={s.meta_pixel_id ?? ""}
+                    onChange={(e) => updateSetting("meta_pixel_id", e.target.value)}
+                    placeholder="123456789012345"
+                    className="h-10 rounded-xl font-mono text-xs dir-ltr text-right"
+                  />
+                </Field>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-bold leading-relaxed">
+                💡 تُستخدم هذه الأكواد لربط الحملات الإعلانية على فيسبوك وتيك توك وجوجل وتتبع الزوار
+                والطلبات ومعدل التحويل تلقائياً.
+              </p>
+            </div>
+          </Section>
         </div>
       </div>
 
@@ -795,292 +1006,6 @@ function SettingsPage() {
         </Button>
       </div>
     </motion.div>
-  );
-}
-
-// ─── Live Mobile Simulator Component ──────────────────────────────────────────
-function LiveMobileSimulator({ s }: { s: Settings }) {
-  const primary = s.primary_color || "142 76% 24%";
-  const accent = s.accent_color || "18 85% 55%";
-  const bg = s.background_color || "48 33% 97%";
-  const fg = s.foreground_color || "120 18% 12%";
-  const annBg = s.announcement_bg_color || primary;
-
-  const catStyle = s.categories_style || "grid";
-  const prodStyle = s.products_style || "modern";
-  const cardRadius = s.card_radius || "rounded-2xl";
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between px-1">
-        <h3 className="flex items-center gap-2 text-xs font-black text-foreground">
-          <Smartphone className="h-4 w-4 text-emerald-500" />
-          <span>المعاينة الحية التفاعلية (Live Mobile View)</span>
-        </h3>
-        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/20">
-          تحديث بلحظته ⚡
-        </span>
-      </div>
-
-      {/* Frame device mockup */}
-      <div className="relative mx-auto w-full max-w-[320px] rounded-[38px] border-[8px] border-slate-800 dark:border-slate-700 bg-slate-950 p-2 shadow-2xl overflow-hidden">
-        {/* Notch & Camera */}
-        <div className="absolute top-0 start-1/2 -translate-x-1/2 h-4 w-28 bg-slate-800 rounded-b-xl z-30 flex items-center justify-center">
-          <div className="h-1.5 w-1.5 rounded-full bg-slate-900" />
-        </div>
-
-        {/* Inner Phone Screen */}
-        <div
-          className="rounded-[28px] overflow-hidden min-h-[520px] text-xs font-sans relative flex flex-col transition-colors duration-300"
-          style={{ background: `hsl(${bg})`, color: `hsl(${fg})` }}
-          dir="rtl"
-        >
-          {/* Top Status Bar */}
-          <div className="pt-3 px-4 pb-1 flex justify-between items-center text-[10px] font-bold opacity-70 z-20">
-            <span>9:41</span>
-            <div className="flex items-center gap-1">
-              <span>5G</span>
-              <div className="w-3.5 h-2 rounded-xs border border-current p-0.5">
-                <div className="h-full w-2 bg-current rounded-2xs" />
-              </div>
-            </div>
-          </div>
-
-          {/* Announcement Bar */}
-          <AnimatePresence>
-            {s.announcement_enabled && s.announcement_text && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="px-3 py-1.5 text-center text-[10px] font-bold text-white truncate shadow-xs z-10"
-                style={{ background: `hsl(${annBg})` }}
-              >
-                {s.announcement_text}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Header */}
-          <div
-            className="px-3 py-2 flex items-center justify-between border-b"
-            style={{ borderColor: `hsl(${fg} / 0.08)` }}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              {s.logo_url ? (
-                <img src={s.logo_url} alt="" className="h-7 w-7 rounded-lg object-cover" />
-              ) : (
-                <div
-                  className="h-7 w-7 rounded-lg flex items-center justify-center text-white"
-                  style={{ background: `hsl(${primary})` }}
-                >
-                  <Leaf className="h-4 w-4" />
-                </div>
-              )}
-              <span className="font-extrabold text-xs truncate max-w-[120px]">
-                {s.site_name || "سمارت ستور"}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <div className="h-6 w-6 rounded-full flex items-center justify-center bg-current/10">
-                <Search className="h-3 w-3" />
-              </div>
-              <div
-                className="h-6 w-6 rounded-full flex items-center justify-center text-white relative"
-                style={{ background: `hsl(${accent})` }}
-              >
-                <ShoppingCart className="h-3 w-3" />
-                <span className="absolute -top-1 -end-1 bg-emerald-600 text-white text-[8px] font-black h-3 w-3 rounded-full flex items-center justify-center">
-                  2
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Scrollable Screen Content */}
-          <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
-            {/* Hero Card */}
-            <div
-              className={`relative ${cardRadius} p-3.5 text-white overflow-hidden shadow-sm flex flex-col justify-between min-h-[110px] transition-all duration-300`}
-              style={{
-                background:
-                  s.hero_bg_image || s.hero_image_url
-                    ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${s.hero_bg_image || s.hero_image_url}) center/cover`
-                    : `linear-gradient(135deg, hsl(${primary}), hsl(${accent}))`,
-              }}
-            >
-              <div>
-                <span className="inline-block text-[9px] bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full font-extrabold mb-1">
-                  طازج يومياً ✨
-                </span>
-                <h4 className="font-black text-sm leading-snug line-clamp-1">
-                  {s.hero_title || "سمارت ستور"}
-                </h4>
-                <p className="text-[10px] opacity-90 line-clamp-2 mt-0.5 leading-tight">
-                  {s.hero_subtitle || "منتجات طازجة وتوصيل سريع لباب البيت"}
-                </p>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  className="px-3 py-1 rounded-xl text-[10px] font-black text-white shadow-md"
-                  style={{ background: `hsl(${accent})` }}
-                >
-                  {s.hero_cta_text || "تسوّق الآن"} ←
-                </button>
-              </div>
-            </div>
-
-            {/* Categories Live Style Preview */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-black opacity-80 block">
-                الأقسام (نمط: {catStyle})
-              </span>
-              {catStyle === "scroll" ? (
-                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                  {["خضروات", "لحوم", "أجبان", "بقالة", "منظفات"].map((c, i) => (
-                    <span
-                      key={i}
-                      className={`px-2.5 py-1 ${cardRadius} text-[9px] font-extrabold whitespace-nowrap border shrink-0`}
-                      style={{
-                        background: `hsl(${primary} / 0.1)`,
-                        color: `hsl(${primary})`,
-                        borderColor: `hsl(${primary} / 0.2)`,
-                      }}
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              ) : catStyle === "pills" ? (
-                <div className="flex flex-wrap gap-1">
-                  {["الكل", "خضروات", "لحوم", "أجبان", "بقالة"].map((c, i) => (
-                    <span
-                      key={i}
-                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${i === 0 ? "text-white" : ""}`}
-                      style={{ background: i === 0 ? `hsl(${primary})` : `hsl(${fg} / 0.06)` }}
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { name: "خضروات", icon: "🥦" },
-                    { name: "لحوم", icon: "🥩" },
-                    { name: "أجبان", icon: "🧀" },
-                    { name: "بقالة", icon: "🌾" },
-                  ].map((cat, i) => (
-                    <div key={i} className="flex flex-col items-center text-center p-1">
-                      <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs mb-0.5 border border-emerald-500/20">
-                        {cat.icon}
-                      </div>
-                      <span className="text-[8px] font-extrabold truncate w-full">{cat.name}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* First Order Coupon Banner (If Enabled) */}
-            {s.first_order_coupon_enabled && (
-              <div
-                className={`p-2 ${cardRadius} text-[10px] font-bold flex items-center justify-between border`}
-                style={{
-                  background: `hsl(${accent} / 0.1)`,
-                  borderColor: `hsl(${accent} / 0.3)`,
-                  color: `hsl(${fg})`,
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5" style={{ color: `hsl(${accent})` }} />
-                  <span>خصم {s.first_order_discount_percent ?? 10}% لطلبك الأول!</span>
-                </div>
-                <span
-                  className="px-1.5 py-0.5 rounded-md font-mono font-black text-[9px] text-white"
-                  style={{ background: `hsl(${primary})` }}
-                >
-                  {s.first_order_coupon_code || "WELCOME10"}
-                </span>
-              </div>
-            )}
-
-            {/* Sample Mini Product Grid */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-[10px] font-black">
-                <span>أحدث المنتجات</span>
-                <span className="text-[9px] text-emerald-600">الكل (12)</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  { name: "تفاح أحمر إيطالي", price: "45 ج.م" },
-                  { name: "خيار بلدي ممتاز", price: "18 ج.م" },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    className={`p-2 ${cardRadius} border ${
-                      prodStyle === "glass"
-                        ? "bg-white/40 dark:bg-black/40 backdrop-blur-xs"
-                        : prodStyle === "bordered"
-                          ? "bg-card border-2 shadow-sm"
-                          : "bg-card shadow-2xs"
-                    } flex flex-col justify-between space-y-1.5 transition-all`}
-                    style={{ borderColor: `hsl(${fg} / 0.1)` }}
-                  >
-                    <div className="h-14 w-full rounded-lg bg-secondary/80 flex items-center justify-center text-lg">
-                      {i === 0 ? "🍎" : "🥒"}
-                    </div>
-                    <div>
-                      <div className="font-bold text-[10px] truncate">{item.name}</div>
-                      <div className="font-black text-[11px]" style={{ color: `hsl(${primary})` }}>
-                        {item.price}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={`w-full py-1 ${cardRadius} font-black text-[9px] text-white`}
-                      style={{ background: `hsl(${primary})` }}
-                    >
-                      إضافة للسلة +
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Phone Footer Navigation */}
-          <div
-            className="p-2 border-t flex justify-around items-center text-[9px] font-bold"
-            style={{ borderColor: `hsl(${fg} / 0.1)` }}
-          >
-            <div
-              className="flex flex-col items-center gap-0.5"
-              style={{ color: `hsl(${primary})` }}
-            >
-              <Store className="h-3.5 w-3.5" />
-              <span>الرئيسية</span>
-            </div>
-            <div className="flex flex-col items-center gap-0.5 opacity-60">
-              <Layers className="h-3.5 w-3.5" />
-              <span>الأقسام</span>
-            </div>
-            <div className="flex flex-col items-center gap-0.5 opacity-60">
-              <ShoppingCart className="h-3.5 w-3.5" />
-              <span>السلة</span>
-            </div>
-            <div className="flex flex-col items-center gap-0.5 opacity-60">
-              <User className="h-3.5 w-3.5" />
-              <span>حسابي</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

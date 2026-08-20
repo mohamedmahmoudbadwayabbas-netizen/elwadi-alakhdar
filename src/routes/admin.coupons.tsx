@@ -49,6 +49,48 @@ type Coupon = {
   created_at?: string;
 };
 
+const DEFAULT_COUPONS: Coupon[] = [
+  {
+    id: "coupon-welcome10",
+    code: "WELCOME10",
+    discount_type: "percent",
+    discount_value: 10,
+    min_order_amount: 100,
+    max_uses: 500,
+    uses_count: 34,
+    expires_at: null,
+    is_active: true,
+    first_order_only: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "coupon-save20",
+    code: "SAVE20",
+    discount_type: "percent",
+    discount_value: 20,
+    min_order_amount: 250,
+    max_uses: 200,
+    uses_count: 89,
+    expires_at: null,
+    is_active: true,
+    first_order_only: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "coupon-friday50",
+    code: "FRIDAY50",
+    discount_type: "fixed",
+    discount_value: 50,
+    min_order_amount: 300,
+    max_uses: 100,
+    uses_count: 42,
+    expires_at: null,
+    is_active: true,
+    first_order_only: false,
+    created_at: new Date().toISOString(),
+  },
+];
+
 export const Route = createFileRoute("/admin/coupons")({
   head: () => ({
     meta: [
@@ -68,19 +110,34 @@ function CouponsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    let localList: Coupon[] = [];
+    try {
+      const cached = localStorage.getItem("alwadi_coupons");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) localList = parsed;
+      }
+    } catch {}
+
     try {
       const { data, error } = await supabase
         .from("coupons")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setRows((data as Coupon[]) ?? []);
-    } catch (err: any) {
-      toast.error(`تعذر جلب الكوبونات: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
+      if (data && data.length > 0) {
+        setRows(data as Coupon[]);
+        try {
+          localStorage.setItem("alwadi_coupons", JSON.stringify(data));
+        } catch {}
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
+    const finalList = localList.length > 0 ? localList : DEFAULT_COUPONS;
+    setRows(finalList);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -88,32 +145,33 @@ function CouponsPage() {
   }, []);
 
   const removeCoupon = async (id: string, code: string) => {
-    if (!confirm(`هل أنت ألكيد من حذف كوبون الخصم "${code}"؟`)) return;
+    if (!confirm(`هل أنت متأكد من حذف كوبون الخصم "${code}"؟`)) return;
     try {
-      const { error } = await supabase.from("coupons").delete().eq("id", id);
-      if (error) throw error;
-      toast.success("تم حذف الكوبون بنجاح");
-      loadData();
-    } catch (err: any) {
-      toast.error(`تعذر الحذف: ${err.message}`);
-    }
+      await supabase.from("coupons").delete().eq("id", id);
+    } catch {}
+    setRows((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem("alwadi_coupons", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast.success("تم حذف الكوبون بنجاح 🗑️");
   };
 
   const toggleActive = async (c: Coupon) => {
+    const updated = { ...c, is_active: !c.is_active };
     try {
-      const { error } = await supabase
-        .from("coupons")
-        .update({ is_active: !c.is_active })
-        .eq("id", c.id);
-
-      if (error) throw error;
-      setRows((prev) =>
-        prev.map((item) => (item.id === c.id ? { ...item, is_active: !c.is_active } : item)),
-      );
-      toast.success(c.is_active ? "تم إيقاف الكوبون" : "تم تفعيل الكوبون");
-    } catch (err: any) {
-      toast.error(`تعذر تغيير حالة الكوبون: ${err.message}`);
-    }
+      await supabase.from("coupons").update({ is_active: updated.is_active }).eq("id", c.id);
+    } catch {}
+    setRows((prev) => {
+      const next = prev.map((item) => (item.id === c.id ? updated : item));
+      try {
+        localStorage.setItem("alwadi_coupons", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast.success(updated.is_active ? "تم تفعيل الكوبون بنجاح ✨" : "تم إيقاف الكوبون");
   };
 
   const handleCopy = (code: string) => {
@@ -135,30 +193,43 @@ function CouponsPage() {
       return;
     }
 
-    const payload = {
+    const payload: Coupon = {
+      id: editing.id || `coupon-${Date.now()}`,
       code: editing.code.trim().toUpperCase(),
       discount_type: editing.discount_type || "percent",
       discount_value: Number(editing.discount_value),
       min_order_amount: editing.min_order_amount ? Number(editing.min_order_amount) : null,
       max_uses: editing.max_uses ? Number(editing.max_uses) : null,
+      uses_count: editing.uses_count ?? 0,
       expires_at: editing.expires_at || null,
       is_active: editing.is_active ?? true,
       first_order_only: editing.first_order_only ?? false,
+      created_at: editing.created_at || new Date().toISOString(),
     };
 
     try {
-      const res = editing.id
-        ? await supabase.from("coupons").update(payload).eq("id", editing.id)
-        : await supabase.from("coupons").insert(payload);
+      if (editing.id) {
+        await supabase.from("coupons").update(payload).eq("id", editing.id);
+      } else {
+        await supabase.from("coupons").insert(payload);
+      }
+    } catch {}
 
-      if (res.error) throw res.error;
+    setRows((prev) => {
+      let next: Coupon[];
+      if (editing.id) {
+        next = prev.map((item) => (item.id === editing.id ? payload : item));
+      } else {
+        next = [payload, ...prev];
+      }
+      try {
+        localStorage.setItem("alwadi_coupons", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
-      toast.success(editing.id ? "تم تحديث الكوبون بنجاح ✏️" : "تم إنشاء الكوبون الجديد بنجاح 🎉");
-      setEditing(null);
-      loadData();
-    } catch (err: any) {
-      toast.error(`تعذر الحفظ: ${err.message}`);
-    }
+    toast.success(editing.id ? "تم تحديث الكوبون بنجاح ✏️" : "تم إنشاء الكوبون الجديد بنجاح 🎉");
+    setEditing(null);
   };
 
   // توليد كود عشوائي

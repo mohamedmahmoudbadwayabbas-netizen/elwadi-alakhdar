@@ -1,5 +1,5 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useCart, lineSubtotal } from "@/lib/cart-context";
+import { useCart, lineSubtotal, formatWeightLabel } from "@/lib/cart-context";
 import { useSettings } from "@/lib/settings-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import {
   Copy,
   Truck as TruckIcon,
   Sparkles,
+  BookmarkPlus,
+  ListOrdered,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +28,8 @@ import {
   SubstitutionPreferencePicker,
   type SubstitutionPreference,
 } from "./SubstitutionPreferencePicker";
+import { ItemSubstitutionSelector } from "./ItemSubstitutionSelector";
+import { SaveShoppingListDialog } from "./SaveShoppingListDialog";
 
 type PaymentMethod = "cod" | "instapay" | "bank";
 
@@ -42,10 +46,21 @@ const checkoutSchema = z.object({
 });
 
 export function CartDrawer() {
-  const { isOpen, setOpen, items, updateQuantity, removeItem, totalPrice, clear, isMerging } =
-    useCart();
+  const {
+    isOpen,
+    setOpen,
+    items,
+    updateQuantity,
+    removeItem,
+    totalPrice,
+    clear,
+    isMerging,
+    updateItemSubstitution,
+    savedLists,
+  } = useCart();
   const settings = useSettings();
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
+  const [saveListOpen, setSaveListOpen] = useState(false);
   const [substitutionPreference, setSubstitutionPreference] =
     useState<SubstitutionPreference>("call_me");
   const [form, setForm] = useState({
@@ -110,12 +125,7 @@ export function CartDrawer() {
           ? "[تفضيل البديل: اختيار أفضل بديل تلقائياً]"
           : "[تفضيل البديل: عدم الاستبدال وحذف الصنف]";
 
-    const combinedNotes = [
-      substitutionLabel,
-      parsed.data.notes?.trim(),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const combinedNotes = [substitutionLabel, parsed.data.notes?.trim()].filter(Boolean).join("\n");
 
     const { error } = await (supabase as any).rpc("create_order", {
       p_customer_name: parsed.data.customer_name,
@@ -260,9 +270,17 @@ export function CartDrawer() {
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col justify-between">
                         <div className="flex items-start justify-between gap-2">
-                          <h5 className="line-clamp-1 text-xs sm:text-sm font-black text-foreground">
-                            {it.product.name}
-                          </h5>
+                          <div>
+                            <h5 className="line-clamp-1 text-xs sm:text-sm font-black text-foreground">
+                              {it.product.name}
+                            </h5>
+                            {it.product.is_by_weight && (
+                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">
+                                وزن تقديري:{" "}
+                                {it.selected_weight_label || formatWeightLabel(it.quantity)}
+                              </span>
+                            )}
+                          </div>
                           <button
                             aria-label="حذف المنتج"
                             onClick={() => removeItem(it.product.id)}
@@ -270,6 +288,15 @@ export function CartDrawer() {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
+                        </div>
+
+                        {/* تفضيل البديل لهذا الصنف بالتحديد */}
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <ItemSubstitutionSelector
+                            value={it.substitution_preference || substitutionPreference}
+                            onChange={(pref) => updateItemSubstitution(it.product.id, pref)}
+                            compact={true}
+                          />
                         </div>
 
                         <div className="mt-2 flex items-center justify-between">
@@ -319,6 +346,22 @@ export function CartDrawer() {
             </div>
 
             <div className="border-t border-border/60 bg-card p-4 shadow-xl space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSaveListOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 bg-emerald-500/10 hover:bg-emerald-500/15 px-3 py-1.5 rounded-xl border border-emerald-500/20 transition-all"
+                >
+                  <BookmarkPlus className="h-3.5 w-3.5" />
+                  <span>حفظ كقائمة تسوق دورية 📋</span>
+                </button>
+                {savedLists.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    {savedLists.length} قوائم محفوظة
+                  </span>
+                )}
+              </div>
+
               <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
                 <span>إجمالي المنتجات</span>
                 <span className="font-mono text-foreground font-extrabold">
@@ -483,6 +526,8 @@ export function CartDrawer() {
           </>
         )}
       </SheetContent>
+
+      <SaveShoppingListDialog open={saveListOpen} onOpenChange={setSaveListOpen} />
     </Sheet>
   );
 }

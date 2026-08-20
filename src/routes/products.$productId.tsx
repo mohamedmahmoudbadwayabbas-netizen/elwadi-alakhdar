@@ -1,5 +1,7 @@
 import { SITE_URL } from "@/lib/brand";
 import { NumberInput } from "@/components/ui/number-input";
+import { WeightSelector } from "@/components/storefront/WeightSelector";
+import { formatWeightLabel, calculateEstimatedPrice } from "@/lib/cart-context";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +54,7 @@ import { MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { motion, AnimatePresence } from "motion/react";
 import { useStoreProduct, useStoreProducts } from "@/lib/store-data-hooks";
+import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
 
 // ─── الأنواع ───────────────────────────────────────────────────────────────────
 type Review = {
@@ -143,7 +146,6 @@ export const Route = createFileRoute("/products/$productId")({
   },
   component: ProductPage,
 });
-
 
 // دالة ذكية لحساب المسافة الجغرافية بين نقطتين بالكيلومتر (Haversine Formula)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -272,9 +274,9 @@ function ProductPage() {
       setLoading(false);
 
       if (allStoreProducts && cachedProduct.category_id) {
-        const simList = allStoreProducts.filter(
-          (p) => p.category_id === cachedProduct.category_id && p.id !== productId,
-        ).slice(0, 6);
+        const simList = allStoreProducts
+          .filter((p) => p.category_id === cachedProduct.category_id && p.id !== productId)
+          .slice(0, 6);
         setSimilar(simList);
       }
     }
@@ -285,20 +287,21 @@ function ProductPage() {
   const wished = !!wishlistRowId;
 
   // 🔀 دمج الميزتين: تتبع المسافة الحالية والتوصيل المتوقع ونوع الحساب
-  const [deliveryMethod, setDeliveryMethod] = useState<"manual" | "gps">(() => {
-    if (typeof window === "undefined") return "manual";
-    return (localStorage.getItem("delivery_method") as "manual" | "gps") || "manual";
-  });
-  const [selectedZone, setSelectedZone] = useState(() => {
-    if (typeof window === "undefined") return "near";
-    return localStorage.getItem("user_delivery_zone") || "near";
-  });
-  const [calculatedDistanceKM, setCalculatedDistanceKM] = useState<number | null>(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("calculated_distance");
-    return saved ? parseFloat(saved) : null;
-  });
+  const [deliveryMethod, setDeliveryMethod] = useState<"manual" | "gps">("manual");
+  const [selectedZone, setSelectedZone] = useState("near");
+  const [calculatedDistanceKM, setCalculatedDistanceKM] = useState<number | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedMethod = localStorage.getItem("delivery_method") as "manual" | "gps";
+      if (savedMethod === "manual" || savedMethod === "gps") setDeliveryMethod(savedMethod);
+      const savedZone = localStorage.getItem("user_delivery_zone");
+      if (savedZone) setSelectedZone(savedZone);
+      const savedDist = localStorage.getItem("calculated_distance");
+      if (savedDist) setCalculatedDistanceKM(parseFloat(savedDist));
+    } catch {}
+  }, []);
 
   const [activeImg, setActiveImg] = useState(0);
   const [zoomed, setZoomed] = useState(false);
@@ -462,7 +465,9 @@ function ProductPage() {
       const viewedKey = `viewed_prod_${productId}`;
       if (!sessionStorage.getItem(viewedKey)) {
         sessionStorage.setItem(viewedKey, "1");
-        (supabase as any).rpc("increment_product_views", { p_product_id: productId }).catch(() => {});
+        (supabase as any)
+          .rpc("increment_product_views", { p_product_id: productId })
+          .catch(() => {});
       }
     } catch {}
 
@@ -486,7 +491,12 @@ function ProductPage() {
   }, [productId]);
 
   if (!product && isProdLoading) return <ProductPageSkeleton />;
-  if (!product) return <div className="text-center py-20 font-bold text-muted-foreground">المنتج غير موجود أو جارٍ تحميله...</div>;
+  if (!product)
+    return (
+      <div className="text-center py-20 font-bold text-muted-foreground">
+        المنتج غير موجود أو جارٍ تحميله...
+      </div>
+    );
 
   const outOfStock = (product.stock_quantity ?? 1) <= 0;
   const step = product.is_by_weight ? 0.25 : 1;
@@ -506,10 +516,7 @@ function ProductPage() {
     setSubmitting(true);
     const userMetadata = user.user_metadata as Record<string, string> | undefined;
     const displayName =
-      authorName.trim() ||
-      userMetadata?.full_name ||
-      user.email?.split("@")[0] ||
-      "عميل";
+      authorName.trim() || userMetadata?.full_name || user.email?.split("@")[0] || "عميل";
     const { data, error } = await supabase
       .from("reviews")
       .insert({
@@ -627,8 +634,8 @@ function ProductPage() {
             <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
               {Boolean(
                 (product as any).isTopSeller ||
-                  (product as any).is_top_seller ||
-                  product.is_featured,
+                (product as any).is_top_seller ||
+                product.is_featured,
               ) && (
                 <span className="rounded-full bg-amber-500 text-white font-black text-[11px] px-3 py-1 shadow-md flex items-center gap-1">
                   <Flame className="h-3.5 w-3.5" /> الأكثر مبيعاً
@@ -930,48 +937,24 @@ function ProductPage() {
               ))}
             </select>
           </div>
+
+          {/* خريطة وتغطية Google Maps للمنتج */}
+          <StoreGoogleMapsWidget
+            title="تغطية التوصيل وموقع المتجر المباشر"
+            subtitle={`التوصيل السريع لمنتج ${product.name} إلى موقعك`}
+            storeName="المركز الرئيسي - سمارت ستور"
+            showAiGrounding={true}
+          />
         </div>
 
-        {/* ─── أوزان وكميات الشراء ─── */}
+        {/* ─── أوزان وكميات الشراء (Variable Weight Selector: 250g, 500g, 750g, 1kg, 1.5kg) ─── */}
         {product.is_by_weight && (
-          <div className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
-            <div className="text-xs font-bold">اختر الوزن المطلـوب:</div>
-            <div className="grid grid-cols-4 gap-2">
-              {WEIGHT_PRESETS.map((w) => (
-                <button
-                  key={w}
-                  onClick={() => setQty(w)}
-                  className={cn(
-                    "rounded-xl border py-2.5 text-xs font-bold transition-all",
-                    qty === w
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm scale-105"
-                      : "bg-secondary/30 hover:bg-secondary",
-                  )}
-                >
-                  {w >= 1 ? `${w} كجم` : `${w * 1000} جم`}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-1.5 pt-2 border-t">
-              <label className="text-[11px] font-bold text-muted-foreground">
-                أو أدخل وزناً مخصصاً (بالجرام):
-              </label>
-              <div className="flex gap-2">
-                <NumberInput
-                  decimal={false}
-                  placeholder="مثال: 350"
-                  className="flex-1 min-w-0 rounded-xl border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:border-primary"
-                  onValueChange={(v) => {
-                    const grams = parseFloat(v);
-                    if (!isNaN(grams) && grams > 0) setQty(+(grams / 1000).toFixed(3));
-                  }}
-                />
-                <div className="grid place-items-center rounded-xl bg-secondary/40 px-3 text-[11px] font-bold text-muted-foreground shrink-0">
-                  {Math.round(qty * 1000)} جم
-                </div>
-              </div>
-            </div>
-          </div>
+          <WeightSelector
+            product={product}
+            selectedWeight={qty}
+            onWeightChange={(w) => setQty(w)}
+            showEstimatedPrice={true}
+          />
         )}
 
         {/* ─── زر إضافة السلة + شراء فوري ─── */}
@@ -1001,21 +984,35 @@ function ProductPage() {
             <Button
               disabled={outOfStock}
               onClick={() => {
-                addItem(product, qty);
+                const label = product.is_by_weight ? formatWeightLabel(qty) : `${qty} قطعة`;
+                addItem(product, qty, {
+                  selected_weight: product.is_by_weight ? qty : undefined,
+                  selected_weight_label: product.is_by_weight ? label : undefined,
+                });
                 flyToCart(mainImgRef.current);
-                toast.success("تمت الإضافة للسلة 🛒");
+                toast.success("تمت الإضافة للسلة 🛒", {
+                  description: `${product.name} (${label} — ${calculateEstimatedPrice(product, qty)} ج.م)`,
+                });
               }}
               variant="outline"
               className="flex-1 h-11 rounded-xl font-bold text-xs"
             >
               <ShoppingBag className="me-2 h-4 w-4" />{" "}
-              {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
+              {outOfStock
+                ? "نفدت الكمية"
+                : product.is_by_weight
+                  ? `أضف للسلة (${formatWeightLabel(qty)})`
+                  : "أضف إلى السلة"}
             </Button>
           </div>
           <Button
             disabled={outOfStock}
             onClick={() => {
-              addItem(product, qty);
+              const label = product.is_by_weight ? formatWeightLabel(qty) : `${qty} قطعة`;
+              addItem(product, qty, {
+                selected_weight: product.is_by_weight ? qty : undefined,
+                selected_weight_label: product.is_by_weight ? label : undefined,
+              });
               navigate({ to: "/cart" });
             }}
             className="w-full h-11 rounded-xl hero-gradient font-black text-sm text-primary-foreground shadow-md"

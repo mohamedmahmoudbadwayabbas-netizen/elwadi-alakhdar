@@ -51,6 +51,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { COMPREHENSIVE_CATEGORIES, MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { normalizeDigits } from "@/lib/i18n-context";
+import { SmartProductCopywriterModal } from "@/components/admin/SmartProductCopywriterModal";
+import { AdminAiImageGeneratorModal } from "@/components/admin/AdminAiImageGeneratorModal";
 
 export const Route = createFileRoute("/admin/products")({
   head: () => ({
@@ -137,6 +139,8 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isGeneratingTip, setIsGeneratingTip] = useState(false);
+  const [copywriterModalOpen, setCopywriterModalOpen] = useState(false);
+  const [aiImageModalOpen, setAiImageModalOpen] = useState(false);
 
   const syncStorefrontPreview = (prodId?: string) => {
     try {
@@ -334,8 +338,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
         `لأفضل قوام ونكهة غنية، انقع (${productName}) في تتبيلة الليمون والتوابل الخاصة لمدة 15 دقيقة قبل الشواء أو التقديم.`,
         `يُفضل تقديمه طازجاً مع رشة ملح بحري ورذاذ ليمون لتعزيز النكهة الطبيعية الشهية لـ (${productName}).`,
       ];
-      const generatedPlaceholder =
-        sampleTips[Math.floor(Math.random() * sampleTips.length)];
+      const generatedPlaceholder = sampleTips[Math.floor(Math.random() * sampleTips.length)];
 
       setEditing((prev) =>
         prev
@@ -918,11 +921,22 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
           className="max-h-[92vh] max-w-2xl overflow-y-auto bg-card backdrop-blur-md rounded-3xl p-6 border-border"
           dir="rtl"
         >
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between gap-2 border-b border-border/60 pb-3">
             <DialogTitle className="font-display text-lg font-black text-foreground flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500" />
               <span>{editing?.id ? "تعديل تفاصيل المنتج" : "إضافة منتج جديد للمتجر"}</span>
             </DialogTitle>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCopywriterModalOpen(true)}
+              className="h-8 rounded-xl text-xs font-black gap-1.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+              <span>كاتب أوصاف AI ✍️</span>
+            </Button>
           </DialogHeader>
 
           {editing && (
@@ -1132,8 +1146,8 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
                 />
               </div>
 
-              {/* منطقة رفع الصور مع السحب والإفلات Drag & Drop Zone */}
-              <Field label="صورة المنتج (السحب والإفلات متاح)" full>
+              {/* منطقة رفع الصور مع السحب والإفلات وتوليد الصور بالذكاء الاصطناعي Drag & Drop Zone */}
+              <Field label="صورة المنتج (رفع أو توليد بالذكاء الاصطناعي)" full>
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -1145,44 +1159,73 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
                   }`}
                 >
                   {editing.image_url ? (
-                    <div className="relative group w-32 h-32 rounded-2xl overflow-hidden border border-border shadow-xs">
-                      <img src={editing.image_url} className="h-full w-full object-cover" alt="" />
-                      <button
-                        type="button"
-                        onClick={() => setEditing({ ...editing, image_url: null })}
-                        className="absolute top-1 end-1 bg-rose-600 text-white p-1 rounded-full shadow-md hover:scale-110 transition-transform"
-                        title="حذف الصورة"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="relative group w-36 h-36 rounded-2xl overflow-hidden border border-border shadow-xs">
+                        <img
+                          src={editing.image_url}
+                          className="h-full w-full object-cover"
+                          alt=""
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditing({ ...editing, image_url: null })}
+                          className="absolute top-1 end-1 bg-rose-600 text-white p-1 rounded-full shadow-md hover:scale-110 transition-transform"
+                          title="حذف الصورة"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAiImageModalOpen(true)}
+                          className="h-8 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          <span>تعديل الصورة بالـ AI (Gemini)</span>
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-center space-y-2">
+                    <div className="text-center space-y-2.5">
                       <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary mx-auto">
                         <ImageIcon className="h-6 w-6" />
                       </div>
                       <div className="text-xs font-extrabold text-foreground">
-                        اسحب واسقط صورة المنتج هنا، أو اضغط للاختيار
+                        اسحب واسقط صورة المنتج هنا، أو اختر التوليد بالذكاء الاصطناعي
                       </div>
                       <p className="text-[10px] text-muted-foreground font-semibold">
-                        يدعم صيغ PNG, JPG, WEBP بحجم أقصى 5 ميجابايت
+                        يدعم صيغ PNG, JPG, WEBP أو الإنشاء عبر Google Gemini 3.1 Flash Image
                       </p>
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl hero-gradient text-primary-foreground px-4 py-2 text-xs font-black shadow-xs hover:opacity-90">
-                        {uploading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Upload className="h-4 w-4" />
-                        )}
-                        {uploading ? "جاري الرفع..." : "اختر صورة من جهازك"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) =>
-                            e.target.files?.[0] && processImageUpload(e.target.files[0])
-                          }
-                        />
-                      </label>
+                      <div className="flex flex-wrap justify-center gap-2 pt-1">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl hero-gradient text-primary-foreground px-4 py-2 text-xs font-black shadow-xs hover:opacity-90">
+                          {uploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {uploading ? "جاري الرفع..." : "اختر صورة من جهازك"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              e.target.files?.[0] && processImageUpload(e.target.files[0])
+                            }
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setAiImageModalOpen(true)}
+                          className="rounded-xl px-3.5 py-2 text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 gap-1.5 shadow-xs"
+                        >
+                          <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>توليد صورة بالـ AI ✨</span>
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -1199,6 +1242,29 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
               </Field>
             </div>
           )}
+
+          {/* Modal توليد الصور بالذكاء الاصطناعي للمنتجات */}
+          <AdminAiImageGeneratorModal
+            open={aiImageModalOpen}
+            onOpenChange={setAiImageModalOpen}
+            onImageSelected={(url) => {
+              if (editing) {
+                setEditing({ ...editing, image_url: url });
+              }
+            }}
+            initialImageUrl={editing?.image_url}
+            initialPrompt={
+              editing?.name
+                ? `صورة استوديو تجارية فائقة الجودة لمنتج ${editing.name}${editing.description ? ` - ${editing.description}` : ""}`
+                : ""
+            }
+            categoryHint={cats.find((c) => c.id === editing?.category_id)?.name}
+            title={
+              editing?.name
+                ? `توليد صورة لمنتج: ${editing.name}`
+                : "توليد صورة منتج بالذكاء الاصطناعي"
+            }
+          />
 
           <DialogFooter className="gap-2 pt-2 border-t border-border mt-4">
             <Button
@@ -1223,6 +1289,29 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* مودال كاتب المحتوى الذكي */}
+      <SmartProductCopywriterModal
+        open={copywriterModalOpen}
+        onOpenChange={setCopywriterModalOpen}
+        initialProductName={editing?.name ?? ""}
+        initialCategoryName={cats.find((c) => c.id === editing?.category_id)?.name ?? ""}
+        isByWeight={Boolean(editing?.is_by_weight)}
+        onApplyCopywriting={(data) => {
+          if (editing) {
+            setEditing({
+              ...editing,
+              name: data.name || editing.name,
+              description: data.description,
+              cooking_tip: data.cookingTip || editing.cooking_tip,
+              cookingTip: data.cookingTip || editing.cookingTip,
+            });
+            if (data.tags && data.tags.length > 0) {
+              setTagsList((prev) => Array.from(new Set([...prev, ...data.tags])));
+            }
+          }
+        }}
+      />
     </motion.div>
   );
 }

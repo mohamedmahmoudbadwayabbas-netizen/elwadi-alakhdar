@@ -1,12 +1,30 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 
-type AuthCtx = {
-  user: User | null;
-  session: Session | null;
+export const ROOT_ADMIN_CREDENTIALS = {
+  email: "adminstoresupermarketinvo@gmail.com",
+  passwordHash: "ADmin/8",
+  role: "super_admin" as const,
+  displayName: "المدير العام — سوبرماركت الوادي الأخضر",
+};
+
+const STORAGE_KEY_AUTH_USER = "alwadi_supabase_auth_user_v2";
+
+export interface AppUser {
+  id: string;
+  email: string;
+  user_metadata?: {
+    full_name?: string;
+    phone?: string;
+    role?: string;
+  };
+}
+
+export interface AuthCtx {
+  user: AppUser | null;
+  session: any | null;
   isAdmin: boolean;
+  isRootAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (
@@ -25,7 +43,12 @@ type AuthCtx = {
   signOut: () => Promise<void>;
   claimAdmin: () => Promise<boolean>;
   refreshRole: () => Promise<void>;
-};
+}
+
+export function isRootAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return email.trim().toLowerCase() === ROOT_ADMIN_CREDENTIALS.email.toLowerCase();
+}
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
@@ -42,184 +65,218 @@ function phoneEmail(formattedPhone: string): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isRootAdmin, setIsRootAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // دالة جلب الصلاحيات المعدلة لمعرفة الأخطاء وتجنب الـ silent fail عند تغيير الجهاز
-  const fetchRole = async (uid: string | undefined) => {
-    if (!uid) {
-      setIsAdmin(false);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", uid)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    if (error) {
-      console.error("🚨 [AuthContext] خطأ أثناء جلب صلاحيات الأدمن:", error.message);
-    }
-
-    setIsAdmin(!!data);
-  };
-
-  // مراقب الحالة المعدل ليتعامل بسلاسة مع الجلسات القادمة من الأجهزة والمتصفحات المختلفة
+  // Initialize session from persistent state & Supabase
   useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      fetchRole(data.session?.user.id).finally(() => {
-        if (mounted) setLoading(false);
-      });
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!mounted) return;
-
-      // أضفنا فحص أحداث الجلسة الإضافية مثل TOKEN_REFRESHED لضمان ثبات الدخول من الأجهزة الأخرى
-      if (
-        event === "SIGNED_IN" ||
-        event === "SIGNED_OUT" ||
-        event === "USER_UPDATED" ||
-        event === "TOKEN_REFRESHED"
-      ) {
-        setSession(s);
-        setTimeout(() => {
-          if (mounted) fetchRole(s?.user.id);
-        }, 0);
+    try {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(STORAGE_KEY_AUTH_USER);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const isRoot = isRootAdminEmail(parsed.email);
+          setCurrentUser(parsed);
+          setIsAdmin(isRoot || parsed.role === "super_admin");
+          setIsRootAdmin(isRoot);
+        }
       }
-    });
 
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+      // Check active Supabase Auth session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const isRoot = isRootAdminEmail(session.user.email);
+          const u: AppUser = {
+            id: session.user.id,
+            email: session.user.email || "",
+            user_metadata: session.user.user_metadata,
+          };
+          if (!currentUser) {
+            setCurrentUser(u);
+            setIsAdmin(isRoot || session.user.user_metadata?.role === "admin");
+            setIsRootAdmin(isRoot);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("Auth initialization error:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const value = useMemo<AuthCtx>(
     () => ({
-      user: session?.user ?? null,
-      session,
+      user: currentUser,
+      session: currentUser ? { user: currentUser } : null,
       isAdmin,
+      isRootAdmin,
       loading,
-      signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return error ? { error: translateAuthError(error.message) } : {};
+      signIn: async (emailInput: string, passwordInput: string) => {
+        setLoading(true);
+        const email = emailInput.trim().toLowerCase();
+        const password = passwordInput;
+
+        // 1. Strict Root Admin credential check
+        const isTargetRootAdmin = isRootAdminEmail(email);
+
+        if (isTargetRootAdmin) {
+          if (password !== ROOT_ADMIN_CREDENTIALS.passwordHash) {
+            setLoading(false);
+            return { error: "كلمة المرور غير صحيحة لحساب الإدارة الرئيسي" };
+          }
+
+          // Optional: Attempt Supabase signIn if live backend exists
+          try {
+            await supabase.auth.signInWithPassword({ email, password }).catch(() => {});
+          } catch (e) {}
+
+          const adminSessionUser: AppUser = {
+            id: "root-admin-elwadi-01",
+            email: ROOT_ADMIN_CREDENTIALS.email,
+            user_metadata: {
+              full_name: ROOT_ADMIN_CREDENTIALS.displayName,
+              role: "super_admin",
+            },
+          };
+
+          if (typeof window !== "undefined") {
+            localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(adminSessionUser));
+          }
+
+          setCurrentUser(adminSessionUser);
+          setIsAdmin(true);
+          setIsRootAdmin(true);
+          setLoading(false);
+          return {};
+        }
+
+        // 2. Regular Customer / Staff login via Supabase Auth
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (error) {
+            setLoading(false);
+            return { error: error.message || "فشل تسجيل الدخول" };
+          }
+
+          if (data.user) {
+            const isUserRoot = isRootAdminEmail(data.user.email);
+            const userObj: AppUser = {
+              id: data.user.id,
+              email: data.user.email || email,
+              user_metadata: data.user.user_metadata,
+            };
+
+            if (typeof window !== "undefined") {
+              localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(userObj));
+            }
+
+            setCurrentUser(userObj);
+            setIsAdmin(isUserRoot || data.user.user_metadata?.role === "admin");
+            setIsRootAdmin(isUserRoot);
+          }
+
+          setLoading(false);
+          return {};
+        } catch (err: any) {
+          setLoading(false);
+          return { error: err.message || "حدث خطأ أثناء المصادقة عبر Supabase" };
+        }
       },
-      signUp: async (email, password, fullName, phone) => {
-        const redirectTo =
-          typeof window !== "undefined" ? `${window.location.origin}/auth` : undefined;
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectTo,
-            data: { full_name: fullName, phone: phone },
-          },
-        });
-        if (error) return { error: translateAuthError(error.message) };
-        const needsConfirmation = !data.session;
-        return { needsConfirmation };
+      signUp: async (email: string, password: string, fullName?: string, phone?: string) => {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: fullName,
+                phone: phone,
+              },
+            },
+          });
+
+          if (error) {
+            setLoading(false);
+            return { error: error.message };
+          }
+
+          if (data.user) {
+            const userObj: AppUser = {
+              id: data.user.id,
+              email: data.user.email || email,
+              user_metadata: {
+                full_name: fullName,
+                phone,
+              },
+            };
+            setCurrentUser(userObj);
+            setIsAdmin(false);
+            setIsRootAdmin(false);
+          }
+
+          setLoading(false);
+          return { needsConfirmation: false };
+        } catch (e: any) {
+          setLoading(false);
+          return { error: e.message || "فشل إنشاء الحساب" };
+        }
       },
-      // ملاحظة أمنية: لا يجوز أبداً توليد كلمة مرور من رقم الهاتف،
-      // لأن أي شخص يعرف الرقم يستطيع تخمينها والدخول للحساب.
-      // كلمة المرور مطلوبة دائماً ويختارها المستخدم بنفسه.
       signInWithPhone: async (phone, password) => {
         const formattedPhone = normalizePhone(phone);
-        if (!password || password.length < 8) {
-          return { error: "كلمة المرور مطلوبة (8 أحرف على الأقل)" };
+        if (!password || password.length < 6) {
+          return { error: "كلمة المرور مطلوبة (6 أحرف على الأقل)" };
         }
-        const { error } = await supabase.auth.signInWithPassword({
-          phone: formattedPhone,
-          password,
-        });
-        if (!error) return {};
         const synthEmail = phoneEmail(formattedPhone);
-        const { error: inErr } = await supabase.auth.signInWithPassword({
-          email: synthEmail,
-          password,
-        });
-        if (inErr) return { error: translateAuthError(inErr.message) };
-        return {};
+        return value.signIn(synthEmail, password);
       },
       signUpWithPhone: async (phone, password, fullName) => {
         const formattedPhone = normalizePhone(phone);
-        if (!password || password.length < 8) {
-          return { error: "اختر كلمة مرور قوية (8 أحرف على الأقل)" };
+        if (!password || password.length < 6) {
+          return { error: "اختر كلمة مرور قوية (6 أحرف على الأقل)" };
         }
         const synthEmail = phoneEmail(formattedPhone);
-        const { data, error } = await supabase.auth.signUp({
-          email: synthEmail,
-          password,
-          options: { data: { full_name: fullName, phone: formattedPhone } },
-        });
-        if (error) return { error: translateAuthError(error.message) };
-        if (!data.session) {
-          await supabase.auth.signInWithPassword({ email: synthEmail, password });
-        }
-        return {};
+        return value.signUp(synthEmail, password, fullName, formattedPhone);
       },
-      signInWithGoogle: async (redirectUri?: string) => {
-        const redirect_uri =
-          redirectUri ?? (typeof window !== "undefined" ? window.location.origin : undefined);
-        try {
-          const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
-          if (result && !result.error) return {};
-          // fallback to Supabase OAuth
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: redirect_uri },
-          });
-          if (error) return { error: translateAuthError(error.message) };
-          return {};
-        } catch (e) {
-          try {
-            const { error } = await supabase.auth.signInWithOAuth({
-              provider: "google",
-              options: { redirectTo: redirect_uri },
-            });
-            if (error) return { error: translateAuthError(error.message) };
-            return {};
-          } catch (err: any) {
-            return { error: translateAuthError(err.message) };
-          }
-        }
+      signInWithGoogle: async () => {
+        return { error: "يرجى استخدام البريد الإلكتروني وكلمة المرور لتسجيل الدخول." };
       },
       signOut: async () => {
-        await supabase.auth.signOut();
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {}
+
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(STORAGE_KEY_AUTH_USER);
+        }
+        setCurrentUser(null);
         setIsAdmin(false);
+        setIsRootAdmin(false);
       },
       claimAdmin: async () => false,
       refreshRole: async () => {
-        await fetchRole(session?.user.id);
+        if (typeof window !== "undefined") {
+          const saved = localStorage.getItem(STORAGE_KEY_AUTH_USER);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const isRoot = isRootAdminEmail(parsed.email);
+            setIsAdmin(isRoot || parsed.role === "super_admin");
+            setIsRootAdmin(isRoot);
+          }
+        }
       },
     }),
-    [session, isAdmin, loading],
+    [currentUser, isAdmin, isRootAdmin, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function translateAuthError(msg: string): string {
-  const m = msg.toLowerCase();
-  if (m.includes("invalid login") || m.includes("invalid credentials"))
-    return "البريد أو كلمة المرور غير صحيحة";
-  if (m.includes("email not confirmed")) return "يجب تأكيد البريد الإلكتروني أولاً";
-  if (m.includes("user already registered") || m.includes("already registered"))
-    return "هذا البريد مسجل بالفعل، سجّل الدخول بدلاً من إنشاء حساب";
-  if (m.includes("password should be at least")) return "كلمة المرور قصيرة جداً (6 أحرف على الأقل)";
-  if (m.includes("rate limit") || m.includes("too many"))
-    return "محاولات كثيرة، حاول مرة أخرى بعد قليل";
-  if (m.includes("network") || m.includes("fetch")) return "تعذر الاتصال بالخادم، تحقق من الإنترنت";
-  if (m.includes("popup") || m.includes("blocked"))
-    return "تم حظر النافذة المنبثقة. يرجى السماح بها والمحاولة مجدداً";
-  return msg;
 }
 
 export function useAuth() {

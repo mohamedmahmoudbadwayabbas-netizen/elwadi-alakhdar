@@ -45,6 +45,9 @@ import {
   type Category,
   type HeroBanner,
 } from "@/lib/store-data-hooks";
+import { useLayoutConfig } from "@/lib/layout-config-context";
+import { DynamicMiniAdsGrid } from "@/components/storefront/DynamicMiniAdsGrid";
+import { DynamicFlashSaleTimer } from "@/components/storefront/DynamicFlashSaleTimer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,9 +93,6 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-
-
-
 const HOME_PRODUCT_COLUMNS =
   "id,name,price_per_unit,old_price,image_url,category_id,stock_quantity,description,unit_label,is_by_weight,is_popular,is_on_sale,created_at";
 const HOME_PRODUCTS_LIMIT = 150;
@@ -103,6 +103,7 @@ function HomePage() {
   const settings = useSettings();
   const { user } = useAuth();
   const { query: searchQuery } = useSearch();
+  const { config: layoutConfig } = useLayoutConfig();
 
   // Instant cached data queries
   const { data: productsData, isLoading: isProductsLoading } = useStoreProducts();
@@ -441,6 +442,11 @@ function HomePage() {
           )}
         </div>
 
+        {/* ─── DYNAMIC FLASH SALE TIMER (JSON-DRIVEN ENGINE) ─── */}
+        {layoutConfig.flashSaleTimer?.enabled && (
+          <DynamicFlashSaleTimer config={layoutConfig.flashSaleTimer} />
+        )}
+
         {/* ─── 2. SMART CLASSICAL SEARCH BAR ─── */}
         <div className="mx-auto max-w-3xl">
           <SmartSearchBar placeholder="ابحث عن منتجك هنا.. (مثلاً: طماطم، أرز، لحم بلدي، لبن طازج)" />
@@ -456,6 +462,11 @@ function HomePage() {
             {savedDeliveryTime}
           </span>
         </div>
+
+        {/* ─── DYNAMIC MINI-ADS GRID (JSON-DRIVEN ENGINE) ─── */}
+        {layoutConfig.miniAdsGrid?.enabled && (
+          <DynamicMiniAdsGrid config={layoutConfig.miniAdsGrid} />
+        )}
 
         {/* ─── 3. SELECTIVE CATEGORY GRID (Top-Level Major Categories Only) ─── */}
         <div id="selective-category-grid" className="space-y-4">

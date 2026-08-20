@@ -92,7 +92,12 @@ export function ProductStatsAndTip({
           className="col-span-2 sm:col-span-1 flex items-center gap-2.5 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 text-amber-800 dark:text-amber-300 transition-all shadow-2xs"
         >
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-500">
-            <Star className={cn("h-4 w-4", hasReviews ? "fill-amber-400 text-amber-500" : "text-muted-foreground/40")} />
+            <Star
+              className={cn(
+                "h-4 w-4",
+                hasReviews ? "fill-amber-400 text-amber-500" : "text-muted-foreground/40",
+              )}
+            />
           </div>
           <div className="min-w-0">
             <div className="text-[10px] font-bold text-muted-foreground">التقييم والمراجعات</div>

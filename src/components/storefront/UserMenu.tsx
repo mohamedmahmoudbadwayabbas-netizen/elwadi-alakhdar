@@ -72,21 +72,16 @@ export function UserMenu() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
-            {/* إذا كان المستخدم أدمن، نظهر له رابط لوحة الإدارة بوضوح */}
-            {isAdmin && (
-              <DropdownMenuItem
-                asChild
-                className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 my-1 font-bold"
-              >
-                <Link
-                  to="/admin"
-                  className="flex w-full cursor-pointer items-center gap-2 text-emerald-800 dark:text-emerald-300"
-                >
-                  <LayoutDashboard className="h-4 w-4 text-emerald-600" />
-                  <span>لوحة التحكم والإدارة</span>
-                </Link>
-              </DropdownMenuItem>
-            )}
+            {/* رابط لوحة الإدارة */}
+            <DropdownMenuItem
+              asChild
+              className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 my-1 font-bold"
+            >
+              <Link to="/admin" className="flex w-full cursor-pointer items-center gap-2">
+                <LayoutDashboard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span>لوحة تحكم الإدارة</span>
+              </Link>
+            </DropdownMenuItem>
 
             <DropdownMenuItem asChild>
               <Link to="/account" className="flex w-full cursor-pointer items-center gap-2">
@@ -120,8 +115,21 @@ export function UserMenu() {
           </>
         ) : (
           <>
+            <DropdownMenuItem
+              asChild
+              className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold mb-1"
+            >
+              <Link to="/admin" className="flex w-full cursor-pointer items-center gap-2">
+                <LayoutDashboard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span>لوحة تحكم الإدارة</span>
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/auth" search={{ next: undefined }} className="flex w-full cursor-pointer items-center gap-2">
+              <Link
+                to="/auth"
+                search={{ next: undefined }}
+                className="flex w-full cursor-pointer items-center gap-2"
+              >
                 <LogIn className="h-4 w-4" />
                 <span>{t("menu.login")}</span>
               </Link>

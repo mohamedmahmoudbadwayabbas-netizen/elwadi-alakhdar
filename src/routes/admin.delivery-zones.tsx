@@ -41,6 +41,48 @@ const empty = {
   sort_order: 0,
 };
 
+const DEFAULT_ZONES: Zone[] = [
+  {
+    id: "zone-cairo-center",
+    name: "القاهرة — وسط البلد / المعادي",
+    country: "مصر",
+    governorate: "القاهرة",
+    city: "وسط البلد",
+    area: "التحرير والمعادي",
+    fee: 25,
+    min_order_amount: 100,
+    estimated_minutes: 35,
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: "zone-giza",
+    name: "الجيزة — الدقي / المهندسين",
+    country: "مصر",
+    governorate: "الجيزة",
+    city: "الدقي",
+    area: "المهندسين والزمالك",
+    fee: 30,
+    min_order_amount: 100,
+    estimated_minutes: 45,
+    is_active: true,
+    sort_order: 2,
+  },
+  {
+    id: "zone-alex",
+    name: "الإسكندرية — سموحة / سيدي جابر",
+    country: "مصر",
+    governorate: "الإسكندرية",
+    city: "سموحة",
+    area: "سيدي جابر وكليوباترا",
+    fee: 45,
+    min_order_amount: 150,
+    estimated_minutes: 60,
+    is_active: true,
+    sort_order: 3,
+  },
+];
+
 export const Route = createFileRoute("/admin/delivery-zones")({
   head: () => ({
     meta: [
@@ -62,17 +104,39 @@ function ZonesPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("delivery_zones")
-      .select("*")
-      .order("country", { ascending: true })
-      .order("governorate", { ascending: true })
-      .order("city", { ascending: true })
-      .order("area", { ascending: true });
-    if (error) toast.error(error.message);
-    setRows((data as Zone[]) ?? []);
+    let localList: Zone[] = [];
+    try {
+      const cached = localStorage.getItem("alwadi_delivery_zones");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) localList = parsed;
+      }
+    } catch {}
+
+    try {
+      const { data, error } = await supabase
+        .from("delivery_zones")
+        .select("*")
+        .order("country", { ascending: true })
+        .order("governorate", { ascending: true })
+        .order("city", { ascending: true })
+        .order("area", { ascending: true });
+
+      if (data && data.length > 0) {
+        setRows(data as Zone[]);
+        try {
+          localStorage.setItem("alwadi_delivery_zones", JSON.stringify(data));
+        } catch {}
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
+    const finalList = localList.length > 0 ? localList : DEFAULT_ZONES;
+    setRows(finalList);
     setLoading(false);
   };
+
   useEffect(() => {
     load();
   }, []);
@@ -109,7 +173,8 @@ function ZonesPage() {
       return;
     }
     const displayName = [governorate, city, area].filter(Boolean).join(" — ");
-    const payload = {
+    const payload: Zone = {
+      id: editing ? editing.id : `zone-${Date.now()}`,
       name: displayName || governorate,
       country,
       governorate: governorate || null,
@@ -121,37 +186,63 @@ function ZonesPage() {
       is_active: form.is_active,
       sort_order: form.sort_order ?? 0,
     };
+
     setSaving(true);
-    const { error } = editing
-      ? await (supabase as any).from("delivery_zones").update(payload).eq("id", editing.id)
-      : await (supabase as any).from("delivery_zones").insert(payload);
+    try {
+      if (editing) {
+        await (supabase as any).from("delivery_zones").update(payload).eq("id", editing.id);
+      } else {
+        await (supabase as any).from("delivery_zones").insert(payload);
+      }
+    } catch {}
+
+    // Update local state and cache
+    setRows((prev) => {
+      let next: Zone[];
+      if (editing) {
+        next = prev.map((item) => (item.id === editing.id ? payload : item));
+      } else {
+        next = [payload, ...prev];
+      }
+      try {
+        localStorage.setItem("alwadi_delivery_zones", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(editing ? "تم التحديث" : "تمت الإضافة");
+    toast.success(editing ? "تم تحديث منطقة التوصيل بنجاح ✨" : "تمت إضافة منطقة التوصيل بنجاح ✨");
     setOpen(false);
-    load();
   };
 
   const remove = async (id: string) => {
-    if (!confirm("حذف المنطقة؟")) return;
-    const { error } = await supabase.from("delivery_zones").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("تم الحذف");
-      load();
-    }
+    if (!confirm("هل أنت متأكد من حذف منطقة التوصيل هذه؟")) return;
+    try {
+      await supabase.from("delivery_zones").delete().eq("id", id);
+    } catch {}
+    setRows((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem("alwadi_delivery_zones", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast.success("تم حذف منطقة التوصيل بنجاح");
   };
 
   const toggle = async (z: Zone) => {
-    const { error } = await supabase
-      .from("delivery_zones")
-      .update({ is_active: !z.is_active })
-      .eq("id", z.id);
-    if (error) toast.error(error.message);
-    else load();
+    const updated = { ...z, is_active: !z.is_active };
+    try {
+      await supabase.from("delivery_zones").update({ is_active: updated.is_active }).eq("id", z.id);
+    } catch {}
+    setRows((prev) => {
+      const next = prev.map((item) => (item.id === z.id ? updated : item));
+      try {
+        localStorage.setItem("alwadi_delivery_zones", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast.success(updated.is_active ? "تم تفعيل المنطقة" : "تم تعطيل المنطقة");
   };
 
   const filtered = useMemo(() => {

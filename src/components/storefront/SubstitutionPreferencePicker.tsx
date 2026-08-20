@@ -98,7 +98,13 @@ export function SubstitutionPreferencePicker({
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <div className={cn("grid h-8 w-8 place-items-center rounded-xl", opt.iconBg, opt.iconColor)}>
+                  <div
+                    className={cn(
+                      "grid h-8 w-8 place-items-center rounded-xl",
+                      opt.iconBg,
+                      opt.iconColor,
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                   </div>
 

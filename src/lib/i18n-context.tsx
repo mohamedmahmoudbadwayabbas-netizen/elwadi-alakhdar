@@ -37,28 +37,35 @@ type I18nCtx = {
 const I18nContext = createContext<I18nCtx | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === "undefined") return "ar";
-    return (localStorage.getItem("lang") as Lang) || "ar";
-  });
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    return (localStorage.getItem("theme") as Theme) || "light";
-  });
+  const [lang, setLangState] = useState<Lang>("ar");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   const dir: "rtl" | "ltr" = lang === "ar" ? "rtl" : "ltr";
+
+  useEffect(() => {
+    try {
+      const savedLang = localStorage.getItem("lang") as Lang;
+      if (savedLang === "ar" || savedLang === "en") setLangState(savedLang);
+      const savedTheme = localStorage.getItem("theme") as Theme;
+      if (savedTheme === "light" || savedTheme === "dark") setThemeState(savedTheme);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.lang = lang;
     document.documentElement.dir = dir;
-    localStorage.setItem("lang", lang);
+    try {
+      localStorage.setItem("lang", lang);
+    } catch {}
   }, [lang, dir]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
+    try {
+      localStorage.setItem("theme", theme);
+    } catch {}
   }, [theme]);
 
   const value = useMemo<I18nCtx>(

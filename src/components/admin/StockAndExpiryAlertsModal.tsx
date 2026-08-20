@@ -195,7 +195,10 @@ export function StockAndExpiryAlertsModal({
         </DialogTrigger>
       )}
 
-      <DialogContent className="max-w-2xl rounded-3xl p-6 bg-card border-border shadow-2xl" dir="rtl">
+      <DialogContent
+        className="max-w-2xl rounded-3xl p-6 bg-card border-border shadow-2xl"
+        dir="rtl"
+      >
         <DialogHeader className="text-start space-y-1.5 border-b border-border/60 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -264,7 +267,9 @@ export function StockAndExpiryAlertsModal({
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span>الفرع: <strong className="text-foreground">{item.branchName}</strong></span>
+                        <span>
+                          الفرع: <strong className="text-foreground">{item.branchName}</strong>
+                        </span>
                         <span>•</span>
                         <span>
                           المخزون الحالي:{" "}
@@ -303,7 +308,9 @@ export function StockAndExpiryAlertsModal({
                       ) : (
                         <>
                           <RefreshCw className="h-3.5 w-3.5" />
-                          <span>طلب توريد ({item.reorderQuantity} {item.unit})</span>
+                          <span>
+                            طلب توريد ({item.reorderQuantity} {item.unit})
+                          </span>
                         </>
                       )}
                     </Button>
@@ -335,11 +342,19 @@ export function StockAndExpiryAlertsModal({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                        <span>الفرع: <strong className="text-foreground">{item.branchName}</strong></span>
+                        <span>
+                          الفرع: <strong className="text-foreground">{item.branchName}</strong>
+                        </span>
                         <span>•</span>
-                        <span>الكمية: <strong className="text-foreground">{item.stockCount} عبوة</strong></span>
+                        <span>
+                          الكمية:{" "}
+                          <strong className="text-foreground">{item.stockCount} عبوة</strong>
+                        </span>
                         <span>•</span>
-                        <span>تاريخ الانتهاء: <strong className="text-foreground">{item.expiryDate}</strong></span>
+                        <span>
+                          تاريخ الانتهاء:{" "}
+                          <strong className="text-foreground">{item.expiryDate}</strong>
+                        </span>
                       </div>
 
                       <div className="text-[11px] font-bold text-foreground flex items-center gap-2 pt-0.5">

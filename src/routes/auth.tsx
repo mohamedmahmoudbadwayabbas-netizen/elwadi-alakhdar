@@ -358,9 +358,7 @@ export function AuthPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-xs font-bold text-foreground">
-                  كلمة المرور
-                </span>
+                <span className="mb-1 block text-xs font-bold text-foreground">كلمة المرور</span>
                 <Input
                   type="password"
                   required

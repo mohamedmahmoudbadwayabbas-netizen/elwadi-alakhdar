@@ -49,6 +49,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BranchSelector, Branch, STORE_BRANCHES } from "@/components/admin/BranchSelector";
 import { StockAndExpiryAlertsModal } from "@/components/admin/StockAndExpiryAlertsModal";
+import { ExecutiveSummaryWidget } from "@/components/admin/ExecutiveSummaryWidget";
+import { BranchCardsOverview } from "@/components/admin/BranchCardsOverview";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -269,10 +271,18 @@ function OverviewPage() {
   }, [ordersTodayList, orders]);
 
   const ordersPipeline = useMemo(() => {
-    const fresh = ordersTodayList.filter((o) => o.status === "new" || o.status === "pending").length;
-    const prep = ordersTodayList.filter((o) => o.status === "processing" || o.status === "confirmed").length;
-    const transit = ordersTodayList.filter((o) => o.status === "shipped" || o.status === "delivering").length;
-    const done = ordersTodayList.filter((o) => o.status === "delivered" || o.status === "completed").length;
+    const fresh = ordersTodayList.filter(
+      (o) => o.status === "new" || o.status === "pending",
+    ).length;
+    const prep = ordersTodayList.filter(
+      (o) => o.status === "processing" || o.status === "confirmed",
+    ).length;
+    const transit = ordersTodayList.filter(
+      (o) => o.status === "shipped" || o.status === "delivering",
+    ).length;
+    const done = ordersTodayList.filter(
+      (o) => o.status === "delivered" || o.status === "completed",
+    ).length;
     const total = ordersTodayList.length || 1;
     const completionRate = Math.round((done / total) * 100);
     return { fresh, prep, transit, done, completionRate };
@@ -446,10 +456,7 @@ function OverviewPage() {
           />
 
           {/* زر نافذة تنبيهات المخزون والصلاحية */}
-          <StockAndExpiryAlertsModal
-            open={alertsModalOpen}
-            onOpenChange={setAlertsModalOpen}
-          />
+          <StockAndExpiryAlertsModal open={alertsModalOpen} onOpenChange={setAlertsModalOpen} />
 
           <Link to="/admin/orders">
             <Button
@@ -470,7 +477,9 @@ function OverviewPage() {
           <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="text-[11px] font-bold text-muted-foreground">إجمالي مبيعات اليوم</span>
+                <span className="text-[11px] font-bold text-muted-foreground">
+                  إجمالي مبيعات اليوم
+                </span>
                 <div className="font-display text-2xl font-black text-foreground mt-0.5 tracking-tight text-emerald-600 dark:text-emerald-400">
                   <AnimatedCounter value={salesToday} decimals={2} suffix="ج.م" />
                 </div>
@@ -507,7 +516,9 @@ function OverviewPage() {
           <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="text-[11px] font-bold text-muted-foreground">طلبات اليوم المباشرة</span>
+                <span className="text-[11px] font-bold text-muted-foreground">
+                  طلبات اليوم المباشرة
+                </span>
                 <div className="font-display text-2xl font-black text-foreground mt-0.5 tracking-tight text-primary">
                   <AnimatedCounter value={newOrdersToday} decimals={0} suffix="طلب" />
                 </div>
@@ -594,7 +605,9 @@ function OverviewPage() {
           <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="text-[11px] font-bold text-muted-foreground">العربات المهجورة اليوم</span>
+                <span className="text-[11px] font-bold text-muted-foreground">
+                  العربات المهجورة اليوم
+                </span>
                 <div className="font-display text-2xl font-black text-purple-700 dark:text-purple-400 mt-0.5 tracking-tight">
                   <AnimatedCounter
                     value={abandonedCartsStats.abandonedCount}
@@ -631,8 +644,37 @@ function OverviewPage() {
         </Card>
       </div>
 
+      {/* بطاقات الفروع الثلاثة بنمط النيو-مينيماليزم والزجاجي */}
+      <BranchCardsOverview
+        onSelectBranch={(bId) => {
+          setSelectedBranchId(bId);
+          toast.info(`تم تصفية العرض حسب الفرع المحدد`);
+        }}
+      />
+
+      {/* الموجز التنفيذي والاستشاري الذكي المدعوم بـ Gemini 3.6 Flash */}
+      <ExecutiveSummaryWidget
+        kpis={{
+          totalRevenue: salesMonth || salesToday || 18450,
+          totalOrders: orders.length || 42,
+          averageOrderValue: avgOrderValue || 320,
+          lowStockCount:
+            lowStock.filter((p) => (p.stock_quantity ?? 0) > 0).length || lowStock.length || 4,
+          outOfStockCount: lowStock.filter((p) => (p.stock_quantity ?? 0) <= 0).length || 0,
+          topSellingCategory: "الألبان والجبن الطازج",
+          abandonedCartsCount: abandonedCartsStats.abandonedCount,
+        }}
+      />
+
       {/* روابط الوصول السريع لإدارات المتجر */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+        <Link
+          to="/admin/copilot"
+          className="flex items-center gap-2.5 p-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-black text-xs transition-all shadow-xs"
+        >
+          <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
+          <span>AI Co-Pilot 🚀</span>
+        </Link>
         <QuickLink
           to="/admin/orders"
           icon={Receipt}

@@ -176,7 +176,8 @@ export function AdvancedProductFilter({
               onClick={() => update({ selectedBrand: brand })}
               className={cn(
                 "px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer",
-                filters.selectedBrand === brand || (!filters.selectedBrand && brand === "جميع الماركات")
+                filters.selectedBrand === brand ||
+                  (!filters.selectedBrand && brand === "جميع الماركات")
                   ? "bg-emerald-600 text-white shadow-xs"
                   : "bg-secondary/70 hover:bg-secondary text-foreground",
               )}
@@ -270,19 +271,26 @@ export function AdvancedProductFilter({
       {/* الترتيب حسب */}
       <div className="space-y-1.5">
         <label className="text-xs font-black text-foreground">ترتيب المنتجات حسب</label>
-        <Select
-          value={filters.sortBy}
-          onValueChange={(val: any) => update({ sortBy: val })}
-        >
+        <Select value={filters.sortBy} onValueChange={(val: any) => update({ sortBy: val })}>
           <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-background">
             <SelectValue placeholder="اختر الترتيب" />
           </SelectTrigger>
           <SelectContent className="rounded-xl" dir="rtl">
-            <SelectItem value="popular" className="text-xs font-bold">الأكثر شعبية وإقبالاً</SelectItem>
-            <SelectItem value="rating" className="text-xs font-bold">الأعلى تقييماً ⭐</SelectItem>
-            <SelectItem value="price_asc" className="text-xs font-bold">السعر: من الأقل إلى الأعلى</SelectItem>
-            <SelectItem value="price_desc" className="text-xs font-bold">السعر: من الأعلى إلى الأقل</SelectItem>
-            <SelectItem value="newest" className="text-xs font-bold">الأحدث وصولاً</SelectItem>
+            <SelectItem value="popular" className="text-xs font-bold">
+              الأكثر شعبية وإقبالاً
+            </SelectItem>
+            <SelectItem value="rating" className="text-xs font-bold">
+              الأعلى تقييماً ⭐
+            </SelectItem>
+            <SelectItem value="price_asc" className="text-xs font-bold">
+              السعر: من الأقل إلى الأعلى
+            </SelectItem>
+            <SelectItem value="price_desc" className="text-xs font-bold">
+              السعر: من الأعلى إلى الأقل
+            </SelectItem>
+            <SelectItem value="newest" className="text-xs font-bold">
+              الأحدث وصولاً
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -340,7 +348,8 @@ export function AdvancedProductFilter({
                   onClick={() => setIsMobileOpen(false)}
                   className="w-full rounded-xl font-black text-xs h-10"
                 >
-                  تطبيق الفلاتر وعرض النتائج {totalResultsCount !== undefined ? `(${totalResultsCount})` : ""}
+                  تطبيق الفلاتر وعرض النتائج{" "}
+                  {totalResultsCount !== undefined ? `(${totalResultsCount})` : ""}
                 </Button>
               </SheetFooter>
             </SheetContent>
@@ -396,19 +405,26 @@ export function AdvancedProductFilter({
             <span>الأكثر مبيعاً</span>
           </button>
 
-          <Select
-            value={filters.sortBy}
-            onValueChange={(val: any) => update({ sortBy: val })}
-          >
+          <Select value={filters.sortBy} onValueChange={(val: any) => update({ sortBy: val })}>
             <SelectTrigger className="h-8 w-[140px] rounded-lg text-[11px] font-bold border-border bg-secondary/50">
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end" dir="rtl" className="rounded-xl">
-              <SelectItem value="popular" className="text-xs font-bold">الأكثر شعبية</SelectItem>
-              <SelectItem value="rating" className="text-xs font-bold">الأعلى تقييماً ⭐</SelectItem>
-              <SelectItem value="price_asc" className="text-xs font-bold">الأقل سعراً</SelectItem>
-              <SelectItem value="price_desc" className="text-xs font-bold">الأعلى سعراً</SelectItem>
-              <SelectItem value="newest" className="text-xs font-bold">الأحدث</SelectItem>
+              <SelectItem value="popular" className="text-xs font-bold">
+                الأكثر شعبية
+              </SelectItem>
+              <SelectItem value="rating" className="text-xs font-bold">
+                الأعلى تقييماً ⭐
+              </SelectItem>
+              <SelectItem value="price_asc" className="text-xs font-bold">
+                الأقل سعراً
+              </SelectItem>
+              <SelectItem value="price_desc" className="text-xs font-bold">
+                الأعلى سعراً
+              </SelectItem>
+              <SelectItem value="newest" className="text-xs font-bold">
+                الأحدث
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
