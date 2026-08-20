@@ -75,7 +75,7 @@ export function ItemSubstitutionSelector({
           <ChevronDown className="h-2.5 w-2.5 opacity-60 ms-0.5" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 p-1 text-xs" dir="rtl">
+      <DropdownMenuContent align="end" className="w-56 p-1 text-xs text-right">
         <div className="px-2 py-1 text-[10px] font-extrabold text-muted-foreground border-b border-border/50 mb-1">
           تفضيل الاستبدال في حال نفاد الصنف:
         </div>

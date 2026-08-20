@@ -195,6 +195,7 @@ export function Header() {
                 ) : (
                   <Link
                     to="/auth"
+                    search={{ next: undefined }}
                     onClick={() => setDrawerOpen(false)}
                     className="block text-center py-2.5 rounded-xl hero-gradient text-white text-xs font-bold shadow-xs"
                   >
