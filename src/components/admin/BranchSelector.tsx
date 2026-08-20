@@ -158,8 +158,7 @@ export function BranchSelector({
 
       <DropdownMenuContent
         align="end"
-        className="w-80 rounded-2xl p-2 bg-popover/95 backdrop-blur-2xl border border-border shadow-2xl space-y-1"
-        dir="rtl"
+        className="w-80 rounded-2xl p-2 bg-popover/95 backdrop-blur-2xl border border-border shadow-2xl space-y-1 text-right"
       >
         <DropdownMenuLabel className="text-xs font-bold text-muted-foreground px-2 py-1.5 flex items-center justify-between">
           <span>اختيار الفرع للتحكم المباشر:</span>

@@ -193,7 +193,7 @@ function CouponsPage() {
       return;
     }
 
-    const payload: Coupon = {
+    const payload = {
       id: editing.id || `coupon-${Date.now()}`,
       code: editing.code.trim().toUpperCase(),
       discount_type: editing.discount_type || "percent",

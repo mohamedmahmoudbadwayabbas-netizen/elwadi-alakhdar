@@ -25,6 +25,7 @@ import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticate
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminBannersRouteImport } from './routes/admin.banners'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
+import { Route as AdminCopilotRouteImport } from './routes/admin.copilot'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminDeliveryZonesRouteImport } from './routes/admin.delivery-zones'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
@@ -118,6 +119,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCopilotRoute = AdminCopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCouponsRoute = AdminCouponsRouteImport.update({
   id: '/coupons',
   path: '/coupons',
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AuthenticatedAccountRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/copilot': typeof AdminCopilotRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/delivery-zones': typeof AdminDeliveryZonesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/account': typeof AuthenticatedAccountRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/copilot': typeof AdminCopilotRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/delivery-zones': typeof AdminDeliveryZonesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/copilot': typeof AdminCopilotRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/delivery-zones': typeof AdminDeliveryZonesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin/banners'
     | '/admin/categories'
+    | '/admin/copilot'
     | '/admin/coupons'
     | '/admin/delivery-zones'
     | '/admin/login'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin/banners'
     | '/admin/categories'
+    | '/admin/copilot'
     | '/admin/coupons'
     | '/admin/delivery-zones'
     | '/admin/login'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account'
     | '/admin/banners'
     | '/admin/categories'
+    | '/admin/copilot'
     | '/admin/coupons'
     | '/admin/delivery-zones'
     | '/admin/login'
@@ -479,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/copilot': {
+      id: '/admin/copilot'
+      path: '/copilot'
+      fullPath: '/admin/copilot'
+      preLoaderRoute: typeof AdminCopilotRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/coupons': {
       id: '/admin/coupons'
       path: '/coupons'
@@ -573,6 +592,7 @@ const AuthenticatedRouteRouteWithChildren =
 interface AdminRouteChildren {
   AdminBannersRoute: typeof AdminBannersRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminCopilotRoute: typeof AdminCopilotRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminDeliveryZonesRoute: typeof AdminDeliveryZonesRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -587,6 +607,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBannersRoute: AdminBannersRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminCopilotRoute: AdminCopilotRoute,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminDeliveryZonesRoute: AdminDeliveryZonesRoute,
   AdminLoginRoute: AdminLoginRoute,

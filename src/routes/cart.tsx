@@ -105,7 +105,7 @@ function CartPage() {
     removeItem,
     totalPrice,
     clear,
-    updateItemSubstitution,
+    updateItemPreference,
     savedLists,
   } = useCart();
 

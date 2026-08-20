@@ -55,7 +55,7 @@ export function CartDrawer() {
     totalPrice,
     clear,
     isMerging,
-    updateItemSubstitution,
+    updateItemPreference,
     savedLists,
   } = useCart();
   const settings = useSettings();
@@ -294,7 +294,7 @@ export function CartDrawer() {
                         <div className="mt-1 flex items-center justify-between gap-2">
                           <ItemSubstitutionSelector
                             value={it.substitution_preference || substitutionPreference}
-                            onChange={(pref) => updateItemSubstitution(it.product.id, pref)}
+                            onChange={(pref) => updateItemPreference(it.product.id, pref)}
                             compact={true}
                           />
                         </div>
