@@ -1,921 +1,933 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5";
-  };
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       addresses: {
         Row: {
-          apartment: string | null;
-          area: string;
-          building: string;
-          created_at: string;
-          full_name: string;
-          id: string;
-          is_default: boolean;
-          label: string;
-          notes: string | null;
-          phone: string;
-          street: string;
-          updated_at: string;
-          user_id: string;
-        };
+          apartment: string | null
+          area: string
+          building: string
+          created_at: string
+          full_name: string
+          id: string
+          is_default: boolean
+          label: string
+          notes: string | null
+          phone: string
+          street: string
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          apartment?: string | null;
-          area: string;
-          building: string;
-          created_at?: string;
-          full_name: string;
-          id?: string;
-          is_default?: boolean;
-          label: string;
-          notes?: string | null;
-          phone: string;
-          street: string;
-          updated_at?: string;
-          user_id: string;
-        };
+          apartment?: string | null
+          area: string
+          building: string
+          created_at?: string
+          full_name: string
+          id?: string
+          is_default?: boolean
+          label: string
+          notes?: string | null
+          phone: string
+          street: string
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          apartment?: string | null;
-          area?: string;
-          building?: string;
-          created_at?: string;
-          full_name?: string;
-          id?: string;
-          is_default?: boolean;
-          label?: string;
-          notes?: string | null;
-          phone?: string;
-          street?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          apartment?: string | null
+          area?: string
+          building?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          notes?: string | null
+          phone?: string
+          street?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
-          created_at: string;
-          icon: string | null;
-          id: string;
-          image_url: string | null;
-          name: string;
-          parent_id: string | null;
-          slug: string;
-          sort_order: number;
-          updated_at: string;
-        };
+          created_at: string
+          icon: string | null
+          id: string
+          image_url: string | null
+          name: string
+          parent_id: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          icon?: string | null;
-          id?: string;
-          image_url?: string | null;
-          name: string;
-          parent_id?: string | null;
-          slug: string;
-          sort_order?: number;
-          updated_at?: string;
-        };
+          created_at?: string
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          parent_id?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          icon?: string | null;
-          id?: string;
-          image_url?: string | null;
-          name?: string;
-          parent_id?: string | null;
-          slug?: string;
-          sort_order?: number;
-          updated_at?: string;
-        };
+          created_at?: string
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "categories_parent_id_fkey";
-            columns: ["parent_id"];
-            isOneToOne: false;
-            referencedRelation: "categories";
-            referencedColumns: ["id"];
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       coupons: {
         Row: {
-          code: string;
-          created_at: string;
-          discount_type: string;
-          discount_value: number;
-          expires_at: string | null;
-          first_order_only: boolean;
-          id: string;
-          is_active: boolean;
-          max_uses: number | null;
-          min_order_amount: number | null;
-          updated_at: string;
-          uses_count: number;
-        };
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          first_order_only: boolean
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          min_order_amount: number | null
+          updated_at: string
+          uses_count: number
+        }
         Insert: {
-          code: string;
-          created_at?: string;
-          discount_type: string;
-          discount_value: number;
-          expires_at?: string | null;
-          first_order_only?: boolean;
-          id?: string;
-          is_active?: boolean;
-          max_uses?: number | null;
-          min_order_amount?: number | null;
-          updated_at?: string;
-          uses_count?: number;
-        };
+          code: string
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          first_order_only?: boolean
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+          uses_count?: number
+        }
         Update: {
-          code?: string;
-          created_at?: string;
-          discount_type?: string;
-          discount_value?: number;
-          expires_at?: string | null;
-          first_order_only?: boolean;
-          id?: string;
-          is_active?: boolean;
-          max_uses?: number | null;
-          min_order_amount?: number | null;
-          updated_at?: string;
-          uses_count?: number;
-        };
-        Relationships: [];
-      };
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          first_order_only?: boolean
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+          uses_count?: number
+        }
+        Relationships: []
+      }
       delivery_zones: {
         Row: {
-          area: string | null;
-          city: string | null;
-          country: string;
-          created_at: string;
-          estimated_minutes: number;
-          fee: number;
-          governorate: string | null;
-          id: string;
-          is_active: boolean;
-          min_order_amount: number;
-          name: string;
-          sort_order: number;
-          updated_at: string;
-        };
+          area: string | null
+          city: string | null
+          country: string
+          created_at: string
+          estimated_minutes: number
+          fee: number
+          governorate: string | null
+          id: string
+          is_active: boolean
+          min_order_amount: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
         Insert: {
-          area?: string | null;
-          city?: string | null;
-          country?: string;
-          created_at?: string;
-          estimated_minutes?: number;
-          fee?: number;
-          governorate?: string | null;
-          id?: string;
-          is_active?: boolean;
-          min_order_amount?: number;
-          name: string;
-          sort_order?: number;
-          updated_at?: string;
-        };
+          area?: string | null
+          city?: string | null
+          country?: string
+          created_at?: string
+          estimated_minutes?: number
+          fee?: number
+          governorate?: string | null
+          id?: string
+          is_active?: boolean
+          min_order_amount?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
         Update: {
-          area?: string | null;
-          city?: string | null;
-          country?: string;
-          created_at?: string;
-          estimated_minutes?: number;
-          fee?: number;
-          governorate?: string | null;
-          id?: string;
-          is_active?: boolean;
-          min_order_amount?: number;
-          name?: string;
-          sort_order?: number;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          area?: string | null
+          city?: string | null
+          country?: string
+          created_at?: string
+          estimated_minutes?: number
+          fee?: number
+          governorate?: string | null
+          id?: string
+          is_active?: boolean
+          min_order_amount?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hero_banners: {
         Row: {
-          created_at: string;
-          cta_text: string | null;
-          id: string;
-          image_url: string;
-          is_active: boolean;
-          link_url: string | null;
-          sort_order: number;
-          subtitle: string | null;
-          title: string | null;
-          updated_at: string;
-        };
+          created_at: string
+          cta_text: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          sort_order: number
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          cta_text?: string | null;
-          id?: string;
-          image_url: string;
-          is_active?: boolean;
-          link_url?: string | null;
-          sort_order?: number;
-          subtitle?: string | null;
-          title?: string | null;
-          updated_at?: string;
-        };
+          created_at?: string
+          cta_text?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          cta_text?: string | null;
-          id?: string;
-          image_url?: string;
-          is_active?: boolean;
-          link_url?: string | null;
-          sort_order?: number;
-          subtitle?: string | null;
-          title?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          cta_text?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
-          address: string;
-          created_at: string;
-          customer_name: string;
-          delivery_fee: number;
-          delivery_method: string;
-          delivery_zone_id: string | null;
-          id: string;
-          items: Json;
-          notes: string | null;
-          payment_method: string;
-          payment_reference: string | null;
-          phone: string;
-          ref_source: string | null;
-          status: string;
-          total_price: number;
-          updated_at: string;
-          user_id: string | null;
-        };
+          address: string
+          created_at: string
+          customer_name: string
+          delivery_fee: number
+          delivery_method: string
+          delivery_zone_id: string | null
+          id: string
+          items: Json
+          notes: string | null
+          payment_method: string
+          payment_reference: string | null
+          phone: string
+          ref_source: string | null
+          status: string
+          total_price: number
+          updated_at: string
+          user_id: string | null
+        }
         Insert: {
-          address: string;
-          created_at?: string;
-          customer_name: string;
-          delivery_fee?: number;
-          delivery_method?: string;
-          delivery_zone_id?: string | null;
-          id?: string;
-          items?: Json;
-          notes?: string | null;
-          payment_method?: string;
-          payment_reference?: string | null;
-          phone: string;
-          ref_source?: string | null;
-          status?: string;
-          total_price: number;
-          updated_at?: string;
-          user_id?: string | null;
-        };
+          address: string
+          created_at?: string
+          customer_name: string
+          delivery_fee?: number
+          delivery_method?: string
+          delivery_zone_id?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          payment_method?: string
+          payment_reference?: string | null
+          phone: string
+          ref_source?: string | null
+          status?: string
+          total_price: number
+          updated_at?: string
+          user_id?: string | null
+        }
         Update: {
-          address?: string;
-          created_at?: string;
-          customer_name?: string;
-          delivery_fee?: number;
-          delivery_method?: string;
-          delivery_zone_id?: string | null;
-          id?: string;
-          items?: Json;
-          notes?: string | null;
-          payment_method?: string;
-          payment_reference?: string | null;
-          phone?: string;
-          ref_source?: string | null;
-          status?: string;
-          total_price?: number;
-          updated_at?: string;
-          user_id?: string | null;
-        };
+          address?: string
+          created_at?: string
+          customer_name?: string
+          delivery_fee?: number
+          delivery_method?: string
+          delivery_zone_id?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          payment_method?: string
+          payment_reference?: string | null
+          phone?: string
+          ref_source?: string | null
+          status?: string
+          total_price?: number
+          updated_at?: string
+          user_id?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "orders_delivery_zone_id_fkey";
-            columns: ["delivery_zone_id"];
-            isOneToOne: false;
-            referencedRelation: "delivery_zones";
-            referencedColumns: ["id"];
+            foreignKeyName: "orders_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       products: {
         Row: {
-          avg_rating: number;
-          category_id: string | null;
-          cooking_tip: string | null;
-          created_at: string;
-          description: string | null;
-          id: string;
-          image_url: string | null;
-          is_by_weight: boolean;
-          is_featured: boolean;
-          is_on_sale: boolean;
-          is_popular: boolean;
-          is_top_seller: boolean;
-          low_stock_threshold: number;
-          name: string;
-          old_price: number | null;
-          price_per_unit: number;
-          purchase_count: number;
-          reviews_count: number;
-          stock_quantity: number;
-          unit_label: string;
-          updated_at: string;
-          views_count: number;
-        };
+          avg_rating: number
+          category_id: string | null
+          cooking_tip: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_by_weight: boolean
+          is_featured: boolean
+          is_on_sale: boolean
+          is_popular: boolean
+          is_top_seller: boolean
+          low_stock_threshold: number
+          name: string
+          old_price: number | null
+          price_per_unit: number
+          purchase_count: number
+          reviews_count: number
+          stock_quantity: number
+          unit_label: string
+          updated_at: string
+          views_count: number
+        }
         Insert: {
-          avg_rating?: number;
-          category_id?: string | null;
-          cooking_tip?: string | null;
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          image_url?: string | null;
-          is_by_weight?: boolean;
-          is_featured?: boolean;
-          is_on_sale?: boolean;
-          is_popular?: boolean;
-          is_top_seller?: boolean;
-          low_stock_threshold?: number;
-          name: string;
-          old_price?: number | null;
-          price_per_unit: number;
-          purchase_count?: number;
-          reviews_count?: number;
-          stock_quantity?: number;
-          unit_label?: string;
-          updated_at?: string;
-          views_count?: number;
-        };
+          avg_rating?: number
+          category_id?: string | null
+          cooking_tip?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_by_weight?: boolean
+          is_featured?: boolean
+          is_on_sale?: boolean
+          is_popular?: boolean
+          is_top_seller?: boolean
+          low_stock_threshold?: number
+          name: string
+          old_price?: number | null
+          price_per_unit: number
+          purchase_count?: number
+          reviews_count?: number
+          stock_quantity?: number
+          unit_label?: string
+          updated_at?: string
+          views_count?: number
+        }
         Update: {
-          avg_rating?: number;
-          category_id?: string | null;
-          cooking_tip?: string | null;
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          image_url?: string | null;
-          is_by_weight?: boolean;
-          is_featured?: boolean;
-          is_on_sale?: boolean;
-          is_popular?: boolean;
-          is_top_seller?: boolean;
-          low_stock_threshold?: number;
-          name?: string;
-          old_price?: number | null;
-          price_per_unit?: number;
-          purchase_count?: number;
-          reviews_count?: number;
-          stock_quantity?: number;
-          unit_label?: string;
-          updated_at?: string;
-          views_count?: number;
-        };
+          avg_rating?: number
+          category_id?: string | null
+          cooking_tip?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_by_weight?: boolean
+          is_featured?: boolean
+          is_on_sale?: boolean
+          is_popular?: boolean
+          is_top_seller?: boolean
+          low_stock_threshold?: number
+          name?: string
+          old_price?: number | null
+          price_per_unit?: number
+          purchase_count?: number
+          reviews_count?: number
+          stock_quantity?: number
+          unit_label?: string
+          updated_at?: string
+          views_count?: number
+        }
         Relationships: [
           {
-            foreignKeyName: "products_category_id_fkey";
-            columns: ["category_id"];
-            isOneToOne: false;
-            referencedRelation: "categories";
-            referencedColumns: ["id"];
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       profiles: {
         Row: {
-          birth_date: string | null;
-          created_at: string;
-          full_name: string | null;
-          id: string;
-          phone: string | null;
-          updated_at: string;
-        };
+          birth_date: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
         Insert: {
-          birth_date?: string | null;
-          created_at?: string;
-          full_name?: string | null;
-          id: string;
-          phone?: string | null;
-          updated_at?: string;
-        };
+          birth_date?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
         Update: {
-          birth_date?: string | null;
-          created_at?: string;
-          full_name?: string | null;
-          id?: string;
-          phone?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          birth_date?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
-          author_name: string;
-          comment: string;
-          created_at: string;
-          id: string;
-          product_id: string;
-          rating: number;
-          user_id: string | null;
-        };
+          author_name: string
+          comment: string
+          created_at: string
+          id: string
+          product_id: string
+          rating: number
+          user_id: string | null
+        }
         Insert: {
-          author_name: string;
-          comment: string;
-          created_at?: string;
-          id?: string;
-          product_id: string;
-          rating: number;
-          user_id?: string | null;
-        };
+          author_name: string
+          comment: string
+          created_at?: string
+          id?: string
+          product_id: string
+          rating: number
+          user_id?: string | null
+        }
         Update: {
-          author_name?: string;
-          comment?: string;
-          created_at?: string;
-          id?: string;
-          product_id?: string;
-          rating?: number;
-          user_id?: string | null;
-        };
+          author_name?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          rating?: number
+          user_id?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "reviews_product_id_fkey";
-            columns: ["product_id"];
-            isOneToOne: false;
-            referencedRelation: "products";
-            referencedColumns: ["id"];
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       store_settings: {
         Row: {
-          accent_color: string | null;
-          announcement_bg_color: string | null;
-          announcement_enabled: boolean | null;
-          announcement_text: string | null;
-          background_color: string | null;
-          bank_account_info: string | null;
-          cart_empty_bg: string | null;
-          created_at: string;
-          default_delivery_fee: number | null;
-          favicon_url: string | null;
-          first_order_coupon_code: string | null;
-          first_order_coupon_enabled: boolean | null;
-          first_order_discount_percent: number | null;
-          floating_element_image: string | null;
-          foreground_color: string | null;
-          ga4_id: string | null;
-          hero_bg_image: string | null;
-          hero_cta_text: string;
-          hero_image_url: string | null;
-          hero_subtitle: string;
-          hero_title: string;
-          id: string;
-          instapay_handle: string | null;
-          login_bg_pattern: string | null;
-          logo_url: string | null;
-          meta_pixel_id: string | null;
-          min_order_amount: number | null;
-          primary_color: string | null;
-          site_name: string | null;
-          store_address: string | null;
-          store_lat: number | null;
-          store_lng: number | null;
-          updated_at: string;
-          whatsapp_number: string | null;
-        };
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
+          bank_account_info: string | null
+          cart_empty_bg: string | null
+          created_at: string
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          ga4_id: string | null
+          hero_bg_image: string | null
+          hero_cta_text: string
+          hero_image_url: string | null
+          hero_subtitle: string
+          hero_title: string
+          id: string
+          instapay_handle: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          meta_pixel_id: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
+          store_address: string | null
+          store_lat: number | null
+          store_lng: number | null
+          updated_at: string
+          whatsapp_number: string | null
+        }
         Insert: {
-          accent_color?: string | null;
-          announcement_bg_color?: string | null;
-          announcement_enabled?: boolean | null;
-          announcement_text?: string | null;
-          background_color?: string | null;
-          bank_account_info?: string | null;
-          cart_empty_bg?: string | null;
-          created_at?: string;
-          default_delivery_fee?: number | null;
-          favicon_url?: string | null;
-          first_order_coupon_code?: string | null;
-          first_order_coupon_enabled?: boolean | null;
-          first_order_discount_percent?: number | null;
-          floating_element_image?: string | null;
-          foreground_color?: string | null;
-          ga4_id?: string | null;
-          hero_bg_image?: string | null;
-          hero_cta_text?: string;
-          hero_image_url?: string | null;
-          hero_subtitle?: string;
-          hero_title?: string;
-          id?: string;
-          instapay_handle?: string | null;
-          login_bg_pattern?: string | null;
-          logo_url?: string | null;
-          meta_pixel_id?: string | null;
-          min_order_amount?: number | null;
-          primary_color?: string | null;
-          site_name?: string | null;
-          store_address?: string | null;
-          store_lat?: number | null;
-          store_lng?: number | null;
-          updated_at?: string;
-          whatsapp_number?: string | null;
-        };
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
+          bank_account_info?: string | null
+          cart_empty_bg?: string | null
+          created_at?: string
+          default_delivery_fee?: number | null
+          favicon_url?: string | null
+          first_order_coupon_code?: string | null
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
+          floating_element_image?: string | null
+          foreground_color?: string | null
+          ga4_id?: string | null
+          hero_bg_image?: string | null
+          hero_cta_text?: string
+          hero_image_url?: string | null
+          hero_subtitle?: string
+          hero_title?: string
+          id?: string
+          instapay_handle?: string | null
+          login_bg_pattern?: string | null
+          logo_url?: string | null
+          meta_pixel_id?: string | null
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
+          store_address?: string | null
+          store_lat?: number | null
+          store_lng?: number | null
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
         Update: {
-          accent_color?: string | null;
-          announcement_bg_color?: string | null;
-          announcement_enabled?: boolean | null;
-          announcement_text?: string | null;
-          background_color?: string | null;
-          bank_account_info?: string | null;
-          cart_empty_bg?: string | null;
-          created_at?: string;
-          default_delivery_fee?: number | null;
-          favicon_url?: string | null;
-          first_order_coupon_code?: string | null;
-          first_order_coupon_enabled?: boolean | null;
-          first_order_discount_percent?: number | null;
-          floating_element_image?: string | null;
-          foreground_color?: string | null;
-          ga4_id?: string | null;
-          hero_bg_image?: string | null;
-          hero_cta_text?: string;
-          hero_image_url?: string | null;
-          hero_subtitle?: string;
-          hero_title?: string;
-          id?: string;
-          instapay_handle?: string | null;
-          login_bg_pattern?: string | null;
-          logo_url?: string | null;
-          meta_pixel_id?: string | null;
-          min_order_amount?: number | null;
-          primary_color?: string | null;
-          site_name?: string | null;
-          store_address?: string | null;
-          store_lat?: number | null;
-          store_lng?: number | null;
-          updated_at?: string;
-          whatsapp_number?: string | null;
-        };
-        Relationships: [];
-      };
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
+          bank_account_info?: string | null
+          cart_empty_bg?: string | null
+          created_at?: string
+          default_delivery_fee?: number | null
+          favicon_url?: string | null
+          first_order_coupon_code?: string | null
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
+          floating_element_image?: string | null
+          foreground_color?: string | null
+          ga4_id?: string | null
+          hero_bg_image?: string | null
+          hero_cta_text?: string
+          hero_image_url?: string | null
+          hero_subtitle?: string
+          hero_title?: string
+          id?: string
+          instapay_handle?: string | null
+          login_bg_pattern?: string | null
+          logo_url?: string | null
+          meta_pixel_id?: string | null
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
+          store_address?: string | null
+          store_lat?: number | null
+          store_lng?: number | null
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
       store_settings_pulse: {
         Row: {
-          id: number;
-          updated_at: string;
-        };
+          id: number
+          updated_at: string
+        }
         Insert: {
-          id?: number;
-          updated_at?: string;
-        };
+          id?: number
+          updated_at?: string
+        }
         Update: {
-          id?: number;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       theme_settings: {
         Row: {
-          accent_hex: string;
-          auth_bg_url: string | null;
-          card_radius_px: number;
-          cart_empty_bg_url: string | null;
-          created_at: string;
-          dark_marble_bg_url: string | null;
-          hero_cta_text: string | null;
-          hero_grid_images: Json;
-          hero_subtitle: string | null;
-          hero_title: string | null;
-          id: string;
-          marble_bg_url: string | null;
-          primary_hex: string;
-          updated_at: string;
-        };
+          accent_hex: string
+          auth_bg_url: string | null
+          card_radius_px: number
+          cart_empty_bg_url: string | null
+          created_at: string
+          dark_marble_bg_url: string | null
+          hero_cta_text: string | null
+          hero_grid_images: Json
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          marble_bg_url: string | null
+          primary_hex: string
+          updated_at: string
+        }
         Insert: {
-          accent_hex?: string;
-          auth_bg_url?: string | null;
-          card_radius_px?: number;
-          cart_empty_bg_url?: string | null;
-          created_at?: string;
-          dark_marble_bg_url?: string | null;
-          hero_cta_text?: string | null;
-          hero_grid_images?: Json;
-          hero_subtitle?: string | null;
-          hero_title?: string | null;
-          id?: string;
-          marble_bg_url?: string | null;
-          primary_hex?: string;
-          updated_at?: string;
-        };
+          accent_hex?: string
+          auth_bg_url?: string | null
+          card_radius_px?: number
+          cart_empty_bg_url?: string | null
+          created_at?: string
+          dark_marble_bg_url?: string | null
+          hero_cta_text?: string | null
+          hero_grid_images?: Json
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          marble_bg_url?: string | null
+          primary_hex?: string
+          updated_at?: string
+        }
         Update: {
-          accent_hex?: string;
-          auth_bg_url?: string | null;
-          card_radius_px?: number;
-          cart_empty_bg_url?: string | null;
-          created_at?: string;
-          dark_marble_bg_url?: string | null;
-          hero_cta_text?: string | null;
-          hero_grid_images?: Json;
-          hero_subtitle?: string | null;
-          hero_title?: string | null;
-          id?: string;
-          marble_bg_url?: string | null;
-          primary_hex?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          accent_hex?: string
+          auth_bg_url?: string | null
+          card_radius_px?: number
+          cart_empty_bg_url?: string | null
+          created_at?: string
+          dark_marble_bg_url?: string | null
+          hero_cta_text?: string | null
+          hero_grid_images?: Json
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          marble_bg_url?: string | null
+          primary_hex?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
-          created_at: string;
-          id: string;
-          role: Database["public"]["Enums"]["app_role"];
-          user_id: string;
-        };
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
         Insert: {
-          created_at?: string;
-          id?: string;
-          role: Database["public"]["Enums"]["app_role"];
-          user_id: string;
-        };
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
         Update: {
-          created_at?: string;
-          id?: string;
-          role?: Database["public"]["Enums"]["app_role"];
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       wishlists: {
         Row: {
-          created_at: string;
-          id: string;
-          product_id: string;
-          user_id: string;
-        };
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
         Insert: {
-          created_at?: string;
-          id?: string;
-          product_id: string;
-          user_id: string;
-        };
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
         Update: {
-          created_at?: string;
-          id?: string;
-          product_id?: string;
-          user_id?: string;
-        };
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "wishlists_product_id_fkey";
-            columns: ["product_id"];
-            isOneToOne: false;
-            referencedRelation: "products";
-            referencedColumns: ["id"];
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-    };
+        ]
+      }
+    }
     Views: {
       store_settings_public: {
         Row: {
-          accent_color: string | null;
-          announcement_bg_color: string | null;
-          announcement_enabled: boolean | null;
-          announcement_text: string | null;
-          background_color: string | null;
-          cart_empty_bg: string | null;
-          created_at: string | null;
-          default_delivery_fee: number | null;
-          favicon_url: string | null;
-          first_order_coupon_code: string | null;
-          first_order_coupon_enabled: boolean | null;
-          first_order_discount_percent: number | null;
-          floating_element_image: string | null;
-          foreground_color: string | null;
-          hero_bg_image: string | null;
-          hero_cta_text: string | null;
-          hero_image_url: string | null;
-          hero_subtitle: string | null;
-          hero_title: string | null;
-          id: string | null;
-          login_bg_pattern: string | null;
-          logo_url: string | null;
-          min_order_amount: number | null;
-          primary_color: string | null;
-          site_name: string | null;
-          store_address: string | null;
-          store_lat: number | null;
-          store_lng: number | null;
-          updated_at: string | null;
-          whatsapp_number: string | null;
-        };
-        Relationships: [];
-      };
-    };
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
+          cart_empty_bg: string | null
+          created_at: string | null
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          hero_bg_image: string | null
+          hero_cta_text: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
+          store_address: string | null
+          store_lat: number | null
+          store_lng: number | null
+          updated_at: string | null
+          whatsapp_number: string | null
+        }
+        Relationships: []
+      }
+    }
     Functions: {
       create_order: {
         Args: {
-          p_address: string;
-          p_coupon_code: string;
-          p_customer_name: string;
-          p_delivery_method: string;
-          p_delivery_zone_id: string;
-          p_items: Json;
-          p_notes: string;
-          p_payment_method: string;
-          p_payment_reference: string;
-          p_phone: string;
-          p_ref_source: string;
-        };
-        Returns: string;
-      };
+          p_address: string
+          p_coupon_code: string
+          p_customer_name: string
+          p_delivery_method: string
+          p_delivery_zone_id: string
+          p_items: Json
+          p_notes: string
+          p_payment_method: string
+          p_payment_reference: string
+          p_phone: string
+          p_ref_source: string
+        }
+        Returns: string
+      }
       get_payment_config: {
-        Args: never;
+        Args: never
         Returns: {
-          bank_account_info: string;
-          instapay_handle: string;
-          store_address: string;
-        }[];
-      };
+          bank_account_info: string
+          instapay_handle: string
+          store_address: string
+        }[]
+      }
       get_store_settings_admin: {
-        Args: never;
+        Args: never
         Returns: {
-          accent_color: string | null;
-          announcement_bg_color: string | null;
-          announcement_enabled: boolean | null;
-          announcement_text: string | null;
-          background_color: string | null;
-          bank_account_info: string | null;
-          cart_empty_bg: string | null;
-          created_at: string;
-          default_delivery_fee: number | null;
-          favicon_url: string | null;
-          first_order_coupon_code: string | null;
-          first_order_coupon_enabled: boolean | null;
-          first_order_discount_percent: number | null;
-          floating_element_image: string | null;
-          foreground_color: string | null;
-          ga4_id: string | null;
-          hero_bg_image: string | null;
-          hero_cta_text: string;
-          hero_image_url: string | null;
-          hero_subtitle: string;
-          hero_title: string;
-          id: string;
-          instapay_handle: string | null;
-          login_bg_pattern: string | null;
-          logo_url: string | null;
-          meta_pixel_id: string | null;
-          min_order_amount: number | null;
-          primary_color: string | null;
-          site_name: string | null;
-          store_address: string | null;
-          store_lat: number | null;
-          store_lng: number | null;
-          updated_at: string;
-          whatsapp_number: string | null;
-        }[];
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
+          bank_account_info: string | null
+          cart_empty_bg: string | null
+          created_at: string
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          ga4_id: string | null
+          hero_bg_image: string | null
+          hero_cta_text: string
+          hero_image_url: string | null
+          hero_subtitle: string
+          hero_title: string
+          id: string
+          instapay_handle: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          meta_pixel_id: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
+          store_address: string | null
+          store_lat: number | null
+          store_lng: number | null
+          updated_at: string
+          whatsapp_number: string | null
+        }[]
         SetofOptions: {
-          from: "*";
-          to: "store_settings";
-          isOneToOne: false;
-          isSetofReturn: true;
-        };
-      };
+          from: "*"
+          to: "store_settings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       increment_product_views: {
-        Args: { p_product_id: string };
-        Returns: undefined;
-      };
+        Args: { p_product_id: string }
+        Returns: undefined
+      }
       validate_coupon: {
-        Args: { p_code: string; p_subtotal: number };
+        Args: { p_code: string; p_subtotal: number }
         Returns: {
-          code: string;
-          discount_amount: number;
-          discount_type: string;
-          discount_value: number;
-        }[];
-      };
-    };
+          code: string
+          discount_amount: number
+          discount_type: string
+          discount_value: number
+        }[]
+      }
+    }
     Enums: {
-      app_role: "admin" | "staff" | "user";
-    };
+      app_role: "admin" | "staff" | "user"
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+      Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
+      Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
+        Insert: infer I
       }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
+      Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
+        Update: infer U
       }
       ? U
       : never
-    : never;
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never;
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never;
+    : never
 
 export const Constants = {
   public: {
@@ -923,4 +935,4 @@ export const Constants = {
       app_role: ["admin", "staff", "user"],
     },
   },
-} as const;
+} as const
