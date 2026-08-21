@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const ROOT_ADMIN_CREDENTIALS = {
@@ -174,6 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, []);
+
+  const ctxRef = useRef<AuthCtx | null>(null);
 
   const value = useMemo<AuthCtx>(
     () => ({
@@ -406,7 +408,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Try synthetic email with Supabase
         const synthEmail = phoneEmail(formattedPhone);
-        const res = await value.signIn(synthEmail, password);
+        const res = await ctxRef.current!.signIn(synthEmail, password);
         setLoading(false);
         return res;
       },
@@ -422,7 +424,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const synthEmail = phoneEmail(formattedPhone);
-        const res = await value.signUp(synthEmail, password, cleanName, formattedPhone);
+        const res = await ctxRef.current!.signUp(synthEmail, password, cleanName, formattedPhone);
         setLoading(false);
         return res;
       },
@@ -517,6 +519,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [currentUser, isAdmin, isRootAdmin, loading],
   );
+
+  ctxRef.current = value;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
