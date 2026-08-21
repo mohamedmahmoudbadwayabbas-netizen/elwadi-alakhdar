@@ -47,10 +47,15 @@ import {
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BranchSelector, Branch, STORE_BRANCHES } from "@/components/admin/BranchSelector";
+import { BranchSelector, Branch } from "@/components/admin/BranchSelector";
 import { StockAndExpiryAlertsModal } from "@/components/admin/StockAndExpiryAlertsModal";
 import { ExecutiveSummaryWidget } from "@/components/admin/ExecutiveSummaryWidget";
 import { BranchCardsOverview } from "@/components/admin/BranchCardsOverview";
+import {
+  LiveBranch,
+  fetchLiveBranches,
+  UNIFIED_ALL_BRANCHES_ID,
+} from "@/lib/branches-data";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -64,6 +69,7 @@ type OrderRow = {
   customer_name?: string;
   phone?: string;
   address?: string;
+  delivery_zone_id?: string;
   total_price: number;
   status: string;
   created_at: string;
@@ -163,6 +169,7 @@ function OverviewPage() {
   const [lowStock, setLowStock] = useState<
     { id: string; name: string; stock_quantity: number; low_stock_threshold: number }[]
   >([]);
+  const [branches, setBranches] = useState<LiveBranch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
   const [alertsModalOpen, setAlertsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -172,27 +179,34 @@ function OverviewPage() {
   const [previewOrder, setPreviewOrder] = useState<OrderRow | null>(null);
 
   // جلب البيانات مع ربط Supabase Realtime
-  useEffect(() => {
-    const loadData = async () => {
-      const [{ data: ords }, { data: prods }] = await Promise.all([
+  const loadData = async () => {
+    try {
+      const [{ data: ords }, { data: prods }, liveBranches] = await Promise.all([
         supabase
           .from("orders")
-          .select("id,customer_name,phone,address,total_price,status,created_at,items")
+          .select("id,customer_name,phone,address,delivery_zone_id,total_price,status,created_at,items,notes")
           .order("created_at", { ascending: false })
           .limit(500),
         supabase.from("products").select("id,name,stock_quantity,low_stock_threshold"),
+        fetchLiveBranches(),
       ]);
       setOrders((ords ?? []) as unknown as OrderRow[]);
       const low = (prods ?? []).filter(
-        (p: any) => (p.stock_quantity ?? 0) <= (p.low_stock_threshold ?? 0),
+        (p: any) => (p.stock_quantity ?? 0) <= (p.low_stock_threshold ?? 5),
       );
       setLowStock(low as any);
+      setBranches(liveBranches);
+    } catch (err) {
+      console.error("Error loading admin overview data:", err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     loadData();
 
-    // القناة الفورية للطلبات والمنتجات
+    // القناة الفورية للطلبات والمنتجات ومناطق التوصيل
     const channel = supabase
       .channel("admin-overview-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
@@ -218,9 +232,12 @@ function OverviewPage() {
           .from("products")
           .select("id,name,stock_quantity,low_stock_threshold");
         const low = (prods ?? []).filter(
-          (p: any) => (p.stock_quantity ?? 0) <= (p.low_stock_threshold ?? 0),
+          (p: any) => (p.stock_quantity ?? 0) <= (p.low_stock_threshold ?? 5),
         );
         setLowStock(low as any);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_zones" }, () => {
+        loadData();
       })
       .subscribe();
 
@@ -228,6 +245,16 @@ function OverviewPage() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // تصفية الطلبات بناءً على الفرع المختار
+  const filteredOrders = useMemo(() => {
+    if (selectedBranchId === "all" || !selectedBranchId) return orders;
+    return orders.filter(
+      (o) =>
+        o.delivery_zone_id === selectedBranchId ||
+        (o.address && o.address.toLowerCase().includes(selectedBranchId.toLowerCase())),
+    );
+  }, [orders, selectedBranchId]);
 
   // الحسابات المباشرة للإحصاءات
   const today = useMemo(() => {
@@ -238,23 +265,26 @@ function OverviewPage() {
 
   const monthStart = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
 
-  const revenueOrders = useMemo(() => orders.filter((o) => o.status !== "cancelled"), [orders]);
+  const revenueOrders = useMemo(
+    () => filteredOrders.filter((o) => o.status !== "cancelled"),
+    [filteredOrders],
+  );
 
   const salesToday = useMemo(() => {
     return revenueOrders
       .filter((o) => new Date(o.created_at) >= today)
-      .reduce((s, o) => s + Number(o.total_price), 0);
+      .reduce((s, o) => s + Number(o.total_price || 0), 0);
   }, [revenueOrders, today]);
 
   const salesMonth = useMemo(() => {
     return revenueOrders
       .filter((o) => new Date(o.created_at) >= monthStart)
-      .reduce((s, o) => s + Number(o.total_price), 0);
+      .reduce((s, o) => s + Number(o.total_price || 0), 0);
   }, [revenueOrders, monthStart]);
 
   const ordersTodayList = useMemo(() => {
-    return orders.filter((o) => new Date(o.created_at) >= today);
-  }, [orders, today]);
+    return filteredOrders.filter((o) => new Date(o.created_at) >= today);
+  }, [filteredOrders, today]);
 
   const newOrdersToday = useMemo(() => {
     return ordersTodayList.length;
@@ -265,10 +295,35 @@ function OverviewPage() {
       const sum = ordersTodayList.reduce((acc, o) => acc + Number(o.total_price || 0), 0);
       return sum / ordersTodayList.length;
     }
-    return orders.length > 0
-      ? orders.reduce((acc, o) => acc + Number(o.total_price || 0), 0) / orders.length
+    return filteredOrders.length > 0
+      ? filteredOrders.reduce((acc, o) => acc + Number(o.total_price || 0), 0) / filteredOrders.length
       : 0;
-  }, [ordersTodayList, orders]);
+  }, [ordersTodayList, filteredOrders]);
+
+  const weeklyGrowth = useMemo(() => {
+    const now = new Date();
+    const past7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const prev14To7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const last7Revenue = filteredOrders
+      .filter((o) => o.status !== "cancelled" && new Date(o.created_at) >= past7Days)
+      .reduce((s, o) => s + Number(o.total_price || 0), 0);
+
+    const prev7Revenue = filteredOrders
+      .filter(
+        (o) =>
+          o.status !== "cancelled" &&
+          new Date(o.created_at) >= prev14To7Days &&
+          new Date(o.created_at) < past7Days,
+      )
+      .reduce((s, o) => s + Number(o.total_price || 0), 0);
+
+    if (prev7Revenue > 0) {
+      const diff = ((last7Revenue - prev7Revenue) / prev7Revenue) * 100;
+      return diff >= 0 ? `+${diff.toFixed(1)}% نمو` : `${diff.toFixed(1)}%`;
+    }
+    return last7Revenue > 0 ? "+100% نشاط" : "مباشر";
+  }, [filteredOrders]);
 
   const ordersPipeline = useMemo(() => {
     const fresh = ordersTodayList.filter(
@@ -289,19 +344,19 @@ function OverviewPage() {
   }, [ordersTodayList]);
 
   const abandonedCartsStats = useMemo(() => {
-    const estimatedAbandoned = Math.max(Math.round(newOrdersToday * 0.45) + 3, 4);
-    const recovered = Math.round(estimatedAbandoned * 0.35);
-    const recoverableAmount = Math.round(estimatedAbandoned * (avgOrderValue || 280) * 0.6);
+    const estimatedAbandoned = Math.max(Math.round(newOrdersToday * 0.3), 0);
+    const recovered = Math.round(estimatedAbandoned * 0.4);
+    const recoverableAmount = Math.round(estimatedAbandoned * (avgOrderValue || 250));
     return {
       abandonedCount: estimatedAbandoned,
       recoveredCount: recovered,
-      recoveryRate: 35,
+      recoveryRate: estimatedAbandoned > 0 ? Math.round((recovered / estimatedAbandoned) * 100) : 100,
       recoverableAmount,
     };
   }, [newOrdersToday, avgOrderValue]);
 
   const processingCount = useMemo(() => {
-    return orders.filter(
+    return filteredOrders.filter(
       (o) =>
         o.status === "new" ||
         o.status === "pending" ||
@@ -309,11 +364,11 @@ function OverviewPage() {
         o.status === "confirmed" ||
         o.status === "shipped",
     ).length;
-  }, [orders]);
+  }, [filteredOrders]);
 
   const newCount = useMemo(() => {
-    return orders.filter((o) => o.status === "new" || o.status === "pending").length;
-  }, [orders]);
+    return filteredOrders.filter((o) => o.status === "new" || o.status === "pending").length;
+  }, [filteredOrders]);
 
   // تجهيز بيانات الرسم البياني حسب الفلتر
   const chartData = useMemo(() => {
@@ -449,6 +504,7 @@ function OverviewPage() {
           {/* محدد الفروع */}
           <BranchSelector
             selectedBranchId={selectedBranchId}
+            branches={branches}
             onBranchChange={(b) => {
               setSelectedBranchId(b.id);
               toast.info(`تم التبديل إلى: ${b.name}`);
@@ -464,11 +520,21 @@ function OverviewPage() {
               className="rounded-2xl hero-gradient text-primary-foreground font-black gap-2 shadow-xs transition-transform hover:scale-[1.02] active:scale-95"
             >
               <Receipt className="h-4 w-4" />
-              <span>إدارة الطلبات ({newCount > 0 ? `${newCount} جديد` : orders.length})</span>
+              <span>إدارة الطلبات ({newCount > 0 ? `${newCount} جديد` : filteredOrders.length})</span>
             </Button>
           </Link>
         </div>
       </div>
+
+      {/* 3 بطاقات الفروع المخصصة في أعلى الصفحة لعرض مؤشرات المبيعات، الطلبات الجارية، والجاهزية لكل فرع */}
+      <BranchCardsOverview
+        branches={branches}
+        selectedBranchId={selectedBranchId}
+        onSelectBranch={(bId) => {
+          setSelectedBranchId(bId);
+          toast.info(`تم تصفية العرض حسب الفرع المحدد`);
+        }}
+      />
 
       {/* كروت KPI التفاعلية الأربعة المصممة وفق قاعدة الـ 5 ثوانٍ */}
       <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -506,7 +572,7 @@ function OverviewPage() {
 
             <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-lg w-fit">
               <TrendingUp className="h-3 w-3" />
-              <span>+18.4% نمو مقارنة بالأسبوع الماضي</span>
+              <span>{weeklyGrowth} مقارنة بالفترة السابقة</span>
             </div>
           </CardContent>
         </Card>
@@ -567,11 +633,11 @@ function OverviewPage() {
               <div>
                 <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
                   <span>منتجات تحت حد الأمان</span>
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                  {lowStock.length > 0 && <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />}
                 </span>
                 <div className="font-display text-2xl font-black text-amber-700 dark:text-amber-400 mt-0.5 tracking-tight">
                   <AnimatedCounter
-                    value={lowStock.length > 0 ? lowStock.length : 4}
+                    value={lowStock.length}
                     decimals={0}
                     suffix="أصناف"
                   />
@@ -584,8 +650,10 @@ function OverviewPage() {
 
             <div className="space-y-1 pt-2 border-t border-amber-500/20 text-[11px]">
               <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>تنبيهات قرب انتهاء الصلاحية:</span>
-                <span className="font-black text-rose-600 dark:text-rose-400">3 دفعات ⏳</span>
+                <span>تنبيهات المخزون الحرج:</span>
+                <span className="font-black text-rose-600 dark:text-rose-400">
+                  {lowStock.length > 0 ? `${lowStock.length} صنف بحاجة لتوريد` : "المخزون ممتاز ✓"}
+                </span>
               </div>
               <div className="flex items-center justify-between text-muted-foreground font-bold">
                 <span>حالة التوريد:</span>
@@ -644,24 +712,15 @@ function OverviewPage() {
         </Card>
       </div>
 
-      {/* بطاقات الفروع الثلاثة بنمط النيو-مينيماليزم والزجاجي */}
-      <BranchCardsOverview
-        onSelectBranch={(bId) => {
-          setSelectedBranchId(bId);
-          toast.info(`تم تصفية العرض حسب الفرع المحدد`);
-        }}
-      />
-
       {/* الموجز التنفيذي والاستشاري الذكي المدعوم بـ Gemini 3.6 Flash */}
       <ExecutiveSummaryWidget
         kpis={{
-          totalRevenue: salesMonth || salesToday || 18450,
-          totalOrders: orders.length || 42,
-          averageOrderValue: avgOrderValue || 320,
-          lowStockCount:
-            lowStock.filter((p) => (p.stock_quantity ?? 0) > 0).length || lowStock.length || 4,
-          outOfStockCount: lowStock.filter((p) => (p.stock_quantity ?? 0) <= 0).length || 0,
-          topSellingCategory: "الألبان والجبن الطازج",
+          totalRevenue: salesMonth || salesToday || 0,
+          totalOrders: filteredOrders.length,
+          averageOrderValue: Math.round(avgOrderValue),
+          lowStockCount: lowStock.filter((p) => (p.stock_quantity ?? 0) > 0).length,
+          outOfStockCount: lowStock.filter((p) => (p.stock_quantity ?? 0) <= 0).length,
+          topSellingCategory: "كافة الأقسام",
           abandonedCartsCount: abandonedCartsStats.abandonedCount,
         }}
       />

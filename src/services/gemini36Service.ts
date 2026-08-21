@@ -117,12 +117,24 @@ export interface ProductCopywriterInput {
   isByWeight?: boolean;
 }
 
+export interface ProductNutritionalInfo {
+  calories: string;
+  protein: string;
+  carbs: string;
+  fiber: string;
+  fats?: string;
+}
+
 export interface ProductCopywriterResult {
   enhancedTitle: string;
   shortDescription: string;
   seoDescription: string;
   tags: string[];
   cookingTip: string;
+  characteristics: string[];
+  storageInstructions: string;
+  originSource: string;
+  nutritionalInfo: ProductNutritionalInfo;
   keySellingPoints: string[];
   suggestedBadge?: string;
 }
@@ -1547,18 +1559,28 @@ export async function generateProductCopywriting(
   const ai = getGenAI();
   if (ai) {
     try {
-      const prompt = `Act as an expert Arabic E-Commerce Copywriter for Egyptian Supermarket.
+      const prompt = `Act as an expert Arabic E-Commerce & Nutrition Copywriter for a top-tier Egyptian Supermarket.
 Product Name: "${name}"
 Category: "${cat}"
 Is Sold By Weight: ${input.isByWeight ? "Yes (كجم)" : "No (قطعة)"}
 
-Generate comprehensive Arabic product copywriting with strict JSON output:
+Generate comprehensive Arabic product details connecting ALL requested attributes with strict JSON output:
 {
   "enhancedTitle": "<Catchy optimized commercial title in Arabic>",
   "shortDescription": "<1-2 sentences highlighting quality, freshness and taste>",
-  "seoDescription": "<SEO-rich descriptive paragraph including nutrition, origin and kitchen uses>",
+  "seoDescription": "<SEO-rich descriptive paragraph including product highlights and kitchen uses>",
   "tags": ["وسم1", "وسم2", "وسم3", "وسم4"],
-  "cookingTip": "<Engaging cooking/serving tip for the recipe or kitchen>",
+  "cookingTip": "<Engaging chef / cooking / preparation advice for this product>",
+  "characteristics": ["خاصية 1 مميزة (مثل: طازج يومياً)", "خاصية 2 (مثل: خالي من المواد الحافظة)", "خاصية 3 (مثل: نخب أول معتمد)"],
+  "storageInstructions": "<Clear practical storage instructions like 'يُحفظ في الثلاجة بدرجة حرارة 2-4 مئوية داخل عبوة محكمة ليبقى طازجاً'>",
+  "originSource": "<Clear origin like 'مزارع مصرية محلية طازجة ومضمونة' or 'إنتاج محلي طازج بإشراف بيطري'>",
+  "nutritionalInfo": {
+    "calories": "<e.g. '52 سعرة' or '120 kcal'>",
+    "protein": "<e.g. '1.5 جم' or '24 جم'>",
+    "carbs": "<e.g. '12 جم' or '0 جم'>",
+    "fiber": "<e.g. '2.8 جم' or '0 جم'>",
+    "fats": "<e.g. '0.3 جم' or '8 جم'>"
+  },
   "keySellingPoints": ["نقطة تميز 1", "نقطة تميز 2", "نقطة تميز 3"],
   "suggestedBadge": "<Short badge like 'طازج يومياً' or 'بلدي 100%' or 'عرض خاص'>"
 }`;
@@ -1570,7 +1592,31 @@ Generate comprehensive Arabic product copywriting with strict JSON output:
       });
 
       if (res.text) {
-        return JSON.parse(res.text.trim());
+        const parsed = JSON.parse(res.text.trim());
+        return {
+          enhancedTitle: parsed.enhancedTitle || `${name} طازج نخب أول`,
+          shortDescription: parsed.shortDescription || "",
+          seoDescription: parsed.seoDescription || "",
+          tags: Array.isArray(parsed.tags) ? parsed.tags : ["طازج", "بلدي"],
+          cookingTip: parsed.cookingTip || "يُفضل تحضيره طازجاً للحفاظ على النكهة والقيمة الغذائية.",
+          characteristics: Array.isArray(parsed.characteristics)
+            ? parsed.characteristics
+            : ["طازج 100%", "جودة مضمونة", "بدون مواد حافظة"],
+          storageInstructions:
+            parsed.storageInstructions || "يُحفظ في درجة حرارة 2 - 4 مئوية داخل عبوة محكمة.",
+          originSource: parsed.originSource || "مزارع محلية معتمدة وعالية الجودة",
+          nutritionalInfo: {
+            calories: parsed.nutritionalInfo?.calories || "65 kcal",
+            protein: parsed.nutritionalInfo?.protein || "2.5 جم",
+            carbs: parsed.nutritionalInfo?.carbs || "10 جم",
+            fiber: parsed.nutritionalInfo?.fiber || "2.1 جم",
+            fats: parsed.nutritionalInfo?.fats || "0.5 جم",
+          },
+          keySellingPoints: Array.isArray(parsed.keySellingPoints)
+            ? parsed.keySellingPoints
+            : ["طبيعي 100%", "تغليف صحي", "توصيل فوري"],
+          suggestedBadge: parsed.suggestedBadge || "طازج يومياً ✨",
+        };
       }
     } catch (e) {
       console.warn("Product copywriter Gemini error, falling back:", e);
@@ -1578,36 +1624,89 @@ Generate comprehensive Arabic product copywriting with strict JSON output:
   }
 
   // High-Quality Rule-Based Copywriting Engine Fallback
-  const tags: string[] = ["طازج", "بلدي", "عالي_الجودة", "سمارت_ستور"];
+  const tags: string[] = ["طازج", "بلدي", "عالي_الجودة", "سوبرماركت_الوادي"];
+  let cookingTip = `للحصول على أفضل نكهة وجودة، احفظ ${name} في درجة حرارة مناسبة واستخدمه طازجاً لإبراز المذاق الأصيل في وصفاتك اليومية.`;
+  let storageInstructions = "يُحفظ في الثلاجة في درجة حرارة 2 - 4 مئوية داخل عبوة محكمة لضمان بقائه طازجاً.";
+  let originSource = "مزارع ومصادر محلية مصرية معتمدة ومضمونة";
+  let nutrition: ProductNutritionalInfo = {
+    calories: "55 kcal",
+    protein: "1.8 جم",
+    carbs: "11 جم",
+    fiber: "2.4 جم",
+    fats: "0.4 جم",
+  };
+  let characteristics = ["طبيعي 100% بدون مواد حافظة", "فحص ورقابة صحية دقيقة", "تغليف آمن ومحكم"];
+
   if (
     name.includes("لحم") ||
     name.includes("كفتة") ||
     name.includes("فراخ") ||
-    name.includes("دجاج")
+    name.includes("دجاج") ||
+    name.includes("مفروم")
   ) {
     tags.push("لحوم_بلدي", "بروتين", "ذبح_يومي");
+    cookingTip = "نصيحة الشيف: لتتبيل اللحم بشكل مثالي، اتركه في التتبيلة مع قليل من زيت الزيتون والبهارات لمدة 30 دقيقة قبل الطهي على نار متوسطة للحفاظ على العصارة.";
+    storageInstructions = "يُحفظ مبرداً عند 0 إلى 2 مئوية لمدة يومين، أو يُجمد عند -18 مئوية للاستخدام لاحقاً.";
+    originSource = "مزارع لحوم بلدية معتمدة - ذبح يومي بإشراف بيطري كامل";
+    nutrition = {
+      calories: "210 kcal",
+      protein: "26 جم",
+      carbs: "0 جم",
+      fiber: "0 جم",
+      fats: "12 جم",
+    };
+    characteristics = ["لحوم بلدية طازجة 100%", "ذبح وتجهيز يومي", "إشراف ورقابة بيطرية"];
   } else if (
     name.includes("جبن") ||
     name.includes("لبن") ||
     name.includes("قشطة") ||
-    name.includes("حليب")
+    name.includes("حليب") ||
+    name.includes("زبادي")
   ) {
     tags.push("ألبان_طبيعية", "فلاحي", "إفطار_صحي");
+    cookingTip = "نصيحة الشيف: يُقدم مع خبز طازج وقليل من زيت الزيتون البكر والزعتر أو النعناع لإفطار متوازن وشهي.";
+    storageInstructions = "يُحفظ في الثلاجة في درجة حرارة 2 - 5 مئوية وتغلق العبوة بإحكام بعد كل استخدام.";
+    originSource = "مزارع ألبان مصرية طبيعية 100% مبسترة وصحية";
+    nutrition = {
+      calories: "165 kcal",
+      protein: "14 جم",
+      carbs: "3.5 جم",
+      fiber: "0 جم",
+      fats: "11 جم",
+    };
+    characteristics = ["حليب طبيعي 100%", "غني بالكالسيوم والبروتين", "طعم غني ودسم طبيعي"];
   } else if (
     name.includes("طماطم") ||
     name.includes("خيار") ||
     name.includes("تفاح") ||
-    name.includes("برتقال")
+    name.includes("برتقال") ||
+    name.includes("خضار") ||
+    name.includes("موز")
   ) {
     tags.push("أورجانيك", "خضار_فاكهة", "فيتامينات");
+    cookingTip = "نصيحة الشيف: يُغسل جيداً بالماء الفاتر والخل الخفيف قبل تناوله مباشرة لضمان أعلى نظافة وقرمشة منعشة.";
+    storageInstructions = "يُحفظ في درج الخضار بالثلاجة داخل كيس ورقي أو منشفة قطنية جافة.";
+    originSource = "مزارع الصالحية والنوبارية - قطاف طازج كل صباح";
+    nutrition = {
+      calories: "32 kcal",
+      protein: "1.1 جم",
+      carbs: "7.2 جم",
+      fiber: "2.8 جم",
+      fats: "0.2 جم",
+    };
+    characteristics = ["قطاف يومي طازج", "غني بالفيتامينات والمعادن", "بدون مبيدات كيميائية"];
   }
 
   return {
     enhancedTitle: `${name} طازج نخب أول فاخر`,
     shortDescription: `منتج ${name} منتقى بعناية فائقة من أجود المصادر المحلية، طازج ومضمون بأعلى معايير النظافة والجودة الغذائية.`,
-    seoDescription: `استمتع بأفضل مذاق مع ${name} الطازج من سمارت ستور. نضمن لك القيمة الغذائية العالية، التعبئة الصحية، والتوصيل السريع بسيارات مجهزة للحفاظ على جودته ودرجة حرارته حتى باب منزلك.`,
+    seoDescription: `استمتع بأفضل مذاق وجودة مع ${name} الطازج من سوبرماركت الوادي الأخضر. نضمن لك القيمة الغذائية العالية، التعبئة الصحية، والتوصيل السريع بسيارات مجهزة للحفاظ على جودته ودرجة حرارته حتى باب منزلك.`,
     tags,
-    cookingTip: `للحصول على أفضل نكهة وجودة، احفظ ${name} في درجة حرارة مناسبة واستخدمه طازجاً لإبراز المذاق الأصيل في وصفاتك اليومية.`,
+    cookingTip,
+    characteristics,
+    storageInstructions,
+    originSource,
+    nutritionalInfo: nutrition,
     keySellingPoints: [
       "طبيعي وطازج 100% دون أي مواد حافظة ضارة",
       "تغليف صحي محكم للحفاظ على النضارة والنكهة",

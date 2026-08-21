@@ -14,11 +14,13 @@ import {
   Receipt,
   MapPin,
   ChevronLeft,
-  ChevronRight,
   Sun,
   Moon,
   LogOut,
   User,
+  Heart,
+  PhoneCall,
+  Clock,
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
@@ -30,7 +32,6 @@ import { UserMenu } from "./UserMenu";
 import { ColorModeToggle } from "@/components/ColorModeToggle";
 import { SmartSearchBar } from "./SmartSearchBar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { STORE_BRANCHES } from "@/components/admin/BranchSelector";
 
 export function Header() {
   const { totalCount } = useCart();
@@ -46,7 +47,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 transition-all">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-        {/* اليسار: القائمة المنزلقة الفاخرة (Drawer) + البحث */}
+        {/* اليسار: القائمة المنزلقة الفاخرة للعملاء (Drawer) + البحث */}
         <div className="flex items-center gap-1.5">
           {/* Fluid Sliding Drawer Trigger */}
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -75,7 +76,7 @@ export function Header() {
                     </h3>
                     <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      3 فروع متصلة عبر Supabase
+                      3 فروع متصلة • توصيل سريع
                     </span>
                   </div>
                 </div>
@@ -100,10 +101,10 @@ export function Header() {
                 </div>
               </div>
 
-              {/* Navigation Links inside Drawer */}
+              {/* Navigation Links inside Drawer for Customers */}
               <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
                 <div className="text-[10px] font-black uppercase text-muted-foreground px-2 py-1">
-                  روابط التسوق والخدمات
+                  أقسام وتصفح المتجر
                 </div>
 
                 <Link
@@ -113,7 +114,7 @@ export function Header() {
                 >
                   <div className="flex items-center gap-3">
                     <Store className="h-4 w-4 text-emerald-600" />
-                    <span>الرئيسية والعروض</span>
+                    <span>الرئيسية وعروض اليوم</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </Link>
@@ -137,7 +138,7 @@ export function Header() {
                 >
                   <div className="flex items-center gap-3">
                     <ShoppingBag className="h-4 w-4 text-emerald-600" />
-                    <span>سلة المشتريات الذكية</span>
+                    <span>سلة المشتريات</span>
                   </div>
                   {totalCount > 0 && (
                     <Badge className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5">
@@ -146,35 +147,55 @@ export function Header() {
                   )}
                 </Link>
 
-                <div className="pt-3 border-t border-border/50 text-[10px] font-black uppercase text-muted-foreground px-2 py-1">
-                  لوحة التحكم والذكاء الاصطناعي
-                </div>
-
                 <Link
-                  to="/admin/copilot"
-                  onClick={() => setDrawerOpen(false)}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-xs font-black text-emerald-800 dark:text-emerald-300 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
-                    <span>{siteName} AI (Gemini Studio)</span>
-                  </div>
-                  <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-200 border-0 text-[9px]">
-                    Gemini 3.1
-                  </Badge>
-                </Link>
-
-                <Link
-                  to="/admin"
+                  to="/account"
                   onClick={() => setDrawerOpen(false)}
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                    <span>لوحة تحكم المدير العام</span>
+                    <User className="h-4 w-4 text-emerald-600" />
+                    <span>حسابي وطلباتي السابقة</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </Link>
+
+                {/* Only display admin link if verified admin is logged in */}
+                {isAdmin && (
+                  <>
+                    <div className="pt-3 border-t border-border/50 text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 px-2 py-1 flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      <span>صلاحيات المدير العام</span>
+                    </div>
+
+                    <Link
+                      to="/admin"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 text-xs font-bold text-amber-900 dark:text-amber-200 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ShieldCheck className="h-4 w-4 text-amber-600" />
+                        <span>لوحة الإدارة المركزية</span>
+                      </div>
+                      <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-200 border-0 text-[9px]">
+                        Admin
+                      </Badge>
+                    </Link>
+
+                    <Link
+                      to="/admin/copilot"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-xs font-black text-emerald-800 dark:text-emerald-300 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
+                        <span>{siteName} AI (المساعد الذكي)</span>
+                      </div>
+                      <Badge className="bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-0 text-[9px]">
+                        Gemini
+                      </Badge>
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Drawer Footer */}
@@ -199,7 +220,7 @@ export function Header() {
                     onClick={() => setDrawerOpen(false)}
                     className="block text-center py-2.5 rounded-xl hero-gradient text-white text-xs font-bold shadow-xs"
                   >
-                    تسجيل الدخول / إنشاء حساب
+                    تسجيل الدخول / حساب جديد
                   </Link>
                 )}
               </div>
@@ -235,19 +256,19 @@ export function Header() {
           </div>
         </Link>
 
-        {/* اليمين: زر المساعد الذكي + الثيم + حساب المستخدم + السلة */}
+        {/* اليمين: زر الثيم + حساب المستخدم + السلة (مع إظهار زر الإدارة فقط للأدمن المسجل) */}
         <div className="flex items-center gap-1.5">
-          {/* Gemini AI Floating Quick Action */}
-          <Link
-            to="/admin/copilot"
-            aria-label="المساعد الذكي"
-            className="flex h-9 sm:h-10 items-center gap-1.5 px-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 transition-all text-xs font-black border border-emerald-500/30 active:scale-95 shadow-xs cursor-pointer"
-            title="المساعد الذكي Gemini AI"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-            <span className="font-display hidden sm:inline">{siteName} AI</span>
-            <span className="sm:hidden font-display">AI</span>
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              aria-label="لوحة الإدارة"
+              className="flex h-9 sm:h-10 items-center gap-1.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 dark:text-amber-200 transition-all text-xs font-black border border-amber-500/30 active:scale-95 shadow-xs cursor-pointer"
+              title="لوحة تحكم الإدارة"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
+              <span className="font-display hidden sm:inline">لوحة الإدارة</span>
+            </Link>
+          )}
 
           <ColorModeToggle className="rounded-2xl bg-secondary/60 hover:bg-secondary" />
           <UserMenu />
@@ -260,7 +281,7 @@ export function Header() {
           >
             <ShoppingBag className="h-5 w-5" />
             {totalCount > 0 && (
-              <Badge className="absolute -top-1 -end-1 h-4 min-w-4 justify-center rounded-full hero-gradient px-1 text-[10px] font-black text-white shadow-sm">
+              <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 px-1 text-[10px] font-black text-white shadow-sm border-2 border-background">
                 {totalCount}
               </Badge>
             )}

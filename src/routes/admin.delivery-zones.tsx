@@ -139,6 +139,17 @@ function ZonesPage() {
 
   useEffect(() => {
     load();
+
+    const channel = supabase
+      .channel("admin-delivery-zones-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_zones" }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const openCreate = () => {

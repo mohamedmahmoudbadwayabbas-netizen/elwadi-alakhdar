@@ -403,16 +403,6 @@ export function AuthPage() {
             </button>
           </div>
         </div>
-
-        {/* تنبيه رابط دخول الإدارة */}
-        <div className="mt-6 text-center">
-          <Link
-            to="/admin/login"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-emerald-800 font-bold"
-          >
-            <ShieldCheck className="h-4 w-4" /> هل أنت مسؤول المتجر؟ تسجيل دخول الإدارة
-          </Link>
-        </div>
       </div>
     </div>
   );

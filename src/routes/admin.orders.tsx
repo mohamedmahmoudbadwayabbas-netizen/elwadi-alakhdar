@@ -194,8 +194,19 @@ function OrdersPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setOrders((data ?? []) as unknown as Order[]);
+      let combined: Order[] = (data ?? []) as unknown as Order[];
+
+      try {
+        const localRaw = localStorage.getItem("alwadi_store_orders_v2");
+        if (localRaw) {
+          const localList: Order[] = JSON.parse(localRaw);
+          const existingIds = new Set(combined.map((o) => o.id));
+          const missing = localList.filter((o) => !existingIds.has(o.id));
+          combined = [...missing, ...combined];
+        }
+      } catch {}
+
+      setOrders(combined);
     } catch (err: any) {
       toast.error(`تعذر جلب الطلبات: ${err.message}`);
     } finally {

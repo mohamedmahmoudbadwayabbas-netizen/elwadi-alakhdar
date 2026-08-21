@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { ProductPageSkeleton } from "@/components/storefront/Skeletons";
 import { ProductStatsAndTip } from "@/components/storefront/ProductStatsAndTip";
+import { extractProductDetails } from "@/lib/product-metadata";
 import { flyToCart } from "@/lib/fly-to-cart";
 import { MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
@@ -725,153 +726,206 @@ function ProductPage() {
 
           {/* تأثير الـ FOMO للمخزون المتبقي */}
           {!outOfStock && product.stock_quantity && product.stock_quantity <= 5 && (
-            <div className="rounded-xl bg-orange-500/10 p-3 border border-orange-500/20 text-center animate-pulse">
-              <p className="text-xs font-bold text-orange-600 flex items-center justify-center gap-1.5">
-                <Flame className="h-4 w-4 text-orange-600" />
+            <div className="rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-center">
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1.5">
+                <Flame className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 متبقي {product.stock_quantity} قطع فقط في المخزون! اطلب قبل نفاذ الكمية.
               </p>
             </div>
           )}
         </div>
 
-        {/* ─── مكون إحصاءات المنتج والمشاهدات والمشترين ونظرة الشيف والطبخ ─── */}
-        <ProductStatsAndTip
-          viewsCount={(product as any).viewsCount ?? (product as any).views_count ?? 0}
-          purchaseCount={(product as any).purchaseCount ?? (product as any).purchase_count ?? 0}
-          avgRating={
-            (product as any).avgRating ??
-            (product as any).avg_rating ??
-            (reviews.length > 0
-              ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-              : 0)
-          }
-          reviewsCount={
-            (product as any).reviewsCount ?? (product as any).reviews_count ?? reviews.length
-          }
-          cookingTip={(product as any).cookingTip ?? (product as any).cooking_tip ?? null}
-          isTopSeller={Boolean(
-            (product as any).isTopSeller ?? (product as any).is_top_seller ?? product.is_featured,
-          )}
-        />
+        {/* استخراج كافة بيانات المنتج والذكاء الاصطناعي */}
+        {(() => {
+          const details = extractProductDetails(product);
+          return (
+            <>
+              {/* ─── مكون إحصاءات المنتج والمشاهدات والمشترين ونظرة الشيف والطبخ ─── */}
+              <ProductStatsAndTip
+                viewsCount={(product as any).viewsCount ?? (product as any).views_count ?? 0}
+                purchaseCount={(product as any).purchaseCount ?? (product as any).purchase_count ?? 0}
+                avgRating={
+                  (product as any).avgRating ??
+                  (product as any).avg_rating ??
+                  (reviews.length > 0
+                    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+                    : 0)
+                }
+                reviewsCount={
+                  (product as any).reviewsCount ?? (product as any).reviews_count ?? reviews.length
+                }
+                cookingTip={details.cookingTip || (product as any).cooking_tip || null}
+                isTopSeller={Boolean(
+                  (product as any).isTopSeller ?? (product as any).is_top_seller ?? product.is_featured,
+                )}
+              />
 
-        {/* ─── تبويبات تفاصيل المنتج التفاعلية (الوصف / التخزين / الجودة) ─── */}
-        <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 border-b pb-3">
-            <button
-              onClick={() => setActiveTab("desc")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === "desc"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
-              )}
-            >
-              <Info className="h-3.5 w-3.5" />
-              الوصف والخصائص
-            </button>
-            <button
-              onClick={() => setActiveTab("specs")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === "specs"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
-              )}
-            >
-              <Thermometer className="h-3.5 w-3.5" />
-              التخزين والمصدر
-            </button>
-            <button
-              onClick={() => setActiveTab("nutrition")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === "nutrition"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
-              )}
-            >
-              <Utensils className="h-3.5 w-3.5" />
-              القيمة الغذائية
-            </button>
-          </div>
+              {/* ─── تبويبات تفاصيل المنتج التفاعلية (الوصف / التخزين / الجودة / التغذية) ─── */}
+              <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b pb-3 overflow-x-auto no-scrollbar">
+                  <button
+                    onClick={() => setActiveTab("desc")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                      activeTab === "desc"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                    الوصف والخصائص
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("specs")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                      activeTab === "specs"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Thermometer className="h-3.5 w-3.5" />
+                    التخزين والمصدر
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("nutrition")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                      activeTab === "nutrition"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Utensils className="h-3.5 w-3.5" />
+                    القيمة الغذائية
+                  </button>
+                </div>
 
-          <div className="min-h-[80px]">
-            {activeTab === "desc" && (
-              <div className="space-y-2 animate-in fade-in duration-200">
-                <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
-                  {product.description && product.description.trim().length > 0
-                    ? product.description
-                    : "منتج طازج عالي الجودة مختار بعناية فائقة ليلبي احتياجات أسرتك اليومية بأعلى معايير السلامة والنظافة."}
-                </p>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 px-2.5 py-1 text-[11px] font-bold">
-                    <Leaf className="h-3 w-3" /> طازج 100%
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 text-blue-600 px-2.5 py-1 text-[11px] font-bold">
-                    <ShieldCheck className="h-3 w-3" /> بدون مواد حافظة
-                  </span>
+                <div className="min-h-[80px]">
+                  {activeTab === "desc" && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
+                        {details.cleanDescription && details.cleanDescription.trim().length > 0
+                          ? details.cleanDescription
+                          : "منتج طازج عالي الجودة مختار بعناية فائقة ليلبي احتياجات أسرتك اليومية بأعلى معايير السلامة والنظافة."}
+                      </p>
+
+                      {/* مميزات وخصائص المنتج */}
+                      {details.characteristics.length > 0 && (
+                        <div className="pt-1 space-y-1.5">
+                          <div className="text-[11px] font-bold text-foreground">أبرز الخصائص والمميزات:</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {details.characteristics.map((char, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 text-xs text-foreground/90 bg-secondary/30 p-2 rounded-xl border border-border/40"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span className="font-semibold text-[11px]">{char}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* الوسوم والشارات */}
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 text-[11px] font-bold">
+                          <Leaf className="h-3 w-3" /> طازج 100%
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2.5 py-1 text-[11px] font-bold">
+                          <ShieldCheck className="h-3 w-3" /> جودة مضمونة
+                        </span>
+                        {details.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 rounded-lg bg-secondary text-muted-foreground px-2 py-0.5 text-[10px] font-bold"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === "specs" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs animate-in fade-in duration-200">
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">
+                          المصدر وبلد المنشأ
+                        </div>
+                        <div className="font-bold flex items-center gap-1.5 text-foreground">
+                          <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>{details.originSource || "مزارع محلية طازجة معتمدة"}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">
+                          طريقة الحفظ والتخزين المثالية
+                        </div>
+                        <div className="font-bold flex items-center gap-1.5 text-foreground">
+                          <Thermometer className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>{details.storageInstructions || "يُحفظ في درجة حرارة 2 - 4°C"}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">
+                          التعبئة والتغليف
+                        </div>
+                        <div className="font-bold text-foreground">عبوة آمنة ومفرغة من الهواء لضمان الجودة</div>
+                      </div>
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">مدة الصلاحية</div>
+                        <div className="font-bold text-foreground">أسبوع من تاريخ الاستلام والتجهيز</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === "nutrition" && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span>الحقائق والقيمة الغذائية (لكل 100 جرام):</span>
+                        <span className="text-[10px] text-muted-foreground font-semibold">تقدير معتمد</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                        <div className="rounded-xl border bg-amber-500/10 border-amber-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">سعرات</div>
+                          <div className="font-black text-amber-600 dark:text-amber-400">
+                            {details.nutritionalInfo.calories || "52 kcal"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-emerald-500/10 border-emerald-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">بروتين</div>
+                          <div className="font-black text-emerald-600 dark:text-emerald-400">
+                            {details.nutritionalInfo.protein || "1.2 جم"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-blue-500/10 border-blue-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">كربوهيدرات</div>
+                          <div className="font-black text-blue-600 dark:text-blue-400">
+                            {details.nutritionalInfo.carbs || "14 جم"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-purple-500/10 border-purple-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">ألياف</div>
+                          <div className="font-black text-purple-600 dark:text-purple-400">
+                            {details.nutritionalInfo.fiber || "2.4 جم"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-rose-500/10 border-rose-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">دهون</div>
+                          <div className="font-black text-rose-600 dark:text-rose-400">
+                            {details.nutritionalInfo.fats || "0.4 جم"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-
-            {activeTab === "specs" && (
-              <div className="grid grid-cols-2 gap-3 text-xs animate-in fade-in duration-200">
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">
-                    بلد المنشأ / المصدر
-                  </div>
-                  <div className="font-bold flex items-center gap-1 text-foreground">
-                    <Globe className="h-3.5 w-3.5 text-primary" /> مزارع محلية طازجة
-                  </div>
-                </div>
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">
-                    طريقة التخزين المثالية
-                  </div>
-                  <div className="font-bold flex items-center gap-1 text-foreground">
-                    <Thermometer className="h-3.5 w-3.5 text-primary" /> يُحفظ في درجة حرارة 2 - 4°C
-                  </div>
-                </div>
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">
-                    التعبئة والتغليف
-                  </div>
-                  <div className="font-bold text-foreground">عبوة آمنة ومفرغة من الهواء</div>
-                </div>
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">مدة الصلاحية</div>
-                  <div className="font-bold text-foreground">أسبوع من تاريخ الاستلام</div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "nutrition" && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                <div className="text-xs font-bold text-foreground">
-                  القيمة الغذائية الملاحظة (لكل 100 جرام):
-                </div>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div className="rounded-xl border bg-amber-500/10 border-amber-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">سعرات</div>
-                    <div className="font-black text-amber-600">52 kcal</div>
-                  </div>
-                  <div className="rounded-xl border bg-emerald-500/10 border-emerald-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">بروتين</div>
-                    <div className="font-black text-emerald-600">1.2 جم</div>
-                  </div>
-                  <div className="rounded-xl border bg-blue-500/10 border-blue-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">كربوهيدرات</div>
-                    <div className="font-black text-blue-600">14 جم</div>
-                  </div>
-                  <div className="rounded-xl border bg-purple-500/10 border-purple-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">ألياف</div>
-                    <div className="font-black text-purple-600">2.4 جم</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+            </>
+          );
+        })()}
 
         {/* ─── ميزات الخدمة وحساب وقت التوصيل الديناميكي المدمج ─── */}
         <div className="grid grid-cols-3 gap-2">

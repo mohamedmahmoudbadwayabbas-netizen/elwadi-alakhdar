@@ -51,6 +51,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { COMPREHENSIVE_CATEGORIES, MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { normalizeDigits } from "@/lib/i18n-context";
+import {
+  extractProductDetails,
+  formatProductDescriptionWithMetadata,
+} from "@/lib/product-metadata";
+import {
+  generateProductCopywriting,
+  ProductNutritionalInfo,
+} from "@/services/gemini36Service";
 import { SmartProductCopywriterModal } from "@/components/admin/SmartProductCopywriterModal";
 import { AdminAiImageGeneratorModal } from "@/components/admin/AdminAiImageGeneratorModal";
 
@@ -166,6 +174,17 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
   const [tagsInput, setTagsInput] = useState("");
   const [tagsList, setTagsList] = useState<string[]>([]);
 
+  // حقول المعرفة والذكاء الاصطناعي للمنتج (الوصف، نصيحة الشيف، الخصائص، التخزين، المنشأ، القيمة الغذائية)
+  const [cleanDesc, setCleanDesc] = useState("");
+  const [characteristicsText, setCharacteristicsText] = useState("");
+  const [storageText, setStorageText] = useState("");
+  const [originText, setOriginText] = useState("");
+  const [nutritionCalories, setNutritionCalories] = useState("55 kcal");
+  const [nutritionProtein, setNutritionProtein] = useState("1.5 جم");
+  const [nutritionCarbs, setNutritionCarbs] = useState("11 جم");
+  const [nutritionFiber, setNutritionFiber] = useState("2.2 جم");
+  const [nutritionFats, setNutritionFats] = useState("0.4 جم");
+
   // جلب البيانات من Supabase
   const load = async () => {
     setLoading(true);
@@ -196,22 +215,47 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
 
   useEffect(() => {
     load();
+
+    const channel = supabase
+      .channel("admin-products-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // المزامنة عند فتح نافذة تعديل أو إضافة منتج
   useEffect(() => {
     if (editing) {
-      if (editing.description && editing.description.includes("#وسوم:")) {
-        const parts = editing.description.split("#وسوم:");
-        const tags =
-          parts[1]
-            ?.split(",")
-            .map((t) => t.trim())
-            .filter(Boolean) || [];
-        setTagsList(tags);
-      } else {
-        setTagsList([]);
-      }
+      const details = extractProductDetails(editing as any);
+      setCleanDesc(details.cleanDescription);
+      setCharacteristicsText(details.characteristics.join("\n"));
+      setStorageText(details.storageInstructions);
+      setOriginText(details.originSource);
+      setNutritionCalories(details.nutritionalInfo.calories);
+      setNutritionProtein(details.nutritionalInfo.protein);
+      setNutritionCarbs(details.nutritionalInfo.carbs);
+      setNutritionFiber(details.nutritionalInfo.fiber);
+      setNutritionFats(details.nutritionalInfo.fats);
+      setTagsList(details.tags);
+    } else {
+      setCleanDesc("");
+      setCharacteristicsText("");
+      setStorageText("");
+      setOriginText("");
+      setNutritionCalories("55 kcal");
+      setNutritionProtein("1.5 جم");
+      setNutritionCarbs("11 جم");
+      setNutritionFiber("2.2 جم");
+      setNutritionFats("0.4 جم");
+      setTagsList([]);
     }
   }, [editing?.id]);
 
@@ -320,38 +364,74 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
     }
   };
 
-  // توليد نصيحة طبخ بالذكاء الاصطناعي (محاكاة تفاعلية للـ UX)
+  // توليد كافة بيانات وتفاصيل المنتج بالذكاء الاصطناعي
+  const handleGenerateAllAI = async () => {
+    if (!editing?.name?.trim()) {
+      toast.error("يرجى كتابة اسم المنتج أولاً لتوليد البيانات بالذكاء الاصطناعي");
+      return;
+    }
+    setIsGeneratingTip(true);
+    try {
+      const catObj = cats.find((c) => c.id === editing.category_id);
+      const res = await generateProductCopywriting({
+        productName: editing.name,
+        categoryName: catObj?.name,
+        isByWeight: !!editing.is_by_weight,
+      });
+
+      setCleanDesc(res.seoDescription);
+      setEditing((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: res.enhancedTitle || prev.name,
+              cooking_tip: res.cookingTip,
+              cookingTip: res.cookingTip,
+            }
+          : null,
+      );
+      setCharacteristicsText(res.characteristics.join("\n"));
+      setStorageText(res.storageInstructions);
+      setOriginText(res.originSource);
+      if (res.nutritionalInfo) {
+        setNutritionCalories(res.nutritionalInfo.calories);
+        setNutritionProtein(res.nutritionalInfo.protein);
+        setNutritionCarbs(res.nutritionalInfo.carbs);
+        setNutritionFiber(res.nutritionalInfo.fiber);
+        setNutritionFats(res.nutritionalInfo.fats || "0.4 جم");
+      }
+      setTagsList(res.tags);
+      toast.success("تم توليد وتعبئة كافة تفاصيل المنتج (الوصف، نصيحة الشيف، الخصائص، التخزين، المنشأ، القيمة الغذائية) بنجاح ✨");
+    } catch {
+      toast.error("تعذر توليد البيانات بالذكاء الاصطناعي");
+    } finally {
+      setIsGeneratingTip(false);
+    }
+  };
+
+  // توليد نصيحة طبخ سريعة بالذكاء الاصطناعي
   const handleGenerateCookingTip = async () => {
     if (!editing) return;
     setIsGeneratingTip(true);
     try {
-      if (onGenerateCookingTip) {
-        await Promise.resolve(onGenerateCookingTip(editing.name));
-      }
-      // محاكاة تأخير زمني للاستدعاء (~800ms) لإظهار الـ Loading state
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
       const productName = editing.name?.trim() || "هذا المنتج";
-      const sampleTips = [
-        `للحصول على ألذ نكهة لـ (${productName})، يُفضل غسله وتجفيفه بعناية قبل الطهي وإضافة لمسة من زيت الزيتون البكر والأعشاب الطازجة.`,
-        `يُحفظ (${productName}) في مكان جاف وبارد، ويُفضل طهيه على نار هادئة لضمان النضج المثالي والاحتفاظ بالقيمة الغذائية العالية.`,
-        `لأفضل قوام ونكهة غنية، انقع (${productName}) في تتبيلة الليمون والتوابل الخاصة لمدة 15 دقيقة قبل الشواء أو التقديم.`,
-        `يُفضل تقديمه طازجاً مع رشة ملح بحري ورذاذ ليمون لتعزيز النكهة الطبيعية الشهية لـ (${productName}).`,
-      ];
-      const generatedPlaceholder = sampleTips[Math.floor(Math.random() * sampleTips.length)];
+      const catObj = cats.find((c) => c.id === editing.category_id);
+      const res = await generateProductCopywriting({
+        productName,
+        categoryName: catObj?.name,
+        isByWeight: !!editing.is_by_weight,
+      });
 
       setEditing((prev) =>
         prev
           ? {
               ...prev,
-              cooking_tip: generatedPlaceholder,
-              cookingTip: generatedPlaceholder,
+              cooking_tip: res.cookingTip,
+              cookingTip: res.cookingTip,
             }
           : null,
       );
-      toast.success("تم توليد نصيحة الطبخ بالذكاء الاصطناعي بنجاح ✨", {
-        description: `تم إدراج النصيحة الخاصة بـ "${productName}" في الحقل لمعاينتها.`,
-      });
+      toast.success("تم توليد نصيحة الطبخ بالذكاء الاصطناعي بنجاح ✨");
     } catch {
       toast.error("تعذر توليد النصيحة في الوقت الحالي، يرجى المحاولة لاحقاً.");
     } finally {
@@ -384,11 +464,25 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
 
     setSaving(true);
 
-    // دمج الوسوم والكلمات المفتاحية في الوصف
-    let finalDesc = (editing.description || "").split("#وسوم:")[0].trim();
-    if (tagsList.length > 0) {
-      finalDesc = `${finalDesc}\n\n#وسوم: ${tagsList.join(", ")}`.trim();
-    }
+    // تجهيز الوصف المنظم والشامل مع البيانات الوصفية (الخصائص، التخزين، المنشأ، القيمة الغذائية، الوسوم)
+    const charArray = characteristicsText
+      .split("\n")
+      .map((s) => s.replace(/^[-•*✓]\s*/, "").trim())
+      .filter(Boolean);
+
+    const finalDesc = formatProductDescriptionWithMetadata(cleanDesc || editing.name, {
+      characteristics: charArray,
+      storageInstructions: storageText,
+      originSource: originText,
+      nutritionalInfo: {
+        calories: nutritionCalories,
+        protein: nutritionProtein,
+        carbs: nutritionCarbs,
+        fiber: nutritionFiber,
+        fats: nutritionFats,
+      },
+      tags: tagsList,
+    });
 
     const payload = {
       name: editing.name.trim(),
@@ -923,20 +1017,38 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
         >
           <DialogHeader className="flex flex-row items-center justify-between gap-2 border-b border-border/60 pb-3">
             <DialogTitle className="font-display text-lg font-black text-foreground flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500" />
+              <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               <span>{editing?.id ? "تعديل تفاصيل المنتج" : "إضافة منتج جديد للمتجر"}</span>
             </DialogTitle>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCopywriterModalOpen(true)}
-              className="h-8 rounded-xl text-xs font-black gap-1.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-              <span>كاتب أوصاف AI ✍️</span>
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isGeneratingTip}
+                onClick={handleGenerateAllAI}
+                className="h-8 rounded-xl text-xs font-black gap-1.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+                title="توليد الوصف، النصيحة، الخصائص، التخزين، المنشأ، والقيمة الغذائية آلياً"
+              >
+                {isGeneratingTip ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                )}
+                <span>توليد تلقائي بالـ AI ✨</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCopywriterModalOpen(true)}
+                className="h-8 rounded-xl text-xs font-black gap-1 text-muted-foreground hover:text-foreground"
+                title="فتح محرر الذكاء الاصطناعي المتقدم للمعاينة والتخصيص"
+              >
+                <span>محرر الـ AI ✍️</span>
+              </Button>
+            </div>
           </DialogHeader>
 
           {editing && (
@@ -975,16 +1087,140 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
                 </Select>
               </Field>
 
-              {/* الوصف */}
-              <Field label="الوصف التوضيحي" full>
+              {/* الوصف الأساسي */}
+              <Field label="الوصف التوضيحي (يدوي أو من الذكاء الاصطناعي)" full>
                 <Textarea
                   rows={2}
-                  value={(editing.description || "").split("#وسوم:")[0].trim()}
-                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                  placeholder="ملاحظات حول جودة المنتج، المصدر، أو القيمة الغذائية..."
+                  value={cleanDesc}
+                  onChange={(e) => setCleanDesc(e.target.value)}
+                  placeholder="وصف تسويقي وتوضيحي شامل للمنتج..."
                   className="rounded-xl font-bold text-xs"
                 />
               </Field>
+
+              {/* الخصائص والمميزات */}
+              <Field label="الخصائص والمميزات (كل ميزة في سطر)" full>
+                <Textarea
+                  rows={2}
+                  value={characteristicsText}
+                  onChange={(e) => setCharacteristicsText(e.target.value)}
+                  placeholder="طازج ومغلف بعناية&#10;خالي من المواد الحافظة&#10;إنتاج اليوم"
+                  className="rounded-xl font-bold text-xs bg-background"
+                />
+              </Field>
+
+              {/* طريقة الحفظ والتخزين */}
+              <Field label="طريقة الحفظ والتخزين">
+                <Input
+                  value={storageText}
+                  onChange={(e) => setStorageText(e.target.value)}
+                  placeholder="مثال: يُحفظ في الثلاجة عند 2-5 مئوية"
+                  className="h-10 rounded-xl font-bold text-xs bg-background"
+                />
+              </Field>
+
+              {/* المصدر وبلد المنشأ */}
+              <Field label="المصدر وبلد المنشأ">
+                <Input
+                  value={originText}
+                  onChange={(e) => setOriginText(e.target.value)}
+                  placeholder="مثال: مزارع محلية مصرية معتمدة"
+                  className="h-10 rounded-xl font-bold text-xs bg-background"
+                />
+              </Field>
+
+              {/* القيمة الغذائية (لكل 100 جرام) */}
+              <div className="sm:col-span-2 space-y-2 rounded-2xl border border-border/80 bg-secondary/20 p-3">
+                <div className="text-xs font-black text-foreground flex items-center justify-between">
+                  <span>القيمة والحقائق الغذائية (لكل 100 جرام)</span>
+                  <span className="text-[10px] text-muted-foreground font-semibold">تُعرض للعميل في صفحة المنتج</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">سعرات</label>
+                    <Input
+                      value={nutritionCalories}
+                      onChange={(e) => setNutritionCalories(e.target.value)}
+                      placeholder="55 kcal"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">بروتين</label>
+                    <Input
+                      value={nutritionProtein}
+                      onChange={(e) => setNutritionProtein(e.target.value)}
+                      placeholder="1.5 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">كربوهيدرات</label>
+                    <Input
+                      value={nutritionCarbs}
+                      onChange={(e) => setNutritionCarbs(e.target.value)}
+                      placeholder="11 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">ألياف</label>
+                    <Input
+                      value={nutritionFiber}
+                      onChange={(e) => setNutritionFiber(e.target.value)}
+                      placeholder="2.2 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">دهون</label>
+                    <Input
+                      value={nutritionFats}
+                      onChange={(e) => setNutritionFats(e.target.value)}
+                      placeholder="0.4 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* نصيحة الشيف وطريقة التحضير */}
+              <div className="sm:col-span-2 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>نصيحة الشيف والطهي (Chef Tip)</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isGeneratingTip}
+                    onClick={handleGenerateCookingTip}
+                    className="h-7 rounded-xl border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-[10px] font-black gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {isGeneratingTip ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                    )}
+                    <span>توليد نصيحة الشيف</span>
+                  </Button>
+                </div>
+                <Textarea
+                  rows={2}
+                  value={editing.cooking_tip || (editing as any).cookingTip || ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      cooking_tip: e.target.value,
+                      cookingTip: e.target.value,
+                    })
+                  }
+                  placeholder="اكتب نصيحة شيف خاصة بالمنتج أو دع الذكاء الاصطناعي يبتكرها..."
+                  className="rounded-xl font-bold text-xs bg-background"
+                />
+              </div>
 
               {/* الوسوم والكلمات المفتاحية (Tags) */}
               <Field label="الوسوم والكلمات المفتاحية (Tags)" full>
@@ -1082,49 +1318,6 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
                   className="h-10 rounded-xl font-bold text-xs"
                 />
               </Field>
-
-              {/* حقل نصيحة الطبخ والتحضير مع زر التوليد بالذكاء الاصطناعي */}
-              <div className="sm:col-span-2 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                    <span>نصيحة الطبخ والتحضير (Cooking Tip)</span>
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isGeneratingTip}
-                    onClick={handleGenerateCookingTip}
-                    className="h-8 rounded-xl border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 hover:text-amber-800 text-[11px] font-black gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
-                  >
-                    {isGeneratingTip ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600 dark:text-amber-400" />
-                        <span>جاري التوليد...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                        <span>توليد نصيحة طبخ بالذكاء الاصطناعي</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <Textarea
-                  rows={2}
-                  value={editing.cooking_tip || editing.cookingTip || ""}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      cooking_tip: e.target.value,
-                      cookingTip: e.target.value,
-                    })
-                  }
-                  placeholder="اكتب نصيحة طبخ أو اقتراح تحضير مميز للعملاء..."
-                  className="rounded-xl font-bold text-xs bg-background"
-                />
-              </div>
 
               {/* الخيارات والتغييرات السريعة */}
               <div className="sm:col-span-2 grid grid-cols-2 gap-2.5 rounded-2xl border border-border bg-secondary/30 p-3">
@@ -1302,10 +1495,26 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
             setEditing({
               ...editing,
               name: data.name || editing.name,
-              description: data.description,
               cooking_tip: data.cookingTip || editing.cooking_tip,
               cookingTip: data.cookingTip || editing.cookingTip,
             });
+            setCleanDesc(data.description || "");
+            if (data.characteristics && data.characteristics.length > 0) {
+              setCharacteristicsText(data.characteristics.join("\n"));
+            }
+            if (data.storageInstructions) {
+              setStorageText(data.storageInstructions);
+            }
+            if (data.originSource) {
+              setOriginText(data.originSource);
+            }
+            if (data.nutritionalInfo) {
+              setNutritionCalories(data.nutritionalInfo.calories || "55 kcal");
+              setNutritionProtein(data.nutritionalInfo.protein || "1.5 جم");
+              setNutritionCarbs(data.nutritionalInfo.carbs || "11 جم");
+              setNutritionFiber(data.nutritionalInfo.fiber || "2.2 جم");
+              setNutritionFats(data.nutritionalInfo.fats || "0.4 جم");
+            }
             if (data.tags && data.tags.length > 0) {
               setTagsList((prev) => Array.from(new Set([...prev, ...data.tags])));
             }

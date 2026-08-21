@@ -41,40 +41,38 @@ function getInitialProducts(): Product[] {
 
 export async function fetchStoreProducts(): Promise<Product[]> {
   try {
-    let cachedList: Product[] = [];
+    const { data, error } = await supabase
+      .from("products")
+      .select(PRODUCT_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (error) {
+      console.warn("Error fetching products from Supabase:", error.message);
+    }
+
+    const dbProds = (data ?? []) as unknown as Product[];
+
+    if (dbProds.length > 0) {
+      try {
+        localStorage.setItem("alwadi_products_cache", JSON.stringify(dbProds));
+      } catch {}
+      return dbProds;
+    }
+
+    // Try cached products from previous session
     try {
       const cached = localStorage.getItem("alwadi_products_cache");
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) cachedList = parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
 
-    const { data } = await supabase
-      .from("products")
-      .select(PRODUCT_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(300);
-
-    const dbProds = (data ?? []) as unknown as Product[];
-    const mergedMap = new Map<string, Product>();
-
-    // Add mock / cached products first
-    for (const m of cachedList.length > 0 ? cachedList : (MOCK_PRODUCTS as unknown as Product[])) {
-      mergedMap.set(m.id, m);
-    }
-    // Override / add with DB products if any
-    for (const p of dbProds) {
-      mergedMap.set(p.id, p);
-    }
-
-    const finalProducts = Array.from(mergedMap.values());
-    try {
-      localStorage.setItem("alwadi_products_cache", JSON.stringify(finalProducts));
-    } catch {}
-    return finalProducts;
-  } catch {
-    return MOCK_PRODUCTS as unknown as Product[];
+    return (MOCK_PRODUCTS as unknown as Product[]) || [];
+  } catch (err) {
+    console.error("Error in fetchStoreProducts:", err);
+    return (MOCK_PRODUCTS as unknown as Product[]) || [];
   }
 }
 

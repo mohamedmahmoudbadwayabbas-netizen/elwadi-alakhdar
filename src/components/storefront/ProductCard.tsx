@@ -8,6 +8,7 @@ import {
   Scale,
   Sparkles,
   Leaf,
+  Eye,
 } from "lucide-react";
 import type { Product } from "@/lib/cart-context";
 import {
@@ -28,7 +29,7 @@ export function ProductCard({
   isTopSeller,
 }: {
   product: Product;
-  onOpen: (p: Product) => void;
+  onOpen?: (p: Product) => void;
   isTopSeller?: boolean;
 }) {
   const { addItem, updateQuantity, updateItemWeight, removeItem, items } = useCart();
@@ -40,7 +41,7 @@ export function ProductCard({
   );
 
   const isTopSellerActive = Boolean(
-    isTopSeller ?? product.isTopSeller ?? product.is_top_seller ?? product.is_featured,
+    isTopSeller ?? product.isTopSeller ?? product.is_top_seller ?? product.is_popular,
   );
 
   const discount =
@@ -57,7 +58,7 @@ export function ProductCard({
     : product.price_per_unit;
 
   const displayUnit = product.is_by_weight
-    ? `/ ${formatWeightLabel(selectedWeight)} (تقديري)`
+    ? `/ ${formatWeightLabel(selectedWeight)}`
     : `/ ${product.unit_label ?? "قطعة"}`;
 
   const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -73,7 +74,7 @@ export function ProductCard({
     });
     flyToCart(e.currentTarget);
     toast.success("تمت الإضافة للسلة 🛒", {
-      description: `${product.name} (${label} — ${calculateEstimatedPrice(product, amount)} ج.م)`,
+      description: `${product.name} (${label} — ${calculateEstimatedPrice(product, amount).toFixed(2)} ج.م)`,
     });
   };
 
@@ -83,11 +84,7 @@ export function ProductCard({
     if (qty > 0) {
       updateItemWeight(product.id, weight);
       toast.success("تم تحديث الوزن في السلة ⚖️", {
-        description: `${product.name}: ${label} (≈ ${calculateEstimatedPrice(product, weight)} ج.م)`,
-      });
-    } else {
-      toast.info(`تم اختيار الوزن: ${label}`, {
-        description: `السعر التقديري: ${calculateEstimatedPrice(product, weight)} ج.م`,
+        description: `${product.name}: ${label} (≈ ${calculateEstimatedPrice(product, weight).toFixed(2)} ج.م)`,
       });
     }
   };
@@ -109,6 +106,7 @@ export function ProductCard({
     const next = +(qty - step).toFixed(3);
     if (next <= 0) {
       removeItem(product.id);
+      toast.info("تمت إزالة المنتج من السلة");
     } else {
       if (product.is_by_weight) {
         updateItemWeight(product.id, next);
@@ -132,125 +130,131 @@ export function ProductCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-3xl border border-emerald-100/80 bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl dark:border-emerald-900/30",
+        "group relative flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg",
       )}
     >
       {/* منطقة الصورة */}
-      <div
-        onClick={() => onOpen(product)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpen(product);
-          }
-        }}
-        className="relative aspect-[4/3] w-full overflow-hidden bg-emerald-50/50 dark:bg-emerald-950/30 cursor-pointer"
-      >
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center bg-emerald-100/50 text-4xl">🌿</div>
-        )}
+      <div className="relative aspect-square w-full overflow-hidden bg-emerald-50/30 dark:bg-emerald-950/20">
+        <Link
+          to="/products/$productId"
+          params={{ productId: product.id }}
+          className="block h-full w-full"
+        >
+          {product.image_url ? (
+            <img
+              src={product.image_url}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center bg-emerald-100/30 text-4xl">
+              🌿
+            </div>
+          )}
+        </Link>
 
         {/* تدرج ظلي خفيف لتعزيز وضوح الشارات */}
-        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/20 via-transparent to-transparent opacity-80" />
+        <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/25 via-transparent to-transparent opacity-80" />
 
-        {/* شارة الخصم والأكثر مبيعاً والمميز */}
-        <div className="absolute top-2.5 start-2.5 z-10 flex flex-wrap gap-1.5">
-          {isTopSellerActive && (
-            <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-0.5 text-[10px] font-black text-white shadow-md">
-              <Flame className="h-3 w-3" /> الأكثر مبيعاً
-            </span>
-          )}
+        {/* شارة الخصم والأكثر مبيعاً */}
+        <div className="absolute top-2 start-2 z-10 flex flex-col gap-1">
           {discount > 0 && (
-            <span className="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-2.5 py-0.5 text-[10px] font-black text-white shadow-md">
+            <span className="rounded-lg bg-orange-600 px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
               خصم {discount}%
             </span>
           )}
-          {product.is_popular && !isTopSellerActive && (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
-              <Award className="h-3 w-3" /> مميز
+          {isTopSellerActive && discount === 0 && (
+            <span className="flex items-center gap-1 rounded-lg bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
+              <Flame className="h-3 w-3" /> مميز
             </span>
           )}
         </div>
 
-        {/* زر المفضلة */}
-        <button
-          onClick={toggleWishlist}
-          aria-label="إضافة للمفضلة"
-          className={cn(
-            "absolute top-2.5 end-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md transition-all hover:scale-110 shadow-sm",
-            isLiked
-              ? "text-rose-500 fill-rose-500"
-              : "text-slate-600 dark:text-slate-300 hover:text-rose-500",
-          )}
-        >
-          <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
-        </button>
+        {/* أزرار الإجراء السريع (المعاينة والمفضلة) */}
+        <div className="absolute top-2 end-2 z-10 flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={toggleWishlist}
+            aria-label="إضافة للمفضلة"
+            className={cn(
+              "grid h-7 w-7 place-items-center rounded-xl bg-card/90 backdrop-blur-md transition-transform hover:scale-110 shadow-xs",
+              isLiked ? "text-rose-500 fill-rose-500" : "text-muted-foreground hover:text-rose-500",
+            )}
+          >
+            <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />
+          </button>
 
-        {/* شارات منتجات الوزن والطزاجة */}
+          {onOpen && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(product);
+              }}
+              aria-label="نظرة سريعة"
+              title="نظرة سريعة"
+              className="grid h-7 w-7 place-items-center rounded-xl bg-card/90 backdrop-blur-md text-muted-foreground hover:text-orange-500 transition-transform hover:scale-110 shadow-xs"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* شارات منتجات الوزن */}
         {product.is_by_weight && (
-          <div className="absolute bottom-2 start-2 z-10 flex flex-wrap gap-1">
-            <span className="flex items-center gap-1 rounded-lg bg-emerald-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-emerald-200 border border-emerald-400/30 shadow-xs">
-              <Scale className="h-3 w-3 text-emerald-400" /> بالوزن
-            </span>
-            <span className="flex items-center gap-1 rounded-lg bg-amber-950/80 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-bold text-amber-200 border border-amber-400/30">
-              <Leaf className="h-2.5 w-2.5 text-amber-400" /> طازج
+          <div className="absolute bottom-2 start-2 z-10">
+            <span className="flex items-center gap-1 rounded-md bg-emerald-950/80 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-bold text-emerald-200 border border-emerald-400/30">
+              <Scale className="h-2.5 w-2.5 text-emerald-400" /> بالوزن
             </span>
           </div>
         )}
       </div>
 
       {/* تفاصيل المنتج */}
-      <div className="flex flex-1 flex-col gap-2 p-3.5 sm:p-4">
-        <Link
-          to="/products/$productId"
-          params={{ productId: product.id }}
-          className="block"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h4 className="line-clamp-2 min-h-[2.25rem] text-xs font-bold leading-snug text-foreground sm:text-sm hover:text-emerald-600 transition-colors">
-            {product.name}
-          </h4>
-        </Link>
+      <div className="flex flex-1 flex-col justify-between p-3 gap-2 text-right">
+        <div>
+          <Link
+            to="/products/$productId"
+            params={{ productId: product.id }}
+            className="block group-hover:text-emerald-600 transition-colors"
+          >
+            <h4 className="line-clamp-2 min-h-[2rem] text-xs sm:text-sm font-bold leading-snug text-foreground">
+              {product.name}
+            </h4>
+          </Link>
 
-        <div className="flex items-baseline justify-between mt-1">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-display text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400">
-              {currentEstPrice.toFixed(2)}
-            </span>
-            <span className="text-[11px] font-semibold text-muted-foreground">
-              ج.م {displayUnit}
-            </span>
+          {/* السعر والوحدة */}
+          <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-border/40">
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm sm:text-base font-black text-emerald-700 dark:text-emerald-400">
+                {currentEstPrice.toFixed(2)}
+              </span>
+              <span className="text-[10px] font-bold text-muted-foreground">ج.م</span>
+              <span className="text-[9px] text-muted-foreground font-semibold ms-0.5">
+                {displayUnit}
+              </span>
+            </div>
+            {product.old_price && product.old_price > product.price_per_unit && (
+              <span className="text-[10px] text-muted-foreground line-through decoration-orange-500/70">
+                {(product.old_price * (product.is_by_weight ? selectedWeight : 1)).toFixed(2)} ج.م
+              </span>
+            )}
           </div>
-          {product.old_price && product.old_price > product.price_per_unit && (
-            <span className="text-xs text-muted-foreground line-through decoration-rose-500/70">
-              {(product.old_price * (product.is_by_weight ? selectedWeight : 1)).toFixed(2)}
-            </span>
-          )}
         </div>
 
-        {/* خيارات التحديد السريع للوزن في البطاقة (250g, 500g, 750g, 1kg, 1.5kg) */}
+        {/* خيارات التحديد السريع للوزن */}
         {product.is_by_weight && (
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Scale className="h-3 w-3 text-emerald-600" /> اختر الوزن:
-              </span>
-              <span className="font-black text-emerald-700 dark:text-emerald-400">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground">
+              <span>اختر الوزن:</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                 {formatWeightLabel(selectedWeight)}
               </span>
             </div>
-            <div className="grid grid-cols-5 gap-1">
-              {WEIGHT_OPTIONS.map((w) => {
+            <div className="grid grid-cols-4 gap-1">
+              {WEIGHT_OPTIONS.slice(0, 4).map((w) => {
                 const isSelected = Math.abs(selectedWeight - w.value) < 0.01;
                 return (
                   <button
@@ -258,10 +262,10 @@ export function ProductCard({
                     type="button"
                     onClick={(e) => handleQuickWeightSelect(e, w.value, w.label)}
                     className={cn(
-                      "px-1 py-1 rounded-md text-[9px] sm:text-[10px] font-bold border transition-all text-center active:scale-95",
+                      "px-1 py-0.5 rounded text-[9px] font-bold border transition-all text-center active:scale-95",
                       isSelected
                         ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                        : "bg-secondary/70 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-foreground border-border/60 dark:hover:bg-emerald-950/40",
+                        : "bg-secondary/60 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground border-border/50",
                     )}
                   >
                     {w.label}
@@ -272,43 +276,45 @@ export function ProductCard({
           </div>
         )}
 
-        {/* زر الإضافة */}
-        <div className="mt-auto pt-2">
+        {/* زر الإضافة البرتقالي الجذاب أو عداد الكمية */}
+        <div className="mt-auto pt-1">
           {qty > 0 ? (
-            <div className="flex h-10 items-center justify-between rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 dark:border-emerald-800 px-2 shadow-xs">
+            <div className="flex h-9 items-center justify-between rounded-xl border border-orange-300/80 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800/80 px-2 shadow-xs">
               <button
+                type="button"
                 onClick={handleDec}
-                className="grid h-7 w-7 place-items-center rounded-xl text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200/50 transition"
+                className="grid h-6 w-6 place-items-center rounded-lg bg-orange-200/60 dark:bg-orange-900/60 text-orange-900 dark:text-orange-100 hover:bg-orange-300 transition active:scale-90"
               >
-                <Minus className="h-3.5 w-3.5" />
+                <Minus className="h-3 w-3" />
               </button>
               <div className="text-center">
-                <span className="text-xs font-black text-emerald-900 dark:text-emerald-100 block">
-                  {product.is_by_weight ? formatWeightLabel(qty) : `${qty} قطعة`}
-                </span>
-                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 block">
-                  ({calculateEstimatedPrice(product, qty)} ج.م)
+                <span className="text-xs font-black text-orange-950 dark:text-orange-100 block">
+                  {product.is_by_weight ? formatWeightLabel(qty) : `${qty}`}
                 </span>
               </div>
               <button
+                type="button"
                 onClick={handleInc}
-                className="grid h-7 w-7 place-items-center rounded-xl text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200/50 transition"
+                className="grid h-6 w-6 place-items-center rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition active:scale-90 shadow-xs"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3" />
               </button>
             </div>
           ) : (
             <button
+              type="button"
               disabled={outOfStock}
               onClick={handleAdd}
-              className="flex w-full h-10 items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition-all duration-200 active:scale-95 shadow-md shadow-emerald-600/20 disabled:opacity-50"
+              className="flex w-full h-9 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs transition-all duration-200 active:scale-95 shadow-xs shadow-orange-500/20 disabled:opacity-50 cursor-pointer"
             >
-              <ShoppingCart className="h-4 w-4" />
-              {outOfStock
-                ? "نفدت الكمية"
-                : product.is_by_weight
-                  ? `أضف (${formatWeightLabel(selectedWeight)})`
-                  : "أضف للسلة"}
+              <ShoppingCart className="h-3.5 w-3.5" />
+              <span>
+                {outOfStock
+                  ? "نفدت الكمية"
+                  : product.is_by_weight
+                    ? `أضف (${formatWeightLabel(selectedWeight)})`
+                    : "أضف للسلة"}
+              </span>
             </button>
           )}
         </div>

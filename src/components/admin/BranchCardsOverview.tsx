@@ -1,28 +1,84 @@
-import { useState } from "react";
-import { Building2, TrendingUp, Package, Clock, CheckCircle2, MapPin, Sparkles, AlertTriangle, ShieldCheck } from "lucide-react";
-import { STORE_BRANCHES, Branch } from "./BranchSelector";
+import { useEffect, useState } from "react";
+import { Building2, Package, Clock, MapPin, Sparkles } from "lucide-react";
 import { AnimatedCounter } from "@/components/admin/AnimatedCounter";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  LiveBranch,
+  fetchLiveBranches,
+  UNIFIED_ALL_BRANCHES_ID,
+} from "@/lib/branches-data";
 
 interface BranchCardsOverviewProps {
   onSelectBranch?: (branchId: string) => void;
   selectedBranchId?: string;
+  branches?: LiveBranch[];
 }
 
 export function BranchCardsOverview({
   onSelectBranch,
-  selectedBranchId = "all",
+  selectedBranchId = UNIFIED_ALL_BRANCHES_ID,
+  branches: propBranches,
 }: BranchCardsOverviewProps) {
   const [internalSelected, setInternalSelected] = useState<string>(selectedBranchId);
+  const [branches, setBranches] = useState<LiveBranch[]>(propBranches || []);
+  const [loading, setLoading] = useState(!propBranches || propBranches.length === 0);
 
   const activeId = selectedBranchId || internalSelected;
 
+  const loadData = async () => {
+    try {
+      const list = await fetchLiveBranches();
+      setBranches(list);
+    } catch (err) {
+      console.error("Error loading branch cards:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (propBranches && propBranches.length > 0) {
+      setBranches(propBranches);
+      setLoading(false);
+    } else {
+      loadData();
+    }
+
+    const channel = supabase
+      .channel("branch-cards-overview-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+        loadData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        loadData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_zones" }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [propBranches]);
+
   const handleCardClick = (branchId: string) => {
-    const newId = activeId === branchId ? "all" : branchId;
+    const newId = activeId === branchId ? UNIFIED_ALL_BRANCHES_ID : branchId;
     setInternalSelected(newId);
     if (onSelectBranch) {
       onSelectBranch(newId);
     }
   };
+
+  if (loading && branches.length === 0) {
+    return (
+      <div className="grid gap-4 md:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-44 rounded-3xl bg-secondary/40 animate-pulse border border-border/60" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3.5">
@@ -35,7 +91,7 @@ export function BranchCardsOverview({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-display text-sm font-black text-foreground tracking-tight">
-                سلسلة الفروع الثلاثة (سوبرماركت الوادي الأخضر)
+                فروع السوبرماركت المباشرة ({branches.length} فروع)
               </h3>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
                 مزامنة حية • Supabase
@@ -47,9 +103,9 @@ export function BranchCardsOverview({
           </div>
         </div>
 
-        {activeId !== "all" && (
+        {activeId !== UNIFIED_ALL_BRANCHES_ID && (
           <button
-            onClick={() => handleCardClick("all")}
+            onClick={() => handleCardClick(UNIFIED_ALL_BRANCHES_ID)}
             className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/20 cursor-pointer"
           >
             عرض النظرة الموحدة لكافة الفروع ↺
@@ -57,9 +113,9 @@ export function BranchCardsOverview({
         )}
       </div>
 
-      {/* 3 Spacious Visual Cards (Neo-Minimalism & Glassmorphism) */}
+      {/* Spacious Visual Cards (Live Supabase Data) */}
       <div className="grid gap-4 md:grid-cols-3">
-        {STORE_BRANCHES.map((branch) => {
+        {branches.map((branch) => {
           const isMain = branch.isMain;
           const isSelected = activeId === branch.id;
 
@@ -152,7 +208,9 @@ export function BranchCardsOverview({
 
                 <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px]">جاهز للتوصيل</span>
+                  <span className="text-[10px]">
+                    {branch.status === "open" ? "جاهز للتوصيل" : "مغلق مؤقتاً"}
+                  </span>
                 </div>
               </div>
 

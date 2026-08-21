@@ -39,6 +39,29 @@ export type Product = {
   reviewsCount?: number | null;
   cookingTip?: string | null;
   isTopSeller?: boolean | null;
+  /** الخصائص والمميزات الفنية والغذائية */
+  characteristics?: string[] | string | null;
+  /** طريقة الحفظ والتخزين */
+  storage_instructions?: string | null;
+  storageInstructions?: string | null;
+  /** المصدر وبلد المنشأ */
+  origin_source?: string | null;
+  originSource?: string | null;
+  /** القيم والحقائق الغذائية */
+  nutritional_info?: {
+    calories?: string;
+    protein?: string;
+    carbs?: string;
+    fiber?: string;
+    fats?: string;
+  } | string | null;
+  nutritionalInfo?: {
+    calories?: string;
+    protein?: string;
+    carbs?: string;
+    fiber?: string;
+    fats?: string;
+  } | string | null;
 };
 
 export type SubstitutionPreference = "call_me" | "auto_best" | "do_not_substitute";

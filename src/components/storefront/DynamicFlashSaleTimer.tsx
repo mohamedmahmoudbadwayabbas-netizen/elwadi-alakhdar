@@ -4,8 +4,7 @@ import { FlashSaleTimerConfig } from "@/types/layout-config";
 import { Zap, Clock, ArrowLeft } from "lucide-react";
 
 export function DynamicFlashSaleTimer({ config }: { config?: FlashSaleTimerConfig }) {
-  if (!config || !config.enabled) return null;
-
+  const isEnabled = Boolean(config?.enabled);
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
     hours: 5,
     minutes: 42,
@@ -13,6 +12,7 @@ export function DynamicFlashSaleTimer({ config }: { config?: FlashSaleTimerConfi
   });
 
   useEffect(() => {
+    if (!isEnabled || !config) return;
     const target = config.endTime
       ? new Date(config.endTime).getTime()
       : Date.now() + 5 * 3600 * 1000;
@@ -26,7 +26,9 @@ export function DynamicFlashSaleTimer({ config }: { config?: FlashSaleTimerConfi
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [config.endTime]);
+  }, [isEnabled, config?.endTime]);
+
+  if (!isEnabled || !config) return null;
 
   const pad = (n: number) => String(n).padStart(2, "0");
 

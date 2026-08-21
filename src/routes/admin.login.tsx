@@ -12,13 +12,12 @@ import {
   Sparkles,
   ArrowRight,
   AlertCircle,
-  KeyRound,
   Eye,
   EyeOff,
   Database,
 } from "lucide-react";
 import { toast } from "sonner";
-import { BRAND_NAME_AR, ADMIN_PRIMARY_EMAIL } from "@/lib/brand";
+import { BRAND_NAME_AR } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
@@ -34,8 +33,9 @@ function AdminLogin() {
   const router = useRouter();
   const { signIn } = useAuth();
 
-  const [email, setEmail] = useState("adminstoresupermarketinvo@gmail.com");
-  const [password, setPassword] = useState("ADmin/8");
+  // Clean empty initial state - no credentials exposed
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -57,28 +57,25 @@ function AdminLogin() {
     try {
       const res = await signIn(email.trim(), password);
       if (res.error) {
-        setErrorMsg(res.error);
-        toast.error(res.error);
+        setErrorMsg("بيانات الدخول غير صحيحة أو ليس لديك صلاحية الوصول");
+        toast.error("فشل تسجيل الدخول: يرجى التحقق من البيانات");
       } else {
         toast.success("تم التحقق بنجاح! مرحباً بك في لوحة تحكم سوبرماركت الوادي الأخضر ✨");
         router.history.push("/admin");
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "فشل تسجيل الدخول");
+      setErrorMsg("حدث خطأ أثناء الاتصال بالخادم");
       toast.error("فشل الاتصال بالخادم");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickFill = () => {
-    setEmail("adminstoresupermarketinvo@gmail.com");
-    setPassword("ADmin/8");
-    toast.info("تم ملء بيانات حساب المدير الرئيسي");
-  };
-
   return (
-    <div className="relative min-h-screen grid place-items-center px-4 bg-background selection:bg-emerald-500 selection:text-white" dir="rtl">
+    <div
+      className="relative min-h-screen grid place-items-center px-4 bg-background selection:bg-emerald-500 selection:text-white"
+      dir="rtl"
+    >
       {/* Background Decorative Gradients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 right-1/4 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
@@ -100,10 +97,10 @@ function AdminLogin() {
               </span>
             </div>
             <h1 className="font-display text-2xl font-black text-foreground">
-              سوبرماركت الوادي الأخضر
+              {BRAND_NAME_AR}
             </h1>
             <p className="text-xs text-muted-foreground font-medium">
-              بوابة الدخول المؤمنة للمدير العام ولوحة التحكم المركزية
+              بوابة الدخول المشفرة والمؤمنة للوحة التحكم المركزية
             </p>
           </div>
 
@@ -121,27 +118,26 @@ function AdminLogin() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-emerald-600" />
-                <span>بريد الإدارة المعتمد (Admin Email)</span>
+                <span>البريد الإلكتروني للإدارة</span>
               </label>
-              <div className="relative">
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="adminstoresupermarketinvo@gmail.com"
-                  className="h-11 rounded-2xl text-xs font-bold bg-secondary/50 border-border/80 pr-3 pl-3 text-left font-mono"
-                  dir="ltr"
-                  disabled={loading}
-                  required
-                />
-              </div>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="h-11 rounded-2xl text-xs font-bold bg-secondary/50 border-border/80 pr-3 pl-3 text-left font-mono"
+                dir="ltr"
+                autoComplete="email"
+                disabled={loading}
+                required
+              />
             </div>
 
             {/* Password Field */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                 <Lock className="h-3.5 w-3.5 text-emerald-600" />
-                <span>كلمة المرور المشفرة</span>
+                <span>كلمة المرور</span>
               </label>
               <div className="relative">
                 <Input
@@ -151,13 +147,14 @@ function AdminLogin() {
                   placeholder="••••••••"
                   className="h-11 rounded-2xl text-xs font-bold bg-secondary/50 border-border/80 pr-3 pl-10 font-mono text-left"
                   dir="ltr"
+                  autoComplete="current-password"
                   disabled={loading}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-1"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -173,46 +170,25 @@ function AdminLogin() {
               {loading ? (
                 <>
                   <Sparkles className="h-4 w-4 animate-spin text-amber-300" />
-                  <span>جاري التحقق من الصلاحيات...</span>
+                  <span>جاري التحقق من الصلاحيات المشفرة...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="h-4 w-4" />
-                  <span>تسجيل الدخول الآمن للمشروع</span>
+                  <span>تسجيل الدخول الآمن</span>
                 </>
               )}
             </Button>
           </form>
 
-          {/* Primary Admin Credentials Helper Card */}
-          <div className="p-3.5 rounded-2xl bg-secondary/60 border border-border/70 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-foreground flex items-center gap-1">
-                <KeyRound className="h-3.5 w-3.5 text-amber-500" />
-                <span>بيانات الحساب الرئيسي المعتمد:</span>
-              </span>
-              <button
-                type="button"
-                onClick={handleQuickFill}
-                className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline cursor-pointer"
-              >
-                تعبئة تلقائية ⚡
-              </button>
-            </div>
-            <div className="text-[11px] font-mono text-muted-foreground space-y-0.5" dir="ltr">
-              <p>Email: <strong className="text-foreground">adminstoresupermarketinvo@gmail.com</strong></p>
-              <p>Password: <strong className="text-foreground">ADmin/8</strong></p>
-            </div>
-          </div>
-
           {/* Back to store link */}
-          <div className="text-center pt-1 border-t border-border/50">
+          <div className="text-center pt-2 border-t border-border/50">
             <a
               href="/"
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-bold transition-colors"
             >
               <ArrowRight className="h-3.5 w-3.5" />
-              <span>العودة إلى واجهة المتجر الرئيسية</span>
+              <span>العودة إلى واجهة المتجر</span>
             </a>
           </div>
         </Card>
