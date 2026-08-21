@@ -1,6 +1,6 @@
 {
   "name": "سوبرماركت الوادي الأخضر — Al-Wadi Al-Akhdar",
-  "description": "منصة التجارة الإلكترونية لسلسلة سوبرماركت الوادي الأخضر (3 فروع) مع لوحة تحكم ذكية مدعومة بالذكاء الاصطناعي وقواعد بيانات Firebase Firestore",
+  "description": "منصة التجارة الإلكترونية لسلسلة سوبرماركت الوادي الأخضر مع قاعدة بيانات Supabase الحية، لوحة تحكم ذكية مدعومة بالذكاء الاصطناعي وخرائط تفاعلية متقدمة",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

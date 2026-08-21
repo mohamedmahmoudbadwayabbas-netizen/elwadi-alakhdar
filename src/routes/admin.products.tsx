@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { COMPREHENSIVE_CATEGORIES, MOCK_PRODUCTS } from "@/lib/categories-data";
+import { COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { normalizeDigits } from "@/lib/i18n-context";
 import {
@@ -257,7 +257,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
       setNutritionFats("0.4 جم");
       setTagsList([]);
     }
-  }, [editing?.id]);
+  }, [editing]);
 
   // إضافة وسم جديد
   const handleAddTag = () => {

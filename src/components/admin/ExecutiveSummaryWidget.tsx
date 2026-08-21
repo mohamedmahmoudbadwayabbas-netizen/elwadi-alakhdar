@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
   TrendingUp,
@@ -32,7 +32,7 @@ export function ExecutiveSummaryWidget({ kpis, onExecuteCommand }: ExecutiveSumm
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<ExecutiveSummaryResult | null>(null);
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     setLoading(true);
     try {
       const result = await generateExecutiveSummary(kpis);
@@ -42,11 +42,11 @@ export function ExecutiveSummaryWidget({ kpis, onExecuteCommand }: ExecutiveSumm
     } finally {
       setLoading(false);
     }
-  };
+  }, [kpis]);
 
   useEffect(() => {
     fetchSummary();
-  }, [kpis.totalRevenue, kpis.totalOrders, kpis.lowStockCount]);
+  }, [fetchSummary]);
 
   return (
     <Card className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card to-emerald-500/5 shadow-md">

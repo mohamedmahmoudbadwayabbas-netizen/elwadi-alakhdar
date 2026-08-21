@@ -28,8 +28,6 @@ import {
   Sparkles,
   ShieldCheck,
   Database,
-  Building2,
-  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -42,10 +40,10 @@ interface NavSection {
   items: {
     title: string;
     url: string;
-    icon: React.ComponentType<{ className?: string }>;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
     exact?: boolean;
     badge?: string;
-    badgeVariant?: "emerald" | "amber" | "blue";
+    badgeVariant?: "emerald" | "amber" | "zinc";
   }[];
 }
 
@@ -54,35 +52,35 @@ const navSections: NavSection[] = [
     label: "الرئيسية والذكاء الاصطناعي",
     items: [
       {
-        title: "نظرة عامة والتحليلات",
+        title: "لوحة المؤشرات",
         url: "/admin",
         icon: LayoutDashboard,
         exact: true,
       },
       {
-        title: "المساعد الذكي (Gemini AI)",
+        title: "المساعد الذكي",
         url: "/admin/copilot",
         icon: Sparkles,
-        badge: "Gemini 3.1",
-        badgeVariant: "amber",
+        badge: "AI 3.1",
+        badgeVariant: "emerald",
       },
     ],
   },
   {
-    label: "إدارة العمليات والمخزون",
+    label: "العمليات والمخزون",
     items: [
       {
-        title: "المنتجات والمخزون (3 فروع)",
+        title: "المنتجات والمخزون",
         url: "/admin/products",
         icon: Package,
       },
       {
-        title: "التصنيفات والسلع",
+        title: "التصنيفات",
         url: "/admin/categories",
         icon: ListTree,
       },
       {
-        title: "الطلبات والمبيعات الحية",
+        title: "الطلبات والمبيعات",
         url: "/admin/orders",
         icon: Receipt,
       },
@@ -102,22 +100,22 @@ const navSections: NavSection[] = [
         icon: Ticket,
       },
       {
-        title: "مناطق وفروع التوصيل",
+        title: "مناطق التوصيل",
         url: "/admin/delivery-zones",
         icon: MapPin,
       },
       {
-        title: "آراء وتقييمات العملاء",
+        title: "تقييمات العملاء",
         url: "/admin/reviews",
         icon: MessageSquare,
       },
     ],
   },
   {
-    label: "المنظومة",
+    label: "النظام",
     items: [
       {
-        title: "إعدادات الفروع والسلسلة",
+        title: "الإعدادات العامة",
         url: "/admin/settings",
         icon: Settings,
       },
@@ -137,7 +135,7 @@ export function AdminSidebar() {
 
   const handleSignOut = async () => {
     await signOut();
-    toast.info("تم تسجيل الخروج بنجاح من لوحة الإدارة");
+    toast.info("تم تسجيل الخروج بنجاح");
     router.history.push("/admin/login");
   };
 
@@ -145,40 +143,39 @@ export function AdminSidebar() {
     <Sidebar
       collapsible="icon"
       side="right"
-      className="border-l border-border/80 bg-sidebar/95 backdrop-blur-xl"
+      className="border-l border-zinc-200/80 bg-white dark:bg-zinc-900"
     >
-      {/* Sidebar Header: Brand + Branch Database Status */}
-      <SidebarHeader className="border-b border-sidebar-border p-3.5">
+      {/* Sidebar Header */}
+      <SidebarHeader className="border-b border-zinc-100 dark:border-zinc-800 p-4">
         <div className="flex items-center gap-3">
-          <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl hero-gradient text-primary-foreground shadow-md ring-2 ring-emerald-500/20">
-            <Store className="h-5 w-5 text-white" />
-            <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-sidebar ring-1 ring-emerald-400" />
+          <div className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-zinc-900 text-white dark:bg-emerald-600 shadow-xs">
+            <Store className="h-4 w-4" strokeWidth={1.5} />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <div className="truncate font-display text-sm font-black text-sidebar-foreground">
+              <div className="truncate font-sans text-xs font-bold text-zinc-900 dark:text-zinc-100">
                 {BRAND_NAME_AR}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                <Database className="h-3 w-3 shrink-0" />
-                <span className="truncate">3 فروع • متصل بالسحابة</span>
+              <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-medium">
+                <Database className="h-3 w-3 shrink-0 text-emerald-600" strokeWidth={1.5} />
+                <span className="truncate">لوحة التحكم السحابية</span>
               </div>
             </div>
           )}
         </div>
       </SidebarHeader>
 
-      {/* Sidebar Grouped Navigation Content */}
-      <SidebarContent className="px-2 py-3 space-y-4">
+      {/* Sidebar Navigation */}
+      <SidebarContent className="px-3 py-3 space-y-4">
         {navSections.map((section, idx) => (
           <SidebarGroup key={idx} className="p-0">
             {!collapsed && (
-              <SidebarGroupLabel className="text-[10px] font-black uppercase text-muted-foreground/80 tracking-wider px-2 mb-1.5">
+              <SidebarGroupLabel className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 tracking-normal px-2 mb-1">
                 {section.label}
               </SidebarGroupLabel>
             )}
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
+              <SidebarMenu className="space-y-0.5">
                 {section.items.map((item) => {
                   const active = isActive(item.url, item.exact);
                   const Icon = item.icon;
@@ -188,10 +185,10 @@ export function AdminSidebar() {
                         asChild
                         isActive={active}
                         className={cn(
-                          "h-10 px-3 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer",
+                          "h-9 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
                           active
-                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-600 hover:text-white"
-                            : "text-sidebar-foreground/80 hover:bg-secondary/70 hover:text-sidebar-foreground",
+                            ? "bg-zinc-100 text-emerald-700 font-semibold dark:bg-zinc-800 dark:text-emerald-400"
+                            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200",
                         )}
                       >
                         <Link
@@ -201,11 +198,12 @@ export function AdminSidebar() {
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Icon
                               className={cn(
-                                "h-4 w-4 shrink-0 transition-transform",
+                                "h-4 w-4 shrink-0 transition-colors",
                                 active
-                                  ? "text-white"
-                                  : "text-emerald-600 dark:text-emerald-400",
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500",
                               )}
+                              strokeWidth={1.5}
                             />
                             {!collapsed && (
                               <span className="truncate">{item.title}</span>
@@ -214,12 +212,10 @@ export function AdminSidebar() {
                           {!collapsed && item.badge && (
                             <span
                               className={cn(
-                                "text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-xs",
+                                "text-[9px] font-semibold px-1.5 py-0.2 rounded-md shrink-0",
                                 active
-                                  ? "bg-white/20 text-white"
-                                  : item.badgeVariant === "amber"
-                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
-                                  : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30",
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
                               )}
                             >
                               {item.badge}
@@ -236,34 +232,30 @@ export function AdminSidebar() {
         ))}
       </SidebarContent>
 
-      {/* Sidebar Footer: Admin Profile & Actions */}
-      <SidebarFooter className="border-t border-sidebar-border p-3 space-y-2 bg-sidebar/50">
+      {/* Sidebar Footer */}
+      <SidebarFooter className="border-t border-zinc-100 dark:border-zinc-800 p-3 space-y-1.5">
         {!collapsed && (
-          <div className="p-2.5 rounded-2xl bg-secondary/50 border border-border/60 text-xs space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
-                <span>حساب الإدارة</span>
-              </span>
-              <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Root Admin
+          <div className="px-2 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/50 dark:border-zinc-800 text-[11px] flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" strokeWidth={1.5} />
+              <span className="truncate text-zinc-600 dark:text-zinc-300 font-mono text-[10px]" dir="ltr">
+                {user?.email || "admin@store.com"}
               </span>
             </div>
-            <div className="font-mono text-foreground font-bold truncate text-[11px]" dir="ltr">
-              {user?.email || "admin@store.com"}
-            </div>
+            <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded">
+              مسؤول
+            </span>
           </div>
         )}
 
         <Link to="/" className="block">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 text-xs font-bold rounded-xl border-border/80 hover:bg-secondary cursor-pointer h-9"
+            className="w-full justify-start gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer h-8 px-2"
           >
-            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-            {!collapsed && <span>معاينة واجهة المتجر</span>}
+            <ExternalLink className="h-3.5 w-3.5 text-zinc-400" strokeWidth={1.5} />
+            {!collapsed && <span>عرض المتجر</span>}
           </Button>
         </Link>
 
@@ -271,12 +263,13 @@ export function AdminSidebar() {
           variant="ghost"
           size="sm"
           onClick={handleSignOut}
-          className="w-full justify-start gap-2 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 rounded-xl cursor-pointer h-9"
+          className="w-full justify-start gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg cursor-pointer h-8 px-2"
         >
-          <LogOut className="h-3.5 w-3.5" />
-          {!collapsed && <span>تسجيل الخروج الآمن</span>}
+          <LogOut className="h-3.5 w-3.5 text-zinc-400" strokeWidth={1.5} />
+          {!collapsed && <span>تسجيل الخروج</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>
   );
 }
+

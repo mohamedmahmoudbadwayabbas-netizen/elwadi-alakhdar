@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useRef, useTransition } from "react";
+import { useEffect, useState, useRef, useTransition, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,62 +127,8 @@ export function DriverPortalPage() {
     phone: "01099998888",
   };
 
-  // Offline Sync Queue Handler
-  const syncOfflineQueue = async () => {
-    try {
-      const queueRaw = localStorage.getItem("driver_offline_queue");
-      if (!queueRaw) return;
-      const queue: Array<{ orderId: string; status: string; pod?: any; timestamp: string }> =
-        JSON.parse(queueRaw);
-      if (!queue.length) return;
-
-      toast.info(`جاري مزامنة ${queue.length} تحديثات توصيل تمت دون اتصال...`);
-
-      for (const item of queue) {
-        await supabase
-          .from("orders")
-          .update({
-            status: item.status,
-            notes: item.pod
-              ? `[إثبات تسليم POD]: المستلم: ${item.pod.receiverName || "العميل"} (${item.timestamp})`
-              : undefined,
-          })
-          .eq("id", item.orderId);
-      }
-
-      localStorage.removeItem("driver_offline_queue");
-      toast.success("✅ تمت مزامنة جميع عمليات التوصيل مع الخادم بنجاح!");
-      fetchAssignedOrders();
-    } catch (err: any) {
-      console.warn("Offline queue sync error:", err);
-    }
-  };
-
-  // Online / Offline listener
-  useEffect(() => {
-    const handleOnline = () => {
-      setNetworkOnline(true);
-      toast.success("عادت شبكة الإنترنت! جاري المزامنة التلقائية 🌐");
-      syncOfflineQueue();
-    };
-    const handleOffline = () => {
-      setNetworkOnline(false);
-      toast.warning(
-        "أنت تعمل الآن في وضع عدم الاتصال (Offline). سيتم حفظ العمليات محلياً ومزامنتها فور عودة الشبكة 📡",
-      );
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
-
   // Fetch assigned orders
-  const fetchAssignedOrders = async () => {
+  const fetchAssignedOrders = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -223,7 +169,61 @@ export function DriverPortalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeOrderId]);
+
+  // Offline Sync Queue Handler
+  const syncOfflineQueue = useCallback(async () => {
+    try {
+      const queueRaw = localStorage.getItem("driver_offline_queue");
+      if (!queueRaw) return;
+      const queue: Array<{ orderId: string; status: string; pod?: any; timestamp: string }> =
+        JSON.parse(queueRaw);
+      if (!queue.length) return;
+
+      toast.info(`جاري مزامنة ${queue.length} تحديثات توصيل تمت دون اتصال...`);
+
+      for (const item of queue) {
+        await supabase
+          .from("orders")
+          .update({
+            status: item.status,
+            notes: item.pod
+              ? `[إثبات تسليم POD]: المستلم: ${item.pod.receiverName || "العميل"} (${item.timestamp})`
+              : undefined,
+          })
+          .eq("id", item.orderId);
+      }
+
+      localStorage.removeItem("driver_offline_queue");
+      toast.success("✅ تمت مزامنة جميع عمليات التوصيل مع الخادم بنجاح!");
+      fetchAssignedOrders();
+    } catch (err: any) {
+      console.warn("Offline queue sync error:", err);
+    }
+  }, [fetchAssignedOrders]);
+
+  // Online / Offline listener
+  useEffect(() => {
+    const handleOnline = () => {
+      setNetworkOnline(true);
+      toast.success("عادت شبكة الإنترنت! جاري المزامنة التلقائية 🌐");
+      syncOfflineQueue();
+    };
+    const handleOffline = () => {
+      setNetworkOnline(false);
+      toast.warning(
+        "أنت تعمل الآن في وضع عدم الاتصال (Offline). سيتم حفظ العمليات محلياً ومزامنتها فور عودة الشبكة 📡",
+      );
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [syncOfflineQueue]);
 
   useEffect(() => {
     fetchAssignedOrders();
@@ -240,7 +240,7 @@ export function DriverPortalPage() {
       supabase.removeChannel(channel);
       stopGpsTracking();
     };
-  }, []);
+  }, [fetchAssignedOrders]);
 
   // Live GPS Tracking management
   const startGpsTracking = () => {

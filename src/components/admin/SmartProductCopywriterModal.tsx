@@ -64,6 +64,29 @@ export function SmartProductCopywriterModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ProductCopywriterResult | null>(null);
 
+  const handleGenerate = React.useCallback(
+    async (nameToUse = productName, catToUse = categoryName) => {
+      if (!nameToUse.trim()) {
+        toast.error("يرجى إدخال اسم المنتج أولاً");
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await generateProductCopywriting({
+          productName: nameToUse,
+          categoryName: catToUse,
+          isByWeight,
+        });
+        setResult(res);
+      } catch (e) {
+        toast.error("حدث خطأ أثناء صياغة تفاصيل المنتج");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [productName, categoryName, isByWeight],
+  );
+
   // Sync props when modal opens
   React.useEffect(() => {
     if (open) {
@@ -73,27 +96,7 @@ export function SmartProductCopywriterModal({
         handleGenerate(initialProductName, initialCategoryName);
       }
     }
-  }, [open, initialProductName, initialCategoryName]);
-
-  const handleGenerate = async (nameToUse = productName, catToUse = categoryName) => {
-    if (!nameToUse.trim()) {
-      toast.error("يرجى إدخال اسم المنتج أولاً");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await generateProductCopywriting({
-        productName: nameToUse,
-        categoryName: catToUse,
-        isByWeight,
-      });
-      setResult(res);
-    } catch (e) {
-      toast.error("حدث خطأ أثناء صياغة تفاصيل المنتج");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [open, initialProductName, initialCategoryName, handleGenerate]);
 
   const handleApply = () => {
     if (!result) return;

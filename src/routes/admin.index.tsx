@@ -526,7 +526,7 @@ function OverviewPage() {
         </div>
       </div>
 
-      {/* 3 بطاقات الفروع المخصصة في أعلى الصفحة لعرض مؤشرات المبيعات، الطلبات الجارية، والجاهزية لكل فرع */}
+      {/* 3 بطاقات الفروع المخصصة في أعلى الصفحة */}
       <BranchCardsOverview
         branches={branches}
         selectedBranchId={selectedBranchId}
@@ -536,179 +536,67 @@ function OverviewPage() {
         }}
       />
 
-      {/* كروت KPI التفاعلية الأربعة المصممة وفق قاعدة الـ 5 ثوانٍ */}
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* كارت 1: المبيعات ومتوسط قيمة الطلب */}
-        <Card className="card-glass border border-border/80 shadow-xs relative overflow-hidden transition-all hover:border-emerald-500/40 hover:shadow-md">
-          <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold text-muted-foreground">
-                  إجمالي مبيعات اليوم
-                </span>
-                <div className="font-display text-2xl font-black text-foreground mt-0.5 tracking-tight text-emerald-600 dark:text-emerald-400">
-                  <AnimatedCounter value={salesToday} decimals={2} suffix="ج.م" />
-                </div>
-              </div>
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="h-5 w-5" />
-              </div>
+      {/* 3 كروت KPI أساسية فائقة النقاء (Stripe & Shopify Standard) */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {/* كارت 1: المبيعات ومتوسط السلة */}
+        <Card className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              إجمالي مبيعات اليوم
+            </span>
+            <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+          </div>
+          <div className="mt-3">
+            <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              <AnimatedCounter value={salesToday} decimals={2} suffix="ج.م" />
             </div>
-
-            <div className="space-y-1.5 pt-2 border-t border-border/40 text-[11px]">
-              <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>الشهر الحالي:</span>
-                <span className="font-black text-foreground">
-                  {salesMonth.toLocaleString("ar-EG")} ج.م
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>متوسط السلة (AOV):</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400">
-                  {avgOrderValue.toFixed(1)} ج.م
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-lg w-fit">
-              <TrendingUp className="h-3 w-3" />
-              <span>{weeklyGrowth} مقارنة بالفترة السابقة</span>
-            </div>
-          </CardContent>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              الشهر الحالي: {salesMonth.toLocaleString("ar-EG")} ج.م • متوسط السلة {avgOrderValue.toFixed(1)} ج.م
+            </p>
+          </div>
         </Card>
 
-        {/* كارت 2: طلبات اليوم ومسار التجهيز */}
-        <Card className="card-glass border border-border/80 shadow-xs relative overflow-hidden transition-all hover:border-primary/40 hover:shadow-md">
-          <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold text-muted-foreground">
-                  طلبات اليوم المباشرة
-                </span>
-                <div className="font-display text-2xl font-black text-foreground mt-0.5 tracking-tight text-primary">
-                  <AnimatedCounter value={newOrdersToday} decimals={0} suffix="طلب" />
-                </div>
-              </div>
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                <Zap className="h-5 w-5" />
-              </div>
+        {/* كارت 2: الطلبات ومسار التسليم */}
+        <Card className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              طلبات اليوم
+            </span>
+            <Zap className="h-4 w-4 text-zinc-700 dark:text-zinc-300" strokeWidth={1.5} />
+          </div>
+          <div className="mt-3">
+            <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              <AnimatedCounter value={newOrdersToday} decimals={0} suffix="طلب" />
             </div>
-
-            {/* خط مسار الطلبات */}
-            <div className="space-y-1.5 pt-2 border-t border-border/40">
-              <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
-                <span>معدل الإنجاز والتسليم:</span>
-                <span className="font-black text-primary">{ordersPipeline.completionRate}%</span>
-              </div>
-              <div className="grid grid-cols-4 gap-1 text-center">
-                <span className="text-[9px] font-extrabold bg-blue-500/15 text-blue-700 dark:text-blue-300 py-0.5 rounded">
-                  {ordersPipeline.fresh} جديد
-                </span>
-                <span className="text-[9px] font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-300 py-0.5 rounded">
-                  {ordersPipeline.prep} تجهيز
-                </span>
-                <span className="text-[9px] font-extrabold bg-purple-500/15 text-purple-700 dark:text-purple-300 py-0.5 rounded">
-                  {ordersPipeline.transit} شحن
-                </span>
-                <span className="text-[9px] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 py-0.5 rounded">
-                  {ordersPipeline.done} مكتمل
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 text-[10px] font-black text-primary">
-              <Clock className="h-3 w-3" />
-              <span>{processingCount} طلبات تتطلب المعالجة الفورية</span>
-            </div>
-          </CardContent>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              معدل الإنجاز {ordersPipeline.completionRate}% • {processingCount} طلب جاري معالجته
+            </p>
+          </div>
         </Card>
 
-        {/* كارت 3: المنتجات تحت حد الأمان وتنبيه الصلاحية */}
+        {/* كارت 3: تنبيهات المخزون والتوريد */}
         <Card
           onClick={() => setAlertsModalOpen(true)}
-          className="card-glass border border-amber-500/30 bg-amber-500/5 shadow-xs relative overflow-hidden transition-all hover:border-amber-500 hover:shadow-md cursor-pointer group"
+          className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 cursor-pointer hover:border-zinc-300 transition-colors"
         >
-          <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
-                  <span>منتجات تحت حد الأمان</span>
-                  {lowStock.length > 0 && <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />}
-                </span>
-                <div className="font-display text-2xl font-black text-amber-700 dark:text-amber-400 mt-0.5 tracking-tight">
-                  <AnimatedCounter
-                    value={lowStock.length}
-                    decimals={0}
-                    suffix="أصناف"
-                  />
-                </div>
-              </div>
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              أصناف تحت حد الأمان
+            </span>
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
+          </div>
+          <div className="mt-3">
+            <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              <AnimatedCounter
+                value={lowStock.length}
+                decimals={0}
+                suffix="أصناف"
+              />
             </div>
-
-            <div className="space-y-1 pt-2 border-t border-amber-500/20 text-[11px]">
-              <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>تنبيهات المخزون الحرج:</span>
-                <span className="font-black text-rose-600 dark:text-rose-400">
-                  {lowStock.length > 0 ? `${lowStock.length} صنف بحاجة لتوريد` : "المخزون ممتاز ✓"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>حالة التوريد:</span>
-                <span className="font-black text-foreground">جاهز للإرسال للمورد</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[10px] font-black text-amber-700 dark:text-amber-300 group-hover:underline">
-              <span>فتح مركز التنبيهات وإصدار التوريد</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* كارت 4: العربات المهجورة والمبيعات القابلة للاسترداد */}
-        <Card className="card-glass border border-border/80 shadow-xs relative overflow-hidden transition-all hover:border-purple-500/40 hover:shadow-md">
-          <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold text-muted-foreground">
-                  العربات المهجورة اليوم
-                </span>
-                <div className="font-display text-2xl font-black text-purple-700 dark:text-purple-400 mt-0.5 tracking-tight">
-                  <AnimatedCounter
-                    value={abandonedCartsStats.abandonedCount}
-                    decimals={0}
-                    suffix="عربة"
-                  />
-                </div>
-              </div>
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                <ShoppingBag className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div className="space-y-1 pt-2 border-t border-border/40 text-[11px]">
-              <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>معدل الاسترداد المحقق:</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400">
-                  {abandonedCartsStats.recoveryRate}% ({abandonedCartsStats.recoveredCount} عملاء)
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground font-bold">
-                <span>مبيعات محتملة للاسترداد:</span>
-                <span className="font-black text-foreground">
-                  +{abandonedCartsStats.recoverableAmount} ج.م
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 text-[10px] font-black text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-lg w-fit">
-              <Sparkles className="h-3 w-3" />
-              <span>تذكير تلقائي عبر واتساب نشط 💬</span>
-            </div>
-          </CardContent>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              {lowStock.length > 0 ? "اضغط لإصدار أمر التوريد السريع" : "المخزون متزن ومكتمل"}
+            </p>
+          </div>
         </Card>
       </div>
 

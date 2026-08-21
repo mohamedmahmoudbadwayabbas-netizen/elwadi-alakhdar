@@ -32,10 +32,7 @@ import {
 } from "lucide-react";
 import { HomePageSkeleton } from "@/components/storefront/Skeletons";
 import { EmptyState } from "@/components/storefront/EmptyState";
-import {
-  COMPREHENSIVE_CATEGORIES,
-  MOCK_PRODUCTS,
-} from "@/lib/categories-data";
+import { COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
 import { SmartSearchBar } from "@/components/storefront/SmartSearchBar";
 import { searchProductsFuzzy } from "@/lib/fuzzy-search";
 import { motion, AnimatePresence } from "motion/react";
@@ -82,8 +79,8 @@ export function HomePage() {
   const { data: categoriesData, isLoading: isCategoriesLoading } = useStoreCategories();
   const { data: bannersData } = useHeroBanners();
 
-  const products = productsData ?? (MOCK_PRODUCTS as unknown as Product[]);
-  const categories = categoriesData ?? (COMPREHENSIVE_CATEGORIES as Category[]);
+  const products = useMemo(() => productsData ?? [], [productsData]);
+  const categories = useMemo(() => categoriesData ?? (COMPREHENSIVE_CATEGORIES as Category[]), [categoriesData]);
   const heroBanners = useMemo(() => bannersData ?? [], [bannersData]);
   const loading = isProductsLoading && (!productsData || productsData.length === 0);
 

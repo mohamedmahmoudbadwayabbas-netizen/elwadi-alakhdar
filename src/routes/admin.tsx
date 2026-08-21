@@ -5,8 +5,10 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ColorModeProvider } from "@/lib/color-mode-context";
 import { ColorModeToggle } from "@/components/ColorModeToggle";
 import { useAuth } from "@/lib/auth-context";
-import { ShieldCheck, Store, Database, Building2 } from "lucide-react";
+import { ShieldCheck, Store, Database, Building2, Loader2, Sparkles, ExternalLink } from "lucide-react";
 import { BRAND_NAME_AR } from "@/lib/brand";
+import { Button } from "@/components/ui/button";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -37,13 +39,11 @@ export function AdminLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-background" dir="rtl">
+      <div className="min-h-screen grid place-items-center bg-zinc-50 dark:bg-zinc-950" dir="rtl">
         <div className="text-center space-y-3">
-          <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl hero-gradient text-primary-foreground animate-pulse shadow-elegant">
-            <Store className="h-6 w-6" />
-          </div>
-          <p className="text-sm font-bold text-muted-foreground">
-            جاري التحقق من صلاحيات الإدارة عبر Supabase Auth...
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-600 mx-auto" strokeWidth={1.5} />
+          <p className="text-xs font-medium text-zinc-500">
+            جاري التحقق من صلاحيات المسؤول...
           </p>
         </div>
       </div>
@@ -55,44 +55,60 @@ export function AdminLayout() {
   }
 
   return (
-    <ColorModeProvider storageKey="admin-color-mode" defaultMode="dark">
+    <ColorModeProvider storageKey="admin-color-mode" defaultMode="light">
       <SidebarProvider>
         <div
-          className="flex min-h-screen w-full bg-background selection:bg-emerald-500 selection:text-white"
+          className="flex min-h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100"
           dir="rtl"
         >
           <AdminSidebar />
-          <SidebarInset className="flex-1 min-w-0">
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-xl">
-              <SidebarTrigger />
+          <SidebarInset className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-950">
+            <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 px-4 sm:px-6 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="h-8 w-8 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" />
+                <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    {BRAND_NAME_AR}
+                  </span>
+                  <span className="text-xs text-zinc-400 font-normal hidden sm:inline">/</span>
+                  <span className="text-xs text-zinc-500 font-normal hidden sm:inline">
+                    لوحة الإدارة
+                  </span>
+                </div>
+              </div>
 
               <div className="flex items-center gap-2">
-                <span className="font-display text-sm font-black text-foreground">
-                  {BRAND_NAME_AR}
-                </span>
-                <span className="text-xs text-muted-foreground hidden sm:inline">|</span>
-                <span className="text-xs text-muted-foreground hidden sm:inline">لوحة الإدارة</span>
-              </div>
+                <Link to="/admin/copilot">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 rounded-lg border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer gap-1.5 shadow-xs"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-600" strokeWidth={1.5} />
+                    <span className="hidden sm:inline">المساعد الذكي</span>
+                  </Button>
+                </Link>
 
-              {/* Verified Supabase Auth Badge */}
-              <div className="hidden md:flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>جلسة موثقة • Root Admin</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
+                <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
 
-              {/* Branch quick info */}
-              <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-[11px] font-bold text-foreground border border-border">
-                <Building2 className="h-3 w-3 text-emerald-600" />
-                <span>3 فروع نشطة (الدقي • مدينة نصر • المعادي)</span>
-              </div>
-
-              <div className="mr-auto flex items-center gap-2">
                 <ColorModeToggle />
+
+                <Link to="/" target="_blank" rel="noopener noreferrer">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer gap-1 text-xs"
+                    title="معاينة المتجر"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    <span className="hidden md:inline">المتجر</span>
+                  </Button>
+                </Link>
               </div>
             </header>
 
-            <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
+            <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full">
               <Outlet />
             </main>
           </SidebarInset>
@@ -101,3 +117,4 @@ export function AdminLayout() {
     </ColorModeProvider>
   );
 }
+

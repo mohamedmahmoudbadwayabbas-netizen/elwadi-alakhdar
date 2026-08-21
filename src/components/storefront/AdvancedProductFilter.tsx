@@ -44,7 +44,7 @@ export interface FilterState {
   sortBy: "popular" | "rating" | "price_asc" | "price_desc" | "newest";
 }
 
-export const POPULAR_BRANDS = [
+const POPULAR_BRANDS = [
   "جميع الماركات",
   "مزارع الوادي 🌿",
   "المراعي",

@@ -26,7 +26,7 @@ export function DynamicFlashSaleTimer({ config }: { config?: FlashSaleTimerConfi
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isEnabled, config?.endTime]);
+  }, [isEnabled, config]);
 
   if (!isEnabled || !config) return null;
 

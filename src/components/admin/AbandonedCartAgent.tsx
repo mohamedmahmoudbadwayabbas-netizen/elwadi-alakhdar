@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ShoppingBag,
   MessageSquare,
@@ -120,7 +120,7 @@ export function AbandonedCartAgent() {
     scanAbandonedCarts();
   }, []);
 
-  const handleGenerateDraft = async (cart: AbandonedCartData) => {
+  const handleGenerateDraft = useCallback(async (cart: AbandonedCartData) => {
     setGenerating(true);
     try {
       const res = await generateAbandonedCartRecovery({
@@ -134,13 +134,13 @@ export function AbandonedCartAgent() {
     } finally {
       setGenerating(false);
     }
-  };
+  }, [couponCode]);
 
   useEffect(() => {
     if (selectedCart) {
       handleGenerateDraft(selectedCart);
     }
-  }, [selectedCart, couponCode]);
+  }, [selectedCart, handleGenerateDraft]);
 
   const copyToClipboard = () => {
     if (!customDraft) return;

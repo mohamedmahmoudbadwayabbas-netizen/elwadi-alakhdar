@@ -877,6 +877,9 @@ function OrdersPage() {
 }
 
 // مكون محاكي الخريطة التفاعلية اللحظية لتتبع الموصل
+const DEFAULT_STORE_POS: [number, number] = [30.0444, 31.2357];
+const DEFAULT_TARGET_POS: [number, number] = [30.052, 31.248];
+
 function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: () => void }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -886,13 +889,14 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
   const [speed, setSpeed] = useState(26); // km/h
   const [moving, setMoving] = useState(true);
 
-  // Store coordinates & customer destination coordinates (Cairo default)
-  const storePos = [30.0444, 31.2357];
-  const targetPos = [30.052, 31.248];
-
   const [currentPos, setCurrentPos] = useState<[number, number]>([
-    storePos[0] + 0.002,
-    storePos[1] + 0.003,
+    DEFAULT_STORE_POS[0] + 0.002,
+    DEFAULT_STORE_POS[1] + 0.003,
+  ]);
+
+  const initialPosRef = useRef<[number, number]>([
+    DEFAULT_STORE_POS[0] + 0.002,
+    DEFAULT_STORE_POS[1] + 0.003,
   ]);
 
   useEffect(() => {
@@ -921,7 +925,7 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
       const L = window.L;
 
       const map = L.map(mapContainerRef.current, {
-        center: currentPos,
+        center: initialPosRef.current,
         zoom: 15,
         zoomControl: false,
       });
@@ -938,7 +942,7 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
         html: `<div style="background-color: #10b981; color: white; border-radius: 50%; padding: 4px; font-size: 14px; text-align: center; border: 2px solid white; box-shadow: 0 0 10px rgba(16,185,129,0.8);">🏪</div>`,
         iconSize: [28, 28],
       });
-      L.marker(storePos, { icon: storeIcon }).addTo(map).bindPopup("المتجر الرئيسي");
+      L.marker(DEFAULT_STORE_POS, { icon: storeIcon }).addTo(map).bindPopup("المتجر الرئيسي");
 
       // Customer Marker (Red/Amber)
       const customerIcon = L.divIcon({
@@ -946,7 +950,7 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
         html: `<div style="background-color: #f59e0b; color: white; border-radius: 50%; padding: 4px; font-size: 14px; text-align: center; border: 2px solid white; box-shadow: 0 0 10px rgba(245,158,11,0.8);">🏠</div>`,
         iconSize: [28, 28],
       });
-      L.marker(targetPos, { icon: customerIcon }).addTo(map).bindPopup("عنوان العميل");
+      L.marker(DEFAULT_TARGET_POS, { icon: customerIcon }).addTo(map).bindPopup("عنوان العميل");
 
       // Driver Bike Marker (Moving)
       const driverIcon = L.divIcon({
@@ -954,10 +958,10 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
         html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; padding: 6px; font-size: 16px; text-align: center; border: 3px solid white; box-shadow: 0 0 15px rgba(59,130,246,0.9);">🛵</div>`,
         iconSize: [36, 36],
       });
-      const driverMarker = L.marker(currentPos, { icon: driverIcon }).addTo(map);
+      const driverMarker = L.marker(initialPosRef.current, { icon: driverIcon }).addTo(map);
 
       // Draw Polyline route
-      L.polyline([storePos, currentPos, targetPos], {
+      L.polyline([DEFAULT_STORE_POS, initialPosRef.current, DEFAULT_TARGET_POS], {
         color: "#3b82f6",
         weight: 4,
         dashArray: "8, 8",
@@ -985,8 +989,8 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
 
     const interval = setInterval(() => {
       setCurrentPos((prev) => {
-        const nextLat = prev[0] + (targetPos[0] - prev[0]) * 0.08;
-        const nextLng = prev[1] + (targetPos[1] - prev[1]) * 0.08;
+        const nextLat = prev[0] + (DEFAULT_TARGET_POS[0] - prev[0]) * 0.08;
+        const nextLng = prev[1] + (DEFAULT_TARGET_POS[1] - prev[1]) * 0.08;
 
         if (driverMarkerRef.current) {
           driverMarkerRef.current.setLatLng([nextLat, nextLng]);

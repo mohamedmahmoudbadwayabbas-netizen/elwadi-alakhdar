@@ -12,6 +12,7 @@ import {
   Home,
   Briefcase,
   Star,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { queryGoogleMapsGrounding, PlaceGroundingResult } from "@/services/geminiMapsService";
+import { GoogleMapsFallbackPicker } from "@/components/common/GoogleMapsFallbackPicker";
+import { POPULAR_EGYPT_DISTRICTS } from "@/lib/mapsConfig";
 
 interface StoreGoogleMapsWidgetProps {
   initialLat?: number | null;
@@ -58,6 +61,7 @@ export function StoreGoogleMapsWidget({
   const [groundingAnswer, setGroundingAnswer] = useState<string | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string>("المنزل");
   const [customLabel, setCustomLabel] = useState<string>("");
+  const [activeView, setActiveView] = useState<"map" | "selector">("map");
 
   useEffect(() => {
     if (initialLat) setLat(initialLat);
@@ -215,28 +219,76 @@ export function StoreGoogleMapsWidget({
         </div>
       </div>
 
-      {/* خريطة Google Maps التفاعلية */}
-      <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-2xl border border-border shadow-inner bg-secondary/30">
-        <iframe
-          title="Google Map Live"
-          src={mapEmbedUrl}
-          className="h-full w-full border-0"
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
-        />
-
-        {/* شريط معلومات الموقع */}
-        <div className="absolute bottom-2 start-2 end-2 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-border/60 text-[11px] font-bold text-foreground flex justify-between items-center z-10 shadow-xs">
-          <div className="flex items-center gap-1.5 truncate">
-            <Compass className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="truncate">{storeAddress || "نطاق التوصيل السريع للمتجر"}</span>
-          </div>
-          <span className="text-[10px] font-mono text-muted-foreground shrink-0 ps-2">
-            {lat.toFixed(4)}, {lng.toFixed(4)}
-          </span>
+      {/* أزرار التبديل بين الخريطة وقائمة المناطق */}
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+        <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setActiveView("map")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              activeView === "map"
+                ? "bg-background text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            خريطة تفاعلية 🗺️
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("selector")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              activeView === "selector"
+                ? "bg-background text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            اختيار المنطقة والموقع 📍
+          </button>
         </div>
+
+        <span className="text-[10px] font-bold text-muted-foreground hidden sm:inline">
+          {activeView === "map" ? "تحديد مباشر عبر الأقمار الصناعية" : "اختيار سريع للمناطق المصرية"}
+        </span>
       </div>
+
+      {activeView === "selector" ? (
+        <GoogleMapsFallbackPicker
+          currentLat={lat}
+          currentLng={lng}
+          currentAddress={storeAddress || "القاهرة، مصر"}
+          onLocationSelect={(newLat, newLng, newAddr) => {
+            setLat(newLat);
+            setLng(newLng);
+            if (onLocationSelect) {
+              onLocationSelect(newLat, newLng, newAddr);
+            }
+          }}
+          showPresets={true}
+        />
+      ) : (
+        /* خريطة Google Maps التفاعلية */
+        <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-2xl border border-border shadow-inner bg-secondary/30">
+          <iframe
+            title="Google Map Live"
+            src={mapEmbedUrl}
+            className="h-full w-full border-0"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+
+          {/* شريط معلومات الموقع */}
+          <div className="absolute bottom-2 start-2 end-2 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-border/60 text-[11px] font-bold text-foreground flex justify-between items-center z-10 shadow-xs">
+            <div className="flex items-center gap-1.5 truncate">
+              <Compass className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">{storeAddress || "نطاق التوصيل السريع للمتجر"}</span>
+            </div>
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0 ps-2">
+              {lat.toFixed(4)}, {lng.toFixed(4)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* حفظ الموقع كافتراضي لحساب العميل (Customer Default Location) */}
       {allowSaveAsDefault && (

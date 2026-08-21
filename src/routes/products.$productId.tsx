@@ -51,7 +51,6 @@ import { ProductPageSkeleton } from "@/components/storefront/Skeletons";
 import { ProductStatsAndTip } from "@/components/storefront/ProductStatsAndTip";
 import { extractProductDetails } from "@/lib/product-metadata";
 import { flyToCart } from "@/lib/fly-to-cart";
-import { MOCK_PRODUCTS } from "@/lib/categories-data";
 import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { motion, AnimatePresence } from "motion/react";
 import { useStoreProduct, useStoreProducts } from "@/lib/store-data-hooks";
@@ -253,9 +252,7 @@ function ProductPage() {
 
   const initialProd =
     cachedProduct ??
-    (allStoreProducts?.find((p) => p.id === productId) ||
-      (MOCK_PRODUCTS as unknown as Product[]).find((p) => p.id === productId) ||
-      null);
+    (allStoreProducts?.find((p) => p.id === productId) || null);
 
   const [product, setProduct] = useState<Product | null>(initialProd);
   const [similar, setSimilar] = useState<Product[]>([]);

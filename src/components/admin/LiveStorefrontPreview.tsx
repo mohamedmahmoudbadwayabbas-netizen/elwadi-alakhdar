@@ -21,7 +21,9 @@ import {
   ChevronRight,
   Check,
 } from "lucide-react";
-import { MOCK_PRODUCTS, COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
+import { COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
+import { useStoreProducts, useStoreCategories } from "@/lib/store-data-hooks";
+import { INITIAL_PRODUCTS_CATALOG } from "@/lib/auto-seed";
 
 export interface PreviewSettings {
   site_name?: string | null;
@@ -79,9 +81,16 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
     setTimeout(() => setAddedItemName(null), 2000);
   };
 
-  // Preview mock products
-  const previewProducts = MOCK_PRODUCTS.slice(0, 6);
-  const previewCategories = COMPREHENSIVE_CATEGORIES.slice(0, 6);
+  const { data: dynamicProducts } = useStoreProducts();
+  const { data: dynamicCategories } = useStoreCategories();
+
+  // Dynamic preview products & categories
+  const previewProducts = (dynamicProducts && dynamicProducts.length > 0)
+    ? dynamicProducts.slice(0, 6)
+    : (INITIAL_PRODUCTS_CATALOG as any[]).slice(0, 6);
+  const previewCategories = (dynamicCategories && dynamicCategories.length > 0)
+    ? dynamicCategories.slice(0, 6)
+    : COMPREHENSIVE_CATEGORIES.slice(0, 6);
 
   return (
     <div className={`space-y-3 ${className}`}>

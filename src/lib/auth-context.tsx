@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getArabicAuthErrorMessage,
+  formatPhoneNumber,
+  getPhoneSyntheticEmail,
+  isRootAdminEmail as checkRootAdminEmail,
+  resolveUserRole,
+  type UserRole,
+} from "@/services/authService";
 
 export const ROOT_ADMIN_CREDENTIALS = {
   email: "adminstoresupermarketinvo@gmail.com",
@@ -17,7 +25,7 @@ export interface AppUser {
   user_metadata?: {
     full_name?: string;
     phone?: string;
-    role?: string;
+    role?: UserRole | string;
     avatar_url?: string;
     provider?: string;
   };
@@ -29,7 +37,7 @@ interface StoredLocalAccount {
   phone?: string;
   fullName: string;
   password?: string;
-  role: string;
+  role: UserRole;
   provider: "email" | "phone" | "google";
   created_at: string;
 }
@@ -37,7 +45,10 @@ interface StoredLocalAccount {
 export interface AuthCtx {
   user: AppUser | null;
   session: any | null;
+  role: UserRole;
   isAdmin: boolean;
+  isStaff: boolean;
+  isCustomer: boolean;
   isRootAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
@@ -59,30 +70,11 @@ export interface AuthCtx {
   refreshRole: () => Promise<void>;
 }
 
-export function isRootAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return email.trim().toLowerCase() === ROOT_ADMIN_CREDENTIALS.email.toLowerCase();
-}
+export const isRootAdminEmail = checkRootAdminEmail;
+export const normalizePhone = formatPhoneNumber;
+export const phoneEmail = getPhoneSyntheticEmail;
 
 const AuthContext = createContext<AuthCtx | null>(null);
-
-export function normalizePhone(phone: string): string {
-  let p = phone.trim().replace(/[\s\-()]/g, "");
-  if (!p.startsWith("+")) {
-    if (p.startsWith("00")) {
-      p = "+" + p.slice(2);
-    } else if (p.startsWith("0")) {
-      p = "+20" + p.slice(1);
-    } else {
-      p = "+20" + p;
-    }
-  }
-  return p;
-}
-
-export function phoneEmail(formattedPhone: string): string {
-  return `${formattedPhone.replace("+", "")}@phone.elwadi.local`;
-}
 
 // Helpers for persistent local accounts registry
 function getLocalUsersRegistry(): StoredLocalAccount[] {
@@ -111,36 +103,52 @@ function saveLocalUser(account: StoredLocalAccount) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isRootAdmin, setIsRootAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const role: UserRole = useMemo(() => {
+    return resolveUserRole(currentUser as any, currentUser?.user_metadata as any);
+  }, [currentUser]);
+
+  const isRootAdmin = useMemo(() => {
+    return checkRootAdminEmail(currentUser?.email);
+  }, [currentUser]);
+
+  const isAdmin = useMemo(() => {
+    return isRootAdmin || role === "admin" || role === "super_admin";
+  }, [isRootAdmin, role]);
+
+  const isStaff = useMemo(() => {
+    return isAdmin || role === "staff";
+  }, [isAdmin, role]);
+
+  const isCustomer = useMemo(() => {
+    return !isAdmin && !isStaff;
+  }, [isAdmin, isStaff]);
 
   // Initialize session from persistent state & Supabase
   useEffect(() => {
+    let mounted = true;
     try {
       if (typeof window !== "undefined") {
         const saved = localStorage.getItem(STORAGE_KEY_AUTH_USER);
         if (saved) {
-          const parsed = JSON.parse(saved);
-          const isRoot = isRootAdminEmail(parsed.email);
-          setCurrentUser(parsed);
-          setIsAdmin(isRoot || parsed.user_metadata?.role === "super_admin" || parsed.user_metadata?.role === "admin");
-          setIsRootAdmin(isRoot);
+          try {
+            const parsed = JSON.parse(saved);
+            if (mounted) setCurrentUser(parsed);
+          } catch {}
         }
       }
 
       // Check active Supabase Auth session
       supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!mounted) return;
         if (session?.user) {
-          const isRoot = isRootAdminEmail(session.user.email);
           const u: AppUser = {
             id: session.user.id,
             email: session.user.email || "",
             user_metadata: session.user.user_metadata,
           };
           setCurrentUser(u);
-          setIsAdmin(isRoot || session.user.user_metadata?.role === "admin" || session.user.user_metadata?.role === "super_admin");
-          setIsRootAdmin(isRoot);
           if (typeof window !== "undefined") {
             localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(u));
           }
@@ -149,29 +157,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Listen to Supabase auth changes
       const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!mounted) return;
         if (session?.user) {
-          const isRoot = isRootAdminEmail(session.user.email);
           const u: AppUser = {
             id: session.user.id,
             email: session.user.email || "",
             user_metadata: session.user.user_metadata,
           };
           setCurrentUser(u);
-          setIsAdmin(isRoot || session.user.user_metadata?.role === "admin" || session.user.user_metadata?.role === "super_admin");
-          setIsRootAdmin(isRoot);
           if (typeof window !== "undefined") {
             localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(u));
+          }
+        } else if (_event === "SIGNED_OUT") {
+          setCurrentUser(null);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(STORAGE_KEY_AUTH_USER);
           }
         }
       });
 
       return () => {
+        mounted = false;
         authListener?.subscription?.unsubscribe?.();
       };
     } catch (e) {
       console.warn("Auth initialization error:", e);
     } finally {
-      setLoading(false);
+      if (mounted) setLoading(false);
     }
   }, []);
 
@@ -181,7 +193,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: currentUser,
       session: currentUser ? { user: currentUser } : null,
+      role,
       isAdmin,
+      isStaff,
+      isCustomer,
       isRootAdmin,
       loading,
       signIn: async (emailInput: string, passwordInput: string) => {
@@ -190,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const password = passwordInput;
 
         // 1. Strict Root Admin credential check
-        const isTargetRootAdmin = isRootAdminEmail(email);
+        const isTargetRootAdmin = checkRootAdminEmail(email);
 
         if (isTargetRootAdmin) {
           if (password !== ROOT_ADMIN_CREDENTIALS.passwordHash) {
@@ -198,10 +213,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: "كلمة المرور غير صحيحة لحساب الإدارة الرئيسي" };
           }
 
-          // Optional: Attempt Supabase signIn if live backend exists
           try {
             await supabase.auth.signInWithPassword({ email, password }).catch(() => {});
-          } catch (e) {}
+          } catch {}
 
           const adminSessionUser: AppUser = {
             id: "root-admin-elwadi-01",
@@ -217,8 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setCurrentUser(adminSessionUser);
-          setIsAdmin(true);
-          setIsRootAdmin(true);
           setLoading(false);
           return {};
         }
@@ -231,7 +243,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           if (!error && data?.user) {
-            const isUserRoot = isRootAdminEmail(data.user.email);
             const userObj: AppUser = {
               id: data.user.id,
               email: data.user.email || email,
@@ -243,13 +254,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             setCurrentUser(userObj);
-            setIsAdmin(isUserRoot || data.user.user_metadata?.role === "admin" || data.user.user_metadata?.role === "super_admin");
-            setIsRootAdmin(isUserRoot);
             setLoading(false);
             return {};
           }
+
+          if (error) {
+            console.warn("Supabase auth sign-in notice:", error.message);
+          }
         } catch (err: any) {
-          console.warn("Supabase auth sign-in error, trying local registry:", err);
+          console.warn("Supabase auth sign-in error, checking local fallback:", err);
         }
 
         // 3. Fallback to resilient Local Registered Accounts Registry
@@ -275,8 +288,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setCurrentUser(userObj);
-          setIsAdmin(matchedAccount.role === "admin" || matchedAccount.role === "super_admin");
-          setIsRootAdmin(false);
           setLoading(false);
           return {};
         }
@@ -288,12 +299,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         const email = emailInput.trim().toLowerCase();
         const password = passwordInput;
-        const cleanName = fullName?.trim() || email.split("@")[0] || "عميل سمارت ستور";
-        const cleanPhone = phone ? normalizePhone(phone) : undefined;
+        const cleanName = fullName?.trim() || email.split("@")[0] || "عميل الوادي الأخضر";
+        const cleanPhone = phone ? formatPhoneNumber(phone) : undefined;
 
         const newUserId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-        // Store into local accounts registry for instant login availability
         saveLocalUser({
           id: newUserId,
           email,
@@ -305,7 +315,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString(),
         });
 
-        // Also attempt Supabase sign up
         try {
           const { data, error } = await supabase.auth.signUp({
             email,
@@ -334,17 +343,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             },
           };
 
+          // Upsert profile record
+          await supabase
+            .from("profiles")
+            .upsert(
+              {
+                id: resolvedId,
+                full_name: cleanName,
+                phone: cleanPhone,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "id" }
+            )
+            .catch(() => {});
+
           if (typeof window !== "undefined") {
             localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(userObj));
           }
 
           setCurrentUser(userObj);
-          setIsAdmin(false);
-          setIsRootAdmin(false);
           setLoading(false);
           return { needsConfirmation: false };
-        } catch (e: any) {
-          // Local sign up succeeded
+        } catch {
           const userObj: AppUser = {
             id: newUserId,
             email,
@@ -358,15 +378,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(userObj));
           }
           setCurrentUser(userObj);
-          setIsAdmin(false);
-          setIsRootAdmin(false);
           setLoading(false);
           return { needsConfirmation: false };
         }
       },
       signInWithPhone: async (phoneInput: string, passwordInput?: string) => {
         setLoading(true);
-        const formattedPhone = normalizePhone(phoneInput);
+        const formattedPhone = formatPhoneNumber(phoneInput);
         const password = passwordInput || "default123456";
 
         if (!password || password.length < 6) {
@@ -374,12 +392,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: "كلمة المرور مطلوبة (6 أحرف على الأقل)" };
         }
 
-        // Check local registry first for phone matches
         const localRegistry = getLocalUsersRegistry();
         const matched = localRegistry.find(
           (u) =>
             u.phone &&
-            normalizePhone(u.phone) === formattedPhone &&
+            formatPhoneNumber(u.phone) === formattedPhone &&
             (!u.password || u.password === password),
         );
 
@@ -400,21 +417,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setCurrentUser(userObj);
-          setIsAdmin(matched.role === "admin" || matched.role === "super_admin");
-          setIsRootAdmin(false);
           setLoading(false);
           return {};
         }
 
-        // Try synthetic email with Supabase
-        const synthEmail = phoneEmail(formattedPhone);
+        const synthEmail = getPhoneSyntheticEmail(formattedPhone);
         const res = await ctxRef.current!.signIn(synthEmail, password);
         setLoading(false);
         return res;
       },
       signUpWithPhone: async (phoneInput: string, passwordInput: string, fullName?: string) => {
         setLoading(true);
-        const formattedPhone = normalizePhone(phoneInput);
+        const formattedPhone = formatPhoneNumber(phoneInput);
         const password = passwordInput;
         const cleanName = fullName?.trim() || `عميل (${formattedPhone.slice(-4)})`;
 
@@ -423,7 +437,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: "اختر كلمة مرور قوية (6 أحرف على الأقل)" };
         }
 
-        const synthEmail = phoneEmail(formattedPhone);
+        const synthEmail = getPhoneSyntheticEmail(formattedPhone);
         const res = await ctxRef.current!.signUp(synthEmail, password, cleanName, formattedPhone);
         setLoading(false);
         return res;
@@ -447,7 +461,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           if (error) {
-            console.warn("Supabase Google OAuth fallback:", error.message);
+            console.warn("Supabase Google OAuth notice:", error.message);
           }
 
           if (data?.url && typeof window !== "undefined") {
@@ -455,8 +469,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return {};
           }
 
-          // In local/preview environments if OAuth redirect url is not generated:
-          // Simulate instant Google Sign-In with real Google profile creation
           const googleUserId = `google_${Date.now()}`;
           const googleUser: AppUser = {
             id: googleUserId,
@@ -483,41 +495,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setCurrentUser(googleUser);
-          setIsAdmin(false);
-          setIsRootAdmin(false);
           setLoading(false);
           return {};
         } catch (err: any) {
           setLoading(false);
-          return { error: err.message || "حدث خطأ أثناء الاتصال بحساب Google" };
+          return { error: getArabicAuthErrorMessage(err) };
         }
       },
       signOut: async () => {
         try {
           await supabase.auth.signOut();
-        } catch (e) {}
+        } catch {}
 
         if (typeof window !== "undefined") {
           localStorage.removeItem(STORAGE_KEY_AUTH_USER);
         }
         setCurrentUser(null);
-        setIsAdmin(false);
-        setIsRootAdmin(false);
       },
       claimAdmin: async () => false,
       refreshRole: async () => {
         if (typeof window !== "undefined") {
           const saved = localStorage.getItem(STORAGE_KEY_AUTH_USER);
           if (saved) {
-            const parsed = JSON.parse(saved);
-            const isRoot = isRootAdminEmail(parsed.email);
-            setIsAdmin(isRoot || parsed.user_metadata?.role === "super_admin" || parsed.user_metadata?.role === "admin");
-            setIsRootAdmin(isRoot);
+            try {
+              const parsed = JSON.parse(saved);
+              setCurrentUser(parsed);
+            } catch {}
           }
         }
       },
     }),
-    [currentUser, isAdmin, isRootAdmin, loading],
+    [currentUser, role, isAdmin, isStaff, isCustomer, isRootAdmin, loading],
   );
 
   ctxRef.current = value;
@@ -530,4 +538,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
-
