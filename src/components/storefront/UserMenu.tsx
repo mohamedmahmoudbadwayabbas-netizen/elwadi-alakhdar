@@ -57,8 +57,7 @@ export function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align={dir === "rtl" ? "start" : "end"}
-        className="w-60 rounded-2xl bg-popover/95 backdrop-blur-2xl p-2 shadow-2xl border border-border"
-        dir="rtl"
+        className="w-60 rounded-2xl bg-popover/95 backdrop-blur-2xl p-2 shadow-2xl border border-border text-right"
       >
         {user ? (
           <>

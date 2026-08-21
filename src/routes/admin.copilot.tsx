@@ -803,10 +803,10 @@ function AdminCoPilotPage() {
       />
 
       <SmartProductCopywriterModal
-        isOpen={copywriterModalOpen}
-        onClose={() => setCopywriterModalOpen(false)}
-        onApply={(result) => {
-          toast.success(`تم توليد الوصف الإعلاني للمنتج بنجاح: ${result.enhancedTitle}`);
+        open={copywriterModalOpen}
+        onOpenChange={setCopywriterModalOpen}
+        onApplyCopywriting={(result) => {
+          toast.success(`تم توليد الوصف الإعلاني للمنتج بنجاح: ${result.name ?? ""}`);
         }}
       />
     </div>
