@@ -21,6 +21,10 @@ import {
   Wand2,
   X,
   ChevronRight,
+  ChevronDown,
+  ShieldCheck,
+  Undo2,
+  Wrench,
   Plus,
   FolderTree,
   Eye,
@@ -55,6 +59,18 @@ import { ExecutiveSummaryWidget } from "@/components/admin/ExecutiveSummaryWidge
 import { AbandonedCartAgent } from "@/components/admin/AbandonedCartAgent";
 import { SmartProductCopywriterModal } from "@/components/admin/SmartProductCopywriterModal";
 import { ShopLivePreview } from "@/components/admin/ShopLivePreview";
+import {
+  AI_TOOL_SUITE,
+  AI_TOOL_GROUP_LABELS,
+  executeAiTool,
+  routeCommandToTool,
+  createRollbackPoint,
+  getLastRollbackPoint,
+  rollbackLastAction,
+  type AiToolGroup,
+  type RollbackPoint,
+} from "@/services/geminiToolsEngine";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,6 +144,51 @@ function AdminCoPilotPage() {
 
   // Modals & Tools
   const [copywriterModalOpen, setCopywriterModalOpen] = useState(false);
+
+  // 10-Tool Executable Engine state
+  const queryClient = useQueryClient();
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
+  const [activeToolName, setActiveToolName] = useState<string | null>(null);
+  const [lastRollback, setLastRollback] = useState<RollbackPoint | null>(null);
+
+  useEffect(() => {
+    const sync = () => setLastRollback(getLastRollbackPoint());
+    sync();
+    window.addEventListener("ai_rollback_stack_changed", sync);
+    return () => window.removeEventListener("ai_rollback_stack_changed", sync);
+  }, []);
+
+  const toolContext = {
+    layout: layoutConfig,
+    updateLayout: (next: typeof layoutConfig) => updateConfig(next),
+    refresh: () => {
+      void queryClient.invalidateQueries({ queryKey: ["store-products"] });
+      void queryClient.invalidateQueries({ queryKey: ["store-categories"] });
+      void queryClient.invalidateQueries({ queryKey: ["hero-banners"] });
+    },
+  };
+
+  const pushAssistantMessage = (content: string) => {
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        role: "assistant",
+        modelUsed: selectedModel,
+        roleUsed: selectedRole,
+        content,
+        timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+  };
+
+  const handleUndoLastAction = async () => {
+    const res = await rollbackLastAction(toolContext);
+    setLastRollback(getLastRollbackPoint());
+    if (res.ok) toast.success(res.messageAr);
+    else toast.info(res.messageAr);
+    pushAssistantMessage(`↩️ **نظام التراجع الآمن:** ${res.messageAr}`);
+  };
 
   // Multi-Turn Chat History
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
@@ -237,6 +298,30 @@ function AdminCoPilotPage() {
     setIsProcessing(true);
 
     try {
+      // ── 10-TOOL EXECUTABLE ENGINE: try tool routing first ──
+      const routed = !targetFile ? routeCommandToTool(prompt) : null;
+      if (routed) {
+        const meta = AI_TOOL_SUITE.find((t) => t.name === routed.tool);
+        setActiveToolName(routed.tool);
+        if (meta?.mutatesState) {
+          createRollbackPoint(routed.tool, meta.labelAr, layoutConfig);
+        }
+        const result = await executeAiTool(routed.tool, routed.args, toolContext);
+        setActiveToolName(null);
+        setLastRollback(getLastRollbackPoint());
+        pushAssistantMessage(
+          `${result.ok ? "🛠️" : "⚠️"} **${meta?.labelAr || routed.tool}** — \`${routed.tool}()\`\n\n${result.messageAr}${
+            result.data && "imageUrl" in result.data
+              ? `\n\n![generated](${String(result.data.imageUrl)})`
+              : ""
+          }${result.ok && meta?.mutatesState ? "\n\n✅ تم التنفيذ الفوري على المتجر الحي، ويمكنك التراجع من زر «تراجع عن آخر أمر»." : ""}`,
+        );
+        if (result.ok) toast.success(result.messageAr);
+        else toast.error(result.messageAr);
+        setIsProcessing(false);
+        return;
+      }
+
       if (isFileCodeRequest) {
         let filePath = targetFile?.path;
         if (!filePath) {
