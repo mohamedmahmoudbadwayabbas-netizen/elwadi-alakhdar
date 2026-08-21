@@ -782,6 +782,101 @@ function AdminCoPilotPage() {
       {/* ─── 3. CENTERED FLOATING INPUT BAR (GEMINI OFFICIAL STYLE) ─── */}
       {activeMode === "chat" && (
         <div className="sticky bottom-2 z-20 max-w-3xl mx-auto w-full px-2 pt-2">
+          {/* ── AVAILABLE AI TOOLS PANEL (10-Tool Engine) ── */}
+          <div className="mb-2 rounded-3xl border border-border/70 bg-card/85 backdrop-blur-2xl shadow-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setToolsPanelOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 cursor-pointer hover:bg-secondary/40 transition-colors"
+            >
+              <span className="flex items-center gap-2 text-xs font-black text-foreground">
+                <Wrench className="h-4 w-4 text-emerald-600" />
+                <span>أدوات الذكاء الاصطناعي المتاحة</span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {AI_TOOL_SUITE.length} أدوات تنفيذية
+                </span>
+                {activeToolName && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    جاري التنفيذ: {activeToolName}
+                  </span>
+                )}
+              </span>
+              {toolsPanelOpen ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+
+            <AnimatePresence initial={false}>
+              {toolsPanelOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-t border-border/50"
+                >
+                  <div className="p-3 space-y-3 max-h-[46vh] overflow-y-auto">
+                    {(Object.keys(AI_TOOL_GROUP_LABELS) as AiToolGroup[]).map((group) => {
+                      const tools = AI_TOOL_SUITE.filter((t) => t.group === group);
+                      if (!tools.length) return null;
+                      return (
+                        <div key={group} className="space-y-1.5">
+                          <div className="text-[10px] font-black text-muted-foreground flex items-center gap-1.5">
+                            <Layers className="h-3 w-3 text-emerald-600" />
+                            <span>{AI_TOOL_GROUP_LABELS[group]}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {tools.map((tool) => {
+                              const isRunning = activeToolName === tool.name;
+                              return (
+                                <div
+                                  key={tool.name}
+                                  className={`rounded-2xl border p-2.5 transition-all ${
+                                    isRunning
+                                      ? "border-amber-500/60 bg-amber-500/10"
+                                      : "border-border/60 bg-secondary/35"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[11px] font-black text-foreground">
+                                      {tool.labelAr}
+                                    </span>
+                                    <span
+                                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                                        isRunning
+                                          ? "bg-amber-500 animate-pulse"
+                                          : "bg-emerald-500"
+                                      }`}
+                                    />
+                                  </div>
+                                  <div className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 truncate">
+                                    {tool.name}()
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground font-medium leading-relaxed mt-0.5">
+                                    {tool.descriptionAr}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 flex items-start gap-2">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-200 leading-relaxed">
+                        نظام الأمان مفعّل: يتم إنشاء نقطة استرجاع تلقائياً (createRollbackPoint) قبل
+                        تنفيذ أي أداة تمس الواجهة أو قاعدة البيانات.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           {/* Attached File Chip if present */}
           {attachedFile && (
             <div className="mb-2 inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 px-3.5 py-1 rounded-2xl text-xs font-mono font-bold border border-emerald-500/40 backdrop-blur-xl shadow-sm">
@@ -861,7 +956,20 @@ function AdminCoPilotPage() {
                   </Button>
                 </div>
 
-                {/* Right: Submit Button */}
+                {/* Right: Undo + Submit */}
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUndoLastAction}
+                    disabled={!lastRollback || isProcessing}
+                    title={lastRollback ? `تراجع عن: ${lastRollback.labelAr}` : "لا يوجد أمر للتراجع"}
+                    className="h-9 px-3 rounded-2xl text-[11px] font-black gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 cursor-pointer disabled:opacity-40"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">تراجع عن آخر أمر</span>
+                  </Button>
                 <Button
                   type="submit"
                   disabled={isProcessing || (!chatInput.trim() && !attachedFile)}
@@ -870,6 +978,7 @@ function AdminCoPilotPage() {
                   <Send className="h-3.5 w-3.5" />
                   <span>إرسال</span>
                 </Button>
+                </div>
               </div>
             </form>
           </div>
