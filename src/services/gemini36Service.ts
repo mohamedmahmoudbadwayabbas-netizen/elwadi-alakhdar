@@ -618,35 +618,37 @@ export async function generateExecutiveSummary(
       overallHealthScore: 100,
       insights: [
         "إجمالي الطلبات والمبيعات الحالية: 0 ج.م (قاعدة البيانات فارغة أو لا توجد طلبات اليوم).",
-        `تصنيف المنتجات الأكثر وفرة: ${kpis.topSelli  const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿
-سلتك تحتوي على (${cart.itemsList?.slice(0, 2).join("، ") || "منتجات طازجة مختارة"}) بقيمة ${cart.totalPrice.toFixed(2)} ج.م.
-خصّصنا لك كود خصم فوري 🎁 *${coupon}* (10% خصم إضافي) عند إتمام الطلب الآن!
-أكمل طلبك واستلم خلال 45 دقيقة: https://alwadi-alakhdar.eg/cart?coupon=${coupon}`;
+        `تصنيف المنتجات الأكثر وفرة: ${kpis.topSellingCategory || "غير محدد"}.`,
+        "أضف منتجاتك وأقسامك الحقيقية ثم ستظهر كل المؤشرات الفعلية هنا تلقائياً.",
+      ],
+      actionableTips: [
+        {
+          title: "إضافة المنتجات الحقيقية للكتالوج",
+          description: "ابدأ بإدخال منتجاتك وأسعارها ومخزونها الفعلي من لوحة المنتجات.",
+          impact: "Urgent",
+          category: "Inventory",
+          quickActionLabel: "إدارة المنتجات",
+          quickActionCommand: "افتح لوحة المنتجات لإضافة منتج جديد",
+        },
+        {
+          title: "تجهيز أول حملة تسويقية",
+          description: "بعد إضافة المنتجات فعّل كود خصم أو عرض ساعات ذهبية لجذب أول الطلبات.",
+          impact: "High",
+          category: "Marketing",
+          quickActionLabel: "تفعيل عرض",
+          quickActionCommand: "فعّل عداد عروض الساعات الذهبية لمدة 4 ساعات",
+        },
+      ],
+    };
+  }
 
-  const cleanPhone = (cart.phone || "01000000000").replace(/[^0-9]/g, "");
-  const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;
-  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+  const health = Math.max(
+    40,
+    Math.min(100, 70 + Math.min(kpis.totalOrders, 25) - (kpis.lowStockCount > 0 ? 5 : 0)),
+  );
 
   return {
-    messageText: message,
-    whatsappUrl,
-    suggestedDiscountCode: coupon,
-    strategy: "استرداد قائم على الحافز السعري والسرعة اللوجستية",
-  };
-}
-
-/* ───────────────────────── generateProductCopywriting ───────────────────────── */
-
-export async function generateProductCopywriting(
-  input: ProductCopywriterInput,
-): Promise<ProductCopywriterResult> {
-  const title = input.productName || "جبن قريش فلاحي طازج";
-  const isWeight = Boolean(input.isByWeight);
-
-  return {
-    enhancedTitle: `${title} فاخر طازج يومياً`,
-    shortDescription: `مختار بعناية فائقة من أجود المزارع المصرية، طبيعي 100% بدون أي مواد حافظة أو إضافات صناعية.`,
-    seoDescription: `اشتري ${title} طازج بأفضل سعر في مصر من سوبرماركت الوادي الأخضر مع توصيل سريع في أقل من 45 دقيقة.`,ن ${kpis.totalOrders} طلب`,
+    headline: `أداء المتجر: ${(kpis.totalRevenue || 0).toFixed(0)} ج.م من ${kpis.totalOrders} طلب`,
     overallHealthScore: health,
     insights: [
       `حقق المتجر ${kpis.totalOrders} طلباً بمتوسط قيمة سلة ${(kpis.averageOrderValue || 0).toFixed(1)} ج.م.`,
