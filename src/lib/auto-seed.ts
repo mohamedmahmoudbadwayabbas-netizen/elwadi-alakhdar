@@ -1,6 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { createServerFn } from "@tanstack/react-start";
 
 const CATEGORIES = [
+
   { name: "الألبان والجبن الطازج", slug: "dairy-cheese", icon: "🥛", image_url: "https://images.unsplash.com/photo-1628088062854-d1870b4553da?q=80&w=600&auto=format&fit=crop", sort_order: 1 },
   { name: "الخضروات والفواكه", slug: "vegetables-fruits", icon: "🍅", image_url: "https://images.unsplash.com/photo-1596568289467-34c9c1b332b7?q=80&w=600&auto=format&fit=crop", sort_order: 2 },
   { name: "اللحوم والدواجن", slug: "meat-poultry", icon: "🥩", image_url: "https://images.unsplash.com/photo-1607623814075-e51df1bd6b51?q=80&w=600&auto=format&fit=crop", sort_order: 3 },
@@ -99,14 +100,16 @@ const PRODUCTS = [
   }
 ];
 
-export async function forceSyncAllToSupabase() {
+export const forceSyncAllToSupabase = createServerFn({ method: "POST" })
+  .handler(async () => {
   try {
-    const { data: existingCats } = await supabase.from("categories").select("id").limit(1);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existingCats } = await supabaseAdmin.from("categories").select("id").limit(1);
     if (existingCats && existingCats.length > 0) {
       return { success: true, message: "Database already seeded." };
     }
 
-    const { data: insertedCats, error: catError } = await supabase
+    const { data: insertedCats, error: catError } = await supabaseAdmin
       .from("categories")
       .insert(CATEGORIES)
       .select("id, slug");
@@ -128,7 +131,7 @@ export async function forceSyncAllToSupabase() {
       };
     });
 
-    const { error: prodError } = await supabase.from("products").insert(productsToInsert);
+    const { error: prodError } = await supabaseAdmin.from("products").insert(productsToInsert);
     if (prodError) throw prodError;
 
     return { success: true, categoriesCount: insertedCats?.length || 0, productsCount: productsToInsert.length };
@@ -136,11 +139,13 @@ export async function forceSyncAllToSupabase() {
     console.error("Seeding Error:", error);
     return { success: false, error: error.message };
   }
-}
+});
 
-export async function autoSeedDatabaseIfNeeded() {
-  const { data: prods } = await supabase.from("products").select("id").limit(1);
+export const autoSeedDatabaseIfNeeded = createServerFn({ method: "POST" })
+  .handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: prods } = await supabaseAdmin.from("products").select("id").limit(1);
   if (!prods || prods.length === 0) {
     await forceSyncAllToSupabase();
   }
-}
+});

@@ -21,6 +21,7 @@ import {
   AI_TOOL_SUITE,
   AI_TOOL_GROUP_LABELS,
   GEMINI_TOOL_DECLARATIONS,
+  getActiveTools,
 } from "./aiTools/toolDefinitions";
 import {
   executeAiTool,
@@ -91,6 +92,7 @@ export {
   AI_TOOL_SUITE,
   AI_TOOL_GROUP_LABELS,
   GEMINI_TOOL_DECLARATIONS,
+  getActiveTools,
   executeAiTool,
   routeCommandToTool,
   createRollbackPoint,
@@ -176,6 +178,8 @@ export interface RunChatOptions {
   selectedModel?: GeminiModelChoice;
   role?: GeminiRoleChoice;
   selectedRole?: GeminiRoleChoice;
+  page?: string;
+  userRole?: string;
   enableSearchGrounding?: boolean;
   useGrounding?: boolean;
   attachedFile?: { path: string; name: string };
@@ -277,11 +281,12 @@ After tool execution, verify that database/state verification has passed.
           parts: [{ text: currentPrompt }],
         });
 
-        // Execute Gemini call with tool declarations & mode: AUTO
+        // Execute Gemini call with dynamic tool routing
+        const activeTools = getActiveTools({ page: maybeOptions?.page, userRole: maybeOptions?.userRole });
         const config: any = {
           systemInstruction,
           temperature: 0.4,
-          tools: [{ functionDeclarations: GEMINI_TOOL_DECLARATIONS }],
+          tools: [{ functionDeclarations: activeTools }],
           toolConfig: {
             includeServerSideToolInvocations: true,
             include_server_side_tool_invocations: true,

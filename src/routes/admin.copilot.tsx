@@ -136,12 +136,12 @@ const STARTER_PROMPTS = [
 function AdminCoPilotPage() {
   const settings = useSettings();
   const storeName = settings.site_name || BRAND_NAME_AR;
-  const aiAssistantName = `${storeName} AI`;
+  const aiAssistantName = "مساعد الوادي";
   const { config: layoutConfig, updateConfig, resetConfig, setThemePalette } = useLayoutConfig();
 
   // Active workspace mode
   const [activeMode, setActiveMode] = useState<
-    "chat" | "files-studio" | "store-engine" | "advisory"
+    "chat" | "files-studio" | "store-engine" | "advisory" | "live-preview"
   >("chat");
 
   // Prompt input and attached file
@@ -196,14 +196,14 @@ function AdminCoPilotPage() {
     if (!lastRollback) return;
     try {
       const res = await rollbackLastAction();
-      if ((res as any)?.success) {
+      if (res?.ok) {
         toast.success(res.messageAr || "تم التراجع بنجاح");
         queryClient.invalidateQueries();
       } else {
-        toast.error((res as any)?.error || "فشل التراجع");
+        toast.error(res.messageAr || "فشل التراجع");
       }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error((e as Error).message);
     }
   };
 
@@ -218,11 +218,14 @@ function AdminCoPilotPage() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleFormSubmit(e as any);
+      if (!chatInput.trim() && !attachedFile) return;
+      handleSendMessage(chatInput, attachedFile);
+      setChatInput("");
+      setAttachedFile(null);
     }
   };
 
-  const handleSendMessage = async (prompt: string, file: any = null) => {
+  const handleSendMessage = async (prompt: string, file: ProjectFileMeta | null = null) => {
     if (!prompt.trim() && !file) return;
 
     const newMsg: ChatMessage = {
@@ -240,6 +243,8 @@ function AdminCoPilotPage() {
       const response = await runAdminCoPilotChat(prompt, chatHistory, {
         model: selectedModel,
         role: selectedRole,
+        page: "admin.copilot",
+        userRole: "admin", // Assuming admin given this is admin.copilot
         enableSearchGrounding: enableGoogleSearch || selectedRole === "market_researcher",
         currentLayout: layoutConfig,
         kpis,
@@ -295,7 +300,7 @@ function AdminCoPilotPage() {
       dir="rtl"
     >
       {/* ─── 1. TOP HEADER & NAVIGATION ─── */}
-      <div className="flex-none border-b border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 z-20">
+      <div className="flex-none border-b border-white/20 dark:border-white/10 bg-background/70 backdrop-blur-3xl px-4 py-3 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.03)] relative">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Identity & Status */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -318,18 +323,20 @@ function AdminCoPilotPage() {
           {/* Mode Switcher & Actions */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto">
             <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200/60 dark:border-zinc-700">
-              {[
-                { id: "live-preview", label: "المعاينة الحية", icon: Eye },
-                { id: "files-studio", label: "محرر الأكواد", icon: FileCode },
-                { id: "store-engine", label: "محرك الواجهة", icon: Layout },
-                { id: "advisory", label: "التقارير", icon: TrendingUp },
-              ].map((tab) => {
+              {(
+                [
+                  { id: "live-preview", label: "المعاينة الحية", icon: Eye },
+                  { id: "files-studio", label: "محرر الأكواد", icon: FileCode },
+                  { id: "store-engine", label: "محرك الواجهة", icon: Layout },
+                  { id: "advisory", label: "التقارير", icon: TrendingUp },
+                ] as const
+              ).map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeMode === tab.id;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveMode(tab.id as any)}
+                    onClick={() => setActiveMode(tab.id)}
                     className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                       isActive
                         ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
@@ -370,7 +377,7 @@ function AdminCoPilotPage() {
                     return (
                       <div key={group} className="space-y-1.5">
                         <div className="text-[11px] font-semibold text-zinc-400">
-                          {typeof AI_TOOL_GROUP_LABELS[group] === 'object' ? (AI_TOOL_GROUP_LABELS[group] as any).labelAr : String(AI_TOOL_GROUP_LABELS[group])}
+                          {AI_TOOL_GROUP_LABELS[group].labelAr}
                         </div>
                         <div className="space-y-1.5">
                           {tools.map((tool) => (
@@ -382,11 +389,6 @@ function AdminCoPilotPage() {
                                 <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                                   {tool.name}
                                 </span>
-                                {(tool as any).isDangerous && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 uppercase">
-                                    حرج
-                                  </span>
-                                )}
                               </div>
                               <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                                 {tool.descriptionAr}
@@ -418,27 +420,27 @@ function AdminCoPilotPage() {
       {/* ─── 2. MAIN SPLIT WORKSPACE ─── */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row relative">
         {/* RIGHT PANE: CHAT (First in RTL) */}
-        <div className="w-full lg:w-[400px] xl:w-[450px] h-1/2 lg:h-full shrink-0 border-b lg:border-b-0 lg:border-l border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col z-10 relative shadow-sm lg:shadow-none">
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-36">
+        <div className="w-full lg:w-[400px] xl:w-[450px] h-1/2 lg:h-full shrink-0 border-b lg:border-b-0 lg:border-l border-white/20 dark:border-white/10 bg-background/60 backdrop-blur-3xl flex flex-col z-10 relative shadow-[-10px_0_40px_rgba(0,0,0,0.04)] lg:shadow-[-10px_0_40px_rgba(0,0,0,0.04)]">
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-[env(safe-area-inset-bottom,24px)] mb-40 lg:mb-48">
             <div className="max-w-2xl mx-auto space-y-4">
               {chatHistory.map((msg) => {
                 const isUser = msg.role === "user";
                 return (
                   <div key={msg.id} className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
                     {/* Avatar */}
-                    <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${isUser ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" : "bg-emerald-600 text-white"}`}>
-                      {isUser ? <Bot className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full shadow-sm border border-white/20 ${isUser ? "bg-secondary text-foreground" : "bg-[#E55300] text-white"}`}>
+                      {isUser ? <Bot className="h-4 w-4" strokeWidth={1.5} /> : <Sparkles className="h-4 w-4" strokeWidth={1.5} />}
                     </div>
 
                     {/* Bubble */}
                     <div className={`space-y-1 max-w-[85%] ${isUser ? "text-right" : "text-right"}`}>
-                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-medium px-1">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium px-1">
                         <span>{isUser ? "المسؤول" : aiAssistantName}</span>
                         <span>•</span>
                         <span>{msg.timestamp}</span>
                       </div>
 
-                      <div className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${isUser ? "bg-emerald-600 text-white rounded-tr-xs shadow-xs font-medium" : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800 rounded-tl-xs shadow-xs"}`}>
+                      <div className={`rounded-3xl p-4 text-xs sm:text-sm leading-relaxed shadow-[0_4px_24px_rgba(0,0,0,0.04)] ${isUser ? "bg-[#036233] text-white rounded-tr-sm font-medium" : "bg-card/80 backdrop-blur-xl text-foreground border border-white/20 dark:border-white/10 rounded-tl-sm"}`}>
                         {msg.attachedFile && (
                           <div className="mb-2.5 inline-flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-2.5 py-1 rounded-md text-xs font-mono">
                             <Paperclip className="h-3 w-3" strokeWidth={1.5} />
@@ -477,8 +479,8 @@ function AdminCoPilotPage() {
                           <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-1.5">
                             {msg.executedActions.map((act, actIdx) => (
                               <span key={actIdx} className="inline-flex items-center gap-1 text-[10px] font-medium bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
-                                <span className="text-emerald-600">{(act as any).field ? (typeof (act as any).field === 'object' ? JSON.stringify((act as any).field) : String((act as any).field)) : 'Field'}:</span>
-                                <span>{(act as any).label ? (typeof (act as any).label === 'object' ? JSON.stringify((act as any).label) : String((act as any).label)) : 'Action'}</span>
+                                <span className="text-emerald-600">{act.field ? String(act.field) : 'Field'}:</span>
+                                <span>{act.label ? String(act.label) : 'Action'}</span>
                               </span>
                             ))}
                           </div>
@@ -511,10 +513,10 @@ function AdminCoPilotPage() {
                             }
                             handleSendMessage(starter.prompt, starter.targetFile ? PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile) : null);
                           }}
-                          className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors text-right cursor-pointer shadow-xs group flex items-start justify-between gap-2"
+                          className="p-3 rounded-3xl border border-white/20 dark:border-white/10 bg-card/60 backdrop-blur-xl hover:border-[#036233]/50 transition-colors text-right cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.03)] group flex items-start justify-between gap-2"
                         >
                           <div className="space-y-0.5 min-w-0">
-                            <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">{(starter as any).label}</span>
+                            <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">{starter.title}</span>
                             <span className="block text-[10px] text-zinc-500 truncate">{starter.prompt}</span>
                           </div>
                           <div className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/30 group-hover:text-emerald-600 transition-colors">
@@ -530,9 +532,9 @@ function AdminCoPilotPage() {
           </div>
           
           {/* Input Area */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-50 via-zinc-50 to-transparent dark:from-zinc-950 dark:via-zinc-950 p-4 pt-12 z-10">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 via-background/80 to-transparent p-4 pb-[calc(env(safe-area-inset-bottom,24px)+1rem)] lg:pb-6 pt-12 z-10">
             <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto relative group">
-              <div className="absolute inset-0 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200/80 dark:border-zinc-800 pointer-events-none transition-colors group-focus-within:border-emerald-500/50 dark:group-focus-within:border-emerald-500/50 group-focus-within:ring-2 group-focus-within:ring-emerald-500/10" />
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/10 pointer-events-none transition-colors group-focus-within:border-[#036233]/50 dark:group-focus-within:border-[#036233]/50 group-focus-within:ring-2 group-focus-within:ring-[#036233]/20" />
               <div className="relative flex flex-col p-2">
                 {attachedFile && (
                   <div className="mx-2 mt-1 mb-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/50">
@@ -566,7 +568,7 @@ function AdminCoPilotPage() {
                       dir="auto"
                     />
                   </div>
-                  <button type="submit" disabled={isProcessing || (!chatInput.trim() && !attachedFile)} className="mb-1 shrink-0 grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors shadow-xs">
+                  <button type="submit" disabled={isProcessing || (!chatInput.trim() && !attachedFile)} className="mb-1 shrink-0 grid h-10 w-10 place-items-center rounded-full bg-[#E55300] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E55300]/90 transition-colors shadow-[0_4px_16px_rgba(229,83,0,0.3)]">
                     <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.5} />
                   </button>
                 </div>
@@ -581,24 +583,24 @@ function AdminCoPilotPage() {
 
         {/* LEFT PANE: WORKSPACE MODES */}
         <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-900 relative">
-          {(activeMode as any) === 'live-preview' && (
+          {activeMode === 'live-preview' && (
             <div className="h-full overflow-y-auto">
-              <LiveStorefrontPreview />
+              <LiveStorefrontPreview s={settings} />
             </div>
           )}
-          {(activeMode as any) === 'files-studio' && (
+          {activeMode === 'files-studio' && (
             <div className="h-full overflow-y-auto p-4">
               <GeminiProjectFilesStudio />
             </div>
           )}
-          {(activeMode as any) === 'store-engine' && (
+          {activeMode === 'store-engine' && (
             <div className="h-full overflow-y-auto p-4 max-w-6xl mx-auto w-full">
               <div className="space-y-6 pb-20">
                 <StoreEngineBuilder layoutConfig={layoutConfig} onLayoutChange={updateConfig} onDeploy={handleDeployLayout} isDeploying={isDeploying} />
               </div>
             </div>
           )}
-          {(activeMode as any) === 'advisory' && (
+          {activeMode === 'advisory' && (
             <div className="h-full overflow-y-auto p-4 max-w-5xl mx-auto w-full">
               <ExecutiveSummaryWidget kpis={kpis} />
             </div>

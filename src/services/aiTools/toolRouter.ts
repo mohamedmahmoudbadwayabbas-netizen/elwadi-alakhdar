@@ -40,12 +40,32 @@ import {
   gitRollbackCommit,
 } from "./devopsTools";
 
+import { AI_TOOL_SUITE } from "./toolDefinitions";
+
 export async function executeAiTool(
   tool: AiToolName,
   args: Record<string, unknown> = {},
   ctx?: ToolExecutionContext,
 ): Promise<ToolExecutionResult> {
   console.info(`[AI Engine] 🚀 Executing tool "${tool}" with args:`, args);
+
+  const toolDef = AI_TOOL_SUITE.find((t) => t.name === tool);
+  if (toolDef?.mutatesState) {
+    const supabaseUrl =
+      import.meta.env.VITE_SUPABASE_URL ||
+      (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) ||
+      "";
+    if (supabaseUrl && !supabaseUrl.includes("gpoqacclpjadzbhevgal")) {
+      return {
+        tool,
+        ok: false,
+        success: false,
+        updatedFields: [],
+        error: "Target project-ref mismatch. Expected gpoqacclpjadzbhevgal.",
+        messageAr: "فشل التحقق: تم إيقاف العملية لأن بيئة Supabase لا تتطابق مع المشروع المطلوب (gpoqacclpjadzbhevgal).",
+      };
+    }
+  }
 
   let result: ToolExecutionResult;
 

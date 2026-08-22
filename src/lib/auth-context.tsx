@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getArabicAuthErrorMessage,
@@ -44,7 +45,7 @@ interface StoredLocalAccount {
 
 export interface AuthCtx {
   user: AppUser | null;
-  session: any | null;
+  session: Session | null;
   role: UserRole;
   isAdmin: boolean;
   isStaff: boolean;
@@ -103,10 +104,11 @@ function saveLocalUser(account: StoredLocalAccount) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   const role: UserRole = useMemo(() => {
-    return resolveUserRole(currentUser as any, currentUser?.user_metadata as any);
+    return resolveUserRole(currentUser as unknown as import("@supabase/supabase-js").User, currentUser?.user_metadata as unknown as import("@/services/authService").UserProfile);
   }, [currentUser]);
 
   const isRootAdmin = useMemo(() => {
@@ -142,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check active Supabase Auth session
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!mounted) return;
+        setCurrentSession(session);
         if (session?.user) {
           const u: AppUser = {
             id: session.user.id,
@@ -158,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Listen to Supabase auth changes
       const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!mounted) return;
+        setCurrentSession(session);
         if (session?.user) {
           const u: AppUser = {
             id: session.user.id,
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthCtx>(
     () => ({
       user: currentUser,
-      session: currentUser ? { user: currentUser } : null,
+      session: currentSession,
       role,
       isAdmin,
       isStaff,
@@ -261,7 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (error) {
             console.warn("Supabase auth sign-in notice:", error.message);
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.warn("Supabase auth sign-in error, checking local fallback:", err);
         }
 
@@ -498,7 +502,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentUser(googleUser);
           setLoading(false);
           return {};
-        } catch (err: any) {
+        } catch (err: unknown) {
           setLoading(false);
           return { error: getArabicAuthErrorMessage(err) };
         }
@@ -526,7 +530,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
     }),
-    [currentUser, role, isAdmin, isStaff, isCustomer, isRootAdmin, loading],
+    [currentUser, currentSession, role, isAdmin, isStaff, isCustomer, isRootAdmin, loading],
   );
 
   ctxRef.current = value;

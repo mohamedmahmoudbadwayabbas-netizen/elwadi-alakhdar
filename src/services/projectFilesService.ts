@@ -65,7 +65,7 @@ export const PROJECT_FILES_REGISTRY: ProjectFileMeta[] = [
     category: "routes",
     extension: "tsx",
     description:
-      "لوحة تحكم الذكاء الاصطناعي وجيميناي (AI Admin Co-Pilot & Code Studio) — محادثة، تعديل ملفات، وبحث السوق",
+      "لوحة تحكم الذكاء الاصطناعي وجيميناي (Al-Wadi AI & Code Studio) — محادثة، تعديل ملفات، وبحث السوق",
     lineCount: 650,
   },
   {

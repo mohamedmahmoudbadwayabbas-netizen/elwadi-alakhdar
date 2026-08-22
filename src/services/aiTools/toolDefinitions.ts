@@ -535,3 +535,37 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
 ];
 
 export const GEMINI_TOOL_DECLARATIONS = AI_TOOL_SUITE.map((t) => t.declaration);
+
+/**
+ * Dynamic Tool Router
+ * Returns a subset of tools based on the current page context and user role.
+ * Fails safe: if role/context is unknown, returns only read-only tools.
+ */
+export function getActiveTools(context?: { page?: string; userRole?: string }) {
+  const role = context?.userRole || "customer";
+  const page = context?.page || "global";
+  
+  // Non-admins/moderators get safe read-only tools
+  if (role !== "admin" && role !== "moderator") {
+    return AI_TOOL_SUITE.filter(t => t.name === "searchCodebase" || t.name === "exportReportsAndAnalytics").map(t => t.declaration);
+  }
+
+  // Admin / Moderator dynamic routing
+  let allowedGroups: AiToolGroup[] = [];
+  
+  if (page.includes("products") || page.includes("catalog")) {
+    allowedGroups = ["catalog", "media", "ui", "universal"];
+  } else if (page.includes("delivery-zones") || page.includes("orders")) {
+    allowedGroups = ["operations", "universal"];
+  } else if (page.includes("settings") || page.includes("design")) {
+    allowedGroups = ["ui", "operations", "universal"];
+  } else if (page === "admin.copilot" || page === "global") {
+    // Global Copilot gets all tools for full capability
+    allowedGroups = ["catalog", "media", "ui", "operations", "marketing", "devops", "universal"];
+  } else {
+    // Fail safe unknown context
+    return AI_TOOL_SUITE.filter(t => !t.mutatesState).map(t => t.declaration);
+  }
+
+  return AI_TOOL_SUITE.filter(t => allowedGroups.includes(t.group)).map(t => t.declaration);
+}

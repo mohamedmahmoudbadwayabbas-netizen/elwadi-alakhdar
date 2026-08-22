@@ -7,6 +7,7 @@ export {
   AI_TOOL_SUITE,
   AI_TOOL_GROUP_LABELS,
   GEMINI_TOOL_DECLARATIONS,
+  getActiveTools,
   executeAiTool,
   routeCommandToTool,
   createRollbackPoint,

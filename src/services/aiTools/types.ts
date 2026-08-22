@@ -67,8 +67,11 @@ export interface ToolExecutionContext {
 
 export interface ToolExecutionResult {
   tool: AiToolName;
-  ok: boolean;
-  messageAr: string;
+  ok: boolean; // legacy flag
+  messageAr: string; // legacy string
+  success?: boolean; // new Mega-Tool structured success
+  updatedFields?: string[]; // new Mega-Tool structured updated fields
+  error?: string; // new Mega-Tool structured error
   data?: Record<string, unknown>;
   rollbackPointId?: string;
   verified?: boolean;

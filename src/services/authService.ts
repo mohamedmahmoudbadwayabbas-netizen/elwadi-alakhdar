@@ -20,7 +20,7 @@ export interface UserProfile {
   updated_at?: string;
 }
 
-export interface AuthResponse<T = any> {
+export interface AuthResponse<T = unknown> {
   data?: T;
   error?: string | null;
   errorCode?: string | null;
@@ -29,11 +29,12 @@ export interface AuthResponse<T = any> {
 /**
  * Translates raw Supabase / GoTrue auth error codes into friendly Arabic messages.
  */
-export function getArabicAuthErrorMessage(error: any): string {
+export function getArabicAuthErrorMessage(error: unknown): string {
   if (!error) return "حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى";
 
-  const rawMessage = typeof error === "string" ? error : error.message || error.error_description || "";
-  const code = (error.code || error.error || "").toLowerCase();
+  const errObj = error as Record<string, unknown>;
+  const rawMessage = typeof error === "string" ? error : String(errObj.message || errObj.error_description || "");
+  const code = String(errObj.code || errObj.error || "").toLowerCase();
   const lowerMsg = rawMessage.toLowerCase();
 
   // Code or Message pattern matches
@@ -134,7 +135,7 @@ export async function signInWithEmail(emailInput: string, passwordInput: string)
     }
 
     return { data: data.session };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -192,7 +193,7 @@ export async function signUpWithEmail(
         needsEmailConfirmation,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -222,7 +223,7 @@ export async function signInWithGoogle(customRedirectUri?: string): Promise<Auth
     }
 
     return { data: { url: data.url } };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -242,7 +243,7 @@ export async function sendPhoneOtp(phoneInput: string): Promise<AuthResponse<boo
     }
 
     return { data: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -267,7 +268,7 @@ export async function verifyPhoneOtp(
     }
 
     return { data: data.session || undefined };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -290,7 +291,7 @@ export async function sendMagicLink(emailInput: string, customRedirectUri?: stri
     }
 
     return { data: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -310,7 +311,7 @@ export async function sendPasswordResetEmail(emailInput: string, customRedirectU
     }
 
     return { data: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -326,7 +327,7 @@ export async function updateUserPassword(newPassword: string): Promise<AuthRespo
     }
 
     return { data: data.user };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -373,7 +374,7 @@ export async function updateUserProfile(
         avatar_url: profileUpdates.avatar_url,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -404,7 +405,7 @@ export async function fetchUserProfile(userId: string): Promise<AuthResponse<Use
         updated_at: data.updated_at,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }
@@ -416,7 +417,7 @@ export async function signOutUser(): Promise<AuthResponse<void>> {
       return { error: getArabicAuthErrorMessage(error) };
     }
     return { data: undefined };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { error: getArabicAuthErrorMessage(err) };
   }
 }

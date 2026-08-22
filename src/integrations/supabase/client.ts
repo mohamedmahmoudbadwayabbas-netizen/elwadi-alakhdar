@@ -52,11 +52,19 @@ function createSupabaseClient() {
     (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
     "https://placeholder.supabase.co";
 
-  const SUPABASE_KEY =
-    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  let SUPABASE_KEY =
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
     (typeof process !== "undefined" && process.env?.SUPABASE_PUBLISHABLE_KEY) ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder";
+
+  if (SUPABASE_KEY.includes("secret") || SUPABASE_KEY.includes("service_role")) {
+    SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || (typeof process !== "undefined" && process.env?.SUPABASE_PUBLISHABLE_KEY) || SUPABASE_KEY;
+    if (SUPABASE_KEY.includes("secret") || SUPABASE_KEY.includes("service_role")) {
+        // Fallback to placeholder to prevent the app from crashing in the browser
+        SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder";
+    }
+  }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     global: {

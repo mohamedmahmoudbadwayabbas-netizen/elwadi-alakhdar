@@ -45,7 +45,7 @@ export function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 transition-all">
+    <header className="sticky top-0 z-40 bg-background/70 backdrop-blur-3xl border-b border-white/20 dark:border-white/10 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         {/* اليسار: القائمة المنزلقة الفاخرة للعملاء (Drawer) + البحث */}
         <div className="flex items-center gap-1.5">
@@ -68,7 +68,7 @@ export function Header() {
               <div className="p-5 border-b border-border/70 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl hero-gradient text-white shadow-md">
-                    <Store className="h-6 w-6" />
+                    <Store className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <h3 className="font-display font-black text-base text-foreground leading-tight">
@@ -281,7 +281,7 @@ export function Header() {
           >
             <ShoppingBag className="h-5 w-5" />
             {totalCount > 0 && (
-              <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 px-1 text-[10px] font-black text-white shadow-sm border-2 border-background">
+              <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-[#E55300] hover:bg-[#E55300]/90 px-1 text-[10px] font-black text-white shadow-sm border-2 border-background">
                 {totalCount}
               </Badge>
             )}

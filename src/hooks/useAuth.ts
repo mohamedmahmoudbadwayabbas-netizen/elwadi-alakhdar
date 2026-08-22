@@ -15,8 +15,8 @@ export function useAuth() {
 
   const user = baseAuth.user;
   const role: authService.UserRole = authService.resolveUserRole(
-    user as any,
-    user?.user_metadata as any
+    user as unknown as import("@supabase/supabase-js").User,
+    user?.user_metadata as unknown as authService.UserProfile
   );
 
   const isRootAdmin = baseAuth.isRootAdmin;
