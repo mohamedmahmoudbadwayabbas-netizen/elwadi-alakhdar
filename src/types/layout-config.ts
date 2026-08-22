@@ -35,6 +35,8 @@ export interface AnnouncementBarConfig {
   badge?: string;
   bgColor?: string;
   textColor?: string;
+  /** Optional alias used by AI tools when setting a raw link. */
+  link?: string;
 }
 
 export interface FlashSaleTimerConfig {
@@ -44,6 +46,10 @@ export interface FlashSaleTimerConfig {
   endTime: string; // ISO string or relative time
   discountBadge: string;
   categorySlug?: string;
+  /** Optional promo code surfaced by AI marketing tools. */
+  couponCode?: string;
+  /** Optional short discount tag label. */
+  discountTag?: string;
 }
 
 export interface HeroSlideConfig {
@@ -51,9 +57,14 @@ export interface HeroSlideConfig {
   title: string;
   subtitle: string;
   badge: string;
-  image_url: string;
+  image_url?: string;
   button_text?: string;
   link_url?: string;
+  /** Aliases used by AI tools / newer editors. */
+  imageUrl?: string;
+  ctaText?: string;
+  ctaLink?: string;
+  align?: "right" | "left" | "center";
 }
 
 export interface HeroSectionConfig {
@@ -103,6 +114,10 @@ export interface StoreLayoutConfig {
     headerStyle: "floating" | "solid" | "bordered";
     cardRadius: "none" | "sm" | "md" | "lg" | "xl" | "full";
     darkModeDefault: boolean;
+    /** Optional overrides written by AI theme tools. */
+    primaryColor?: string;
+    accentColor?: string;
+    mode?: "light" | "dark";
   };
   sectionsOrder: LayoutSectionKey[];
   announcementBar: AnnouncementBarConfig;
