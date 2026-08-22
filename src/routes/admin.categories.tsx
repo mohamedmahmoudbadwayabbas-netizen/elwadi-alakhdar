@@ -347,10 +347,6 @@ function CategoriesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-              <span>استيراد أقسام السوبرماركت القياسية</span>
-            </Button>
-          )}
-
           <Button
             onClick={() => setEditing({ sort_order: rows.length + 1 })}
             className="rounded-2xl hero-gradient text-primary-foreground font-black text-xs gap-2 shadow-md hover:scale-[1.02] active:scale-95 transition-transform h-10 px-4"
@@ -428,10 +424,6 @@ function CategoriesPage() {
                 : "قم بإنشاء أحدث أقسام السوبرماركت لتنظيم منتجات المتجر بأسلوب احترافي"}
             </p>
           </div>
-                استيراد الهيكل التمويني الشامل
-              </Button>
-            </div>
-          )}
         </div>
       ) : (
         <motion.div
