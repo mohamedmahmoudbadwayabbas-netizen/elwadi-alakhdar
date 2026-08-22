@@ -1,5 +1,5 @@
 /* =========================================================================
-   GEMINI AI ADMIN ENGINE — 10 CORE LOVABLE TOOLS (SUPABASE ALIGNED)
+   GEMINI AI ADMIN ENGINE — 12 CORE LOVABLE TOOLS (SUPABASE ALIGNED)
    Strict database mutations, live Supabase queries, and instant rollback protection
    ========================================================================= */
 
@@ -82,6 +82,7 @@ export async function rollbackLastAction(
 ): Promise<ToolExecutionResult> {
   const stack = getRollbackStack();
   const last = stack.pop();
+
   if (!last) {
     return {
       tool: "rollbackLastAction",
@@ -314,12 +315,14 @@ export async function toolManageProduct(
           .maybeSingle();
 
         if (error) throw error;
+
         if (inserted?.id) {
           attachDbUndo(pointId, { table: "products", kind: "delete-row", id: inserted.id });
         }
       }
 
       ctx?.refresh?.();
+
       return {
         tool: "manageProduct",
         ok: true,
@@ -336,6 +339,7 @@ export async function toolManageProduct(
 
     if (isSupabaseConfigured()) {
       const { data: prev } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+
       if (prev) {
         attachDbUndo(pointId, { table: "products", kind: "restore-rows", rows: [prev as Record<string, unknown>] });
       }
@@ -343,7 +347,9 @@ export async function toolManageProduct(
       if (action === "delete") {
         const { error } = await supabase.from("products").delete().eq("id", id);
         if (error) throw error;
+
         ctx?.refresh?.();
+
         return {
           tool: "manageProduct",
           ok: true,
@@ -365,6 +371,7 @@ export async function toolManageProduct(
     }
 
     ctx?.refresh?.();
+
     return {
       tool: "manageProduct",
       ok: true,
@@ -395,6 +402,7 @@ export async function toolManageCategories(
     if (action === "create") {
       const name = String(data.name || "قسم جديد");
       const slug = String(data.slug || `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`);
+
       const payload = {
         name,
         slug,
@@ -412,12 +420,14 @@ export async function toolManageCategories(
           .maybeSingle();
 
         if (error) throw error;
+
         if (inserted?.id) {
           attachDbUndo(pointId, { table: "categories", kind: "delete-row", id: inserted.id });
         }
       }
 
       ctx?.refresh?.();
+
       return {
         tool: "manageCategories",
         ok: true,
@@ -434,6 +444,7 @@ export async function toolManageCategories(
 
     if (isSupabaseConfigured()) {
       const { data: prev } = await supabase.from("categories").select("*").eq("id", id).maybeSingle();
+
       if (prev) {
         attachDbUndo(pointId, { table: "categories", kind: "restore-rows", rows: [prev as Record<string, unknown>] });
       }
@@ -441,7 +452,9 @@ export async function toolManageCategories(
       if (action === "delete") {
         const { error } = await supabase.from("categories").delete().eq("id", id);
         if (error) throw error;
+
         ctx?.refresh?.();
+
         return {
           tool: "manageCategories",
           ok: true,
@@ -463,6 +476,7 @@ export async function toolManageCategories(
     }
 
     ctx?.refresh?.();
+
     return {
       tool: "manageCategories",
       ok: true,
@@ -502,6 +516,7 @@ export async function toolBulkPriceUpdate(
       if (categoryId !== "all") {
         query = query.eq("category_id", categoryId);
       }
+
       const { data: rows, error } = await query;
       if (error) throw error;
 
@@ -530,6 +545,7 @@ export async function toolBulkPriceUpdate(
     }
 
     ctx?.refresh?.();
+
     return {
       tool: "bulkPriceUpdate",
       ok: true,
@@ -582,9 +598,11 @@ export async function toolUpdateLayoutConfig(
 export function hexToHslString(hex: string): string | null {
   const clean = hex.replace("#", "");
   if (clean.length !== 6) return null;
+
   const r = parseInt(clean.substring(0, 2), 16) / 255;
   const g = parseInt(clean.substring(2, 4), 16) / 255;
   const b = parseInt(clean.substring(4, 6), 16) / 255;
+
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   let h = 0;
@@ -601,6 +619,7 @@ export function hexToHslString(hex: string): string | null {
     }
     h /= 6;
   }
+
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
@@ -618,6 +637,7 @@ export async function toolUpdateThemeColors(
     const root = document.documentElement;
     const primHsl = hexToHslString(primary);
     const accHsl = hexToHslString(accent);
+
     if (primHsl) {
       root.style.setProperty("--primary", primHsl);
       root.style.setProperty("--ring", primHsl);
@@ -770,4 +790,142 @@ export async function toolSendAbandonedCartRecovery(
     messageAr: `تم إنشاء رسالة الاسترداد وفتح رابط الواتساب للعميل «${name}» مع كود ${coupon}.`,
     data: { whatsappUrl, messageText: message, coupon },
   };
+}
+
+/* ───────────────────────── 10. searchProducts (READ-ONLY) ─────────────────────────
+   Root-cause fix: previously there was no real catalog read tool, so the model
+   would call an unrelated mutatesState:false devops tool (e.g. searchCodebase)
+   which returned ok:true and tripped the old success-banner logic even though
+   nothing in the catalog was ever touched. This tool gives the model a real,
+   safe way to check existence/price/stock BEFORE issuing a manageProduct
+   create/update call — which also prevents duplicate-insert bugs. */
+
+export async function toolSearchProducts(
+  args: { query?: string; categoryId?: string; limit?: number },
+  ctx?: ToolExecutionContext,
+): Promise<ToolExecutionResult> {
+  const query = (args.query || "").trim();
+  if (!query) {
+    return {
+      tool: "searchProducts",
+      ok: false,
+      messageAr: "كلمة البحث مطلوبة (اسم المنتج أو جزء منه) لتنفيذ البحث في الكتالوج.",
+    };
+  }
+
+  const limit = Math.max(1, Math.min(20, Number(args.limit ?? 8) || 8));
+
+  if (!isSupabaseConfigured()) {
+    return {
+      tool: "searchProducts",
+      ok: false,
+      messageAr: "قاعدة بيانات Supabase غير متصلة حالياً، تعذر البحث في المنتجات.",
+    };
+  }
+
+  try {
+    let dbQuery = supabase
+      .from("products")
+      .select("id, name, price_per_unit, old_price, stock_quantity, category_id, is_on_sale, unit_label")
+      .ilike("name", `%${query}%`)
+      .limit(limit);
+
+    if (args.categoryId) {
+      dbQuery = dbQuery.eq("category_id", args.categoryId);
+    }
+
+    const { data, error } = await dbQuery;
+    if (error) throw error;
+
+    const rows = data || [];
+
+    if (rows.length === 0) {
+      return {
+        tool: "searchProducts",
+        ok: true,
+        messageAr: `لا توجد نتائج مطابقة لـ «${query}» في الكتالوج الحالي.`,
+        data: { query, results: [] },
+      };
+    }
+
+    const summary = rows
+      .map(
+        (r: any) =>
+          `«${r.name}» — ${r.price_per_unit} ج.م${r.stock_quantity !== null && r.stock_quantity !== undefined ? ` (المخزون: ${r.stock_quantity})` : ""}`,
+      )
+      .join("، ");
+
+    return {
+      tool: "searchProducts",
+      ok: true,
+      messageAr: `تم العثور على ${rows.length} نتيجة مطابقة لـ «${query}»: ${summary}.`,
+      data: { query, results: rows },
+    };
+  } catch (e) {
+    return {
+      tool: "searchProducts",
+      ok: false,
+      messageAr: `تعذر البحث في المنتجات: ${(e as Error).message}`,
+    };
+  }
+}
+
+/* ───────────────────────── 11. getCategories (READ-ONLY) ─────────────────────────
+   Companion read tool to searchProducts — lets the model verify a category
+   exists (and fetch its id) before calling manageCategories to create one,
+   avoiding duplicate/near-duplicate categories. */
+
+export async function toolGetCategories(
+  args: { nameQuery?: string },
+): Promise<ToolExecutionResult> {
+  if (!isSupabaseConfigured()) {
+    return {
+      tool: "getCategories",
+      ok: false,
+      messageAr: "قاعدة بيانات Supabase غير متصلة حالياً، تعذر جلب قائمة الأقسام.",
+    };
+  }
+
+  try {
+    let dbQuery = supabase
+      .from("categories")
+      .select("id, name, slug, icon, sort_order, parent_id")
+      .order("sort_order", { ascending: true });
+
+    const nameQuery = (args.nameQuery || "").trim();
+    if (nameQuery) {
+      dbQuery = dbQuery.ilike("name", `%${nameQuery}%`);
+    }
+
+    const { data, error } = await dbQuery;
+    if (error) throw error;
+
+    const rows = data || [];
+
+    if (rows.length === 0) {
+      return {
+        tool: "getCategories",
+        ok: true,
+        messageAr: nameQuery
+          ? `لا يوجد قسم مطابق لـ «${nameQuery}» حالياً.`
+          : "لا توجد أقسام مسجلة في المتجر حالياً.",
+        data: { nameQuery: nameQuery || null, results: [] },
+      };
+    }
+
+    const summary = rows.map((r: any) => `${r.icon || "🛒"} ${r.name}`).join("، ");
+
+    return {
+      tool: "getCategories",
+      ok: true,
+      messageAr: `يوجد ${rows.length} قسم مطابق: ${summary}.`,
+      data: { nameQuery: nameQuery || null, results: rows },
+    };
+  } catch (e) {
+    return {
+      tool: "getCategories",
+      ok: false,
+      messageAr: `تعذر جلب قائمة الأقسام: ${(e as Error).message}`,
+    };
+  }
 }
