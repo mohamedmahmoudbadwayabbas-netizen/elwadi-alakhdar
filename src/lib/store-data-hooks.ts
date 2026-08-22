@@ -1,11 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/lib/cart-context";
-import {
-  COMPREHENSIVE_CATEGORIES,
-  getMergedCategories,
-} from "@/lib/categories-data";
-import { seedInitialProductsToSupabase } from "@/lib/auto-seed";
 
 export type Category = {
   id: string;
@@ -32,18 +27,6 @@ export type HeroBanner = {
 
 export const PRODUCT_COLUMNS =
   "id,name,price_per_unit,old_price,image_url,category_id,stock_quantity,description,unit_label,is_by_weight,is_popular,is_on_sale,created_at,views_count,purchase_count,avg_rating,reviews_count,cooking_tip,is_top_seller";
-
-// Get locally cached products for instantaneous initial paint
-function getCachedProducts(): Product[] | undefined {
-  try {
-    const cached = localStorage.getItem("alwadi_products_cache");
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
-  return undefined;
-}
 
 // ── 1. Fetch & Cache All Store Products (real Supabase data only) ──
 export async function fetchStoreProducts(): Promise<Product[]> {
@@ -94,7 +77,7 @@ export function useStoreCategories() {
   });
 }
 
-// MARK3 Fetch & Cache Hero Banners ──
+// ── 3. Fetch & Cache Hero Banners ──
 export async function fetchHeroBanners(): Promise<HeroBanner[]> {
   try {
     const { data, error } = await supabase
