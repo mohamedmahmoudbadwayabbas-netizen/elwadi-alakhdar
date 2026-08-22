@@ -1,5 +1,5 @@
 /* =========================================================================
-   GEMINI AI ADMIN ENGINE — UNIFIED 24-TOOL SUITE DECLARATIONS
+   GEMINI AI ADMIN ENGINE — UNIFIED 26-TOOL SUITE DECLARATIONS
    Precise JSON Schema declarations for Gemini Function Calling & UI Labels
    ========================================================================= */
 
@@ -8,6 +8,11 @@ import type { AiToolDefinition, AiToolGroup } from "./types";
 const str = (description: string) => ({ type: "string", description });
 const num = (description: string) => ({ type: "number", description });
 const bool = (description: string) => ({ type: "boolean", description });
+const enumStr = (description: string, values: string[]) => ({
+  type: "string",
+  description,
+  enum: values,
+});
 
 export const AI_TOOL_GROUP_LABELS: Record<AiToolGroup, { labelAr: string; icon: string }> = {
   media: { labelAr: "الوسائط والصور", icon: "Image" },
@@ -75,7 +80,7 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
       parameters: {
         type: "object",
         properties: {
-          action: str("one of: create | update | delete"),
+          action: enumStr("The mutation type to perform on the product.", ["create", "update", "delete"]),
           data: {
             type: "object",
             description:
@@ -98,7 +103,7 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
       parameters: {
         type: "object",
         properties: {
-          action: str("one of: create | update | delete"),
+          action: enumStr("The mutation type to perform on the category.", ["create", "update", "delete"]),
           data: {
             type: "object",
             description: "Category fields: id (uuid), name, slug, icon, image_url, sort_order, parent_id",
@@ -124,6 +129,46 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
           percentage: num("Percentage change, negative to discount (e.g. -15 for 15% discount)"),
         },
         required: ["categoryId", "percentage"],
+      },
+    },
+  },
+  {
+    name: "searchProducts",
+    group: "catalog",
+    labelAr: "بحث في المنتجات",
+    descriptionAr: "البحث عن منتج أو أكثر بالاسم أو القسم في جدول products والتحقق من توفره وسعره ومخزونه الحالي",
+    mutatesState: false,
+    declaration: {
+      name: "searchProducts",
+      description:
+        "Read-only search against the Supabase products table by name and/or category. Use this BEFORE any manageProduct create call to check whether a matching product already exists (avoid duplicate inserts), and to answer any availability/price/stock question. This tool never modifies data.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: str("Arabic or English search term matched against the product name, e.g. جبنة بيضاء"),
+          categoryId: str("Optional category uuid to scope the search to a single category"),
+          limit: num("Maximum number of results to return (default: 8, max: 20)"),
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    name: "getCategories",
+    group: "catalog",
+    labelAr: "عرض الأقسام",
+    descriptionAr: "استرجاع قائمة أقسام المتجر الحالية من جدول categories للتحقق من وجود قسم قبل إنشائه",
+    mutatesState: false,
+    declaration: {
+      name: "getCategories",
+      description:
+        "Read-only fetch of the current store categories from Supabase categories table, optionally filtered by a partial name match. Use this BEFORE any manageCategories create call to check whether a matching category already exists. This tool never modifies data.",
+      parameters: {
+        type: "object",
+        properties: {
+          nameQuery: str("Optional Arabic/English partial category name to filter by, e.g. الأعشاب"),
+        },
+        required: [],
       },
     },
   },
@@ -544,15 +589,23 @@ export const GEMINI_TOOL_DECLARATIONS = AI_TOOL_SUITE.map((t) => t.declaration);
 export function getActiveTools(context?: { page?: string; userRole?: string }) {
   const role = context?.userRole || "customer";
   const page = context?.page || "global";
-  
-  // Non-admins/moderators get safe read-only tools
+
+  // Non-admins/moderators get safe read-only tools — includes catalog search
+  // so a shopper asking "فيه جبنة بيضاء؟" gets a real DB-backed answer instead
+  // of the model reaching for an unrelated devops tool.
   if (role !== "admin" && role !== "moderator") {
-    return AI_TOOL_SUITE.filter(t => t.name === "searchCodebase" || t.name === "exportReportsAndAnalytics").map(t => t.declaration);
+    return AI_TOOL_SUITE.filter(
+      (t) =>
+        t.name === "searchProducts" ||
+        t.name === "getCategories" ||
+        t.name === "searchCodebase" ||
+        t.name === "exportReportsAndAnalytics",
+    ).map((t) => t.declaration);
   }
 
   // Admin / Moderator dynamic routing
   let allowedGroups: AiToolGroup[] = [];
-  
+
   if (page.includes("products") || page.includes("catalog")) {
     allowedGroups = ["catalog", "media", "ui", "universal"];
   } else if (page.includes("delivery-zones") || page.includes("orders")) {
@@ -564,8 +617,8 @@ export function getActiveTools(context?: { page?: string; userRole?: string }) {
     allowedGroups = ["catalog", "media", "ui", "operations", "marketing", "devops", "universal"];
   } else {
     // Fail safe unknown context
-    return AI_TOOL_SUITE.filter(t => !t.mutatesState).map(t => t.declaration);
+    return AI_TOOL_SUITE.filter((t) => !t.mutatesState).map((t) => t.declaration);
   }
 
-  return AI_TOOL_SUITE.filter(t => allowedGroups.includes(t.group)).map(t => t.declaration);
+  return AI_TOOL_SUITE.filter((t) => allowedGroups.includes(t.group)).map((t) => t.declaration);
 }
