@@ -1,5 +1,5 @@
 /* =========================================================================
-   GEMINI AI ADMIN ENGINE (PHASE 3 COMPLETE 24-TOOL ORCHESTRATION)
+   GEMINI AI ADMIN ENGINE (PHASE 4: AGENTIC MULTI-STEP TOOL-CALLING LOOP)
    Autonomous Store Admin Copilot with Live Supabase, Tool Calling & Self-Verification
    ========================================================================= */
 
@@ -37,6 +37,8 @@ import {
   toolManageProduct,
   toolManageCategories,
   toolBulkPriceUpdate,
+  toolSearchProducts,
+  toolGetCategories,
   toolUpdateLayoutConfig,
   toolUpdateThemeColors,
   toolCreateDiscountBundle,
@@ -104,6 +106,8 @@ export {
   toolManageProduct,
   toolManageCategories,
   toolBulkPriceUpdate,
+  toolSearchProducts,
+  toolGetCategories,
   toolUpdateLayoutConfig,
   toolUpdateThemeColors,
   toolCreateDiscountBundle,
@@ -171,6 +175,107 @@ const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
   "gemini-3.1-pro-preview",
 ];
 
+// Hard cap on sequential tool-calling turns per user message. Prevents runaway
+// loops while still allowing realistic chains like:
+// READ category -> WRITE create category -> READ product -> WRITE create product.
+const MAX_TOOL_STEPS = 6;
+
+/* ───────────────────────── Agentic Loop Internals ───────────────────────── */
+
+interface ExecutedToolStep {
+  tool: AiToolName;
+  args: Record<string, unknown>;
+  res: ToolExecutionResult;
+  isWrite: boolean;
+}
+
+function isWriteToolName(tool: AiToolName): boolean {
+  const def = AI_TOOL_SUITE.find((t) => t.name === tool);
+  return Boolean(def?.mutatesState);
+}
+
+// Phrases that would claim a mutation happened. If the model produces one of
+// these in its own free text but no WRITE tool actually confirmed success in
+// this turn, we cannot trust that sentence — this is exactly the defect this
+// fix closes (banner said "success" after only a read-only devops tool ran).
+const UNVERIFIED_SUCCESS_PATTERNS: RegExp[] = [
+  /تم\s+التنفيذ/i,
+  /تم\s+الإضاف/i,
+  /تم\s+الاضاف/i,
+  /تم\s+التعديل/i,
+  /تم\s+التحديث/i,
+  /تم\s+الحذف/i,
+  /تم\s+إنشاء/i,
+  /تم\s+انشاء/i,
+  /تم\s+بنجاح/i,
+  /نجاح\s+العملية/i,
+  /successfully (added|created|updated|deleted)/i,
+];
+
+function textClaimsUnverifiedSuccess(text: string): boolean {
+  if (!text) return false;
+  return UNVERIFIED_SUCCESS_PATTERNS.some((re) => re.test(text));
+}
+
+/**
+ * finalizeResponse — the single source of truth for what the user is told.
+ *
+ * ROOT-CAUSE FIX: previously the UI success banner was keyed off the raw
+ * `executionRes.ok` of whatever the FIRST tool call happened to be — even if
+ * that tool was a read-only devops tool the model reached for because no real
+ * catalog tools existed. This function instead looks at the *entire* chain of
+ * tool calls executed for this turn and only allows a "تم التنفيذ والتحقق
+ * بنجاح" style success claim when there is at least one WRITE step AND the
+ * most recent WRITE step explicitly returned ok === true (and success !== false).
+ */
+function finalizeResponse(
+  steps: ExecutedToolStep[],
+  modelFinalText: string,
+): { text: string; toolResult?: ToolExecutionResult } {
+  const cleanModelText = (modelFinalText || "").trim();
+
+  if (steps.length === 0) {
+    // Pure conversational turn — no tool was ever invoked, nothing to verify.
+    return { text: cleanModelText };
+  }
+
+  const writeSteps = steps.filter((s) => s.isWrite);
+  const lastWrite = writeSteps[writeSteps.length - 1];
+  const verifiedWriteSuccess =
+    writeSteps.length > 0 && lastWrite.res.ok === true && lastWrite.res.success !== false;
+  const anyWriteFailed = writeSteps.some((s) => s.res.ok === false || s.res.success === false);
+
+  // Only trust the model's own free text if it isn't claiming an unverified success.
+  const modelTextIsTrustworthy =
+    cleanModelText.length > 0 &&
+    !(textClaimsUnverifiedSuccess(cleanModelText) && !verifiedWriteSuccess);
+
+  if (verifiedWriteSuccess) {
+    const verificationBadge =
+      lastWrite.res.verified !== false ? " [تم التحقق من قاعدة البيانات بنجاح ✔️]" : "";
+    const text = modelTextIsTrustworthy
+      ? cleanModelText
+      : `✅ **تم التنفيذ والتحقق بنجاح:**\n${lastWrite.res.messageAr}${verificationBadge}`;
+    return { text, toolResult: lastWrite.res };
+  }
+
+  if (writeSteps.length > 0 && anyWriteFailed) {
+    const failedStep =
+      [...writeSteps].reverse().find((s) => s.res.ok === false || s.res.success === false) ||
+      lastWrite;
+    const text = `⚠️ **تعذر إتمام الإجراء:**\n${failedStep.res.messageAr || failedStep.res.error || "فشل تنفيذ العملية ولم يتم تأكيد أي تعديل في قاعدة البيانات."}`;
+    return { text, toolResult: failedStep.res };
+  }
+
+  // Only READ tools ran (searchProducts, getCategories, searchCodebase, ...).
+  // Never surface mutation-success language here.
+  const lastRead = steps[steps.length - 1];
+  const text = modelTextIsTrustworthy
+    ? cleanModelText
+    : `ℹ️ ${lastRead.res.messageAr || "تم الاطلاع على البيانات المطلوبة."}`;
+  return { text, toolResult: lastRead.res };
+}
+
 /* ───────────────────────── runAdminCoPilotChat ───────────────────────── */
 
 export interface RunChatOptions {
@@ -210,6 +315,7 @@ export async function runAdminCoPilotChat(
     type: "apply_layout" | "export_report" | "open_tab";
   };
   toolResult?: ToolExecutionResult;
+  toolResults?: ToolExecutionResult[];
 }> {
   let message: string;
   let history: ChatMessage[];
@@ -256,18 +362,25 @@ export async function runAdminCoPilotChat(
       try {
         const systemInstruction = `
 ${AUTONOMOUS_ADMIN_COPILOT_DIRECTIVE}
-
 ${ROLE_PROMPTS[selectedRole]}
-
 ${SUPABASE_SCHEMA_CONTEXT_INSTRUCTION}
 
-=== AVAILABLE 24-TOOL SUITE ===
-You have access to 24 operational functions covering media, catalog, UI layout, themes, marketing, rollback, custom CSS, JSON metadata, user roles & RBAC, analytics export, push notifications, delivery zones, directory scanning, source viewing, code search, diagnostics logs, file AST mutations, and git commits.
-When the user gives a direct command or request that matches any tool, you MUST invoke the corresponding function tool immediately.
-After tool execution, verify that database/state verification has passed.
+=== AVAILABLE 26-TOOL SUITE ===
+You have access to 26 operational functions covering media, catalog (including the
+read-only searchProducts and getCategories lookups), UI layout, themes, marketing,
+rollback, custom CSS, JSON metadata, user roles & RBAC, analytics export, push
+notifications, delivery zones, directory scanning, source viewing, code search,
+diagnostics logs, file AST mutations, and git commits.
+
+When the user gives a direct command or request that matches any tool, you MUST
+invoke the corresponding function tool immediately. You may call multiple tools
+in sequence — for example a READ lookup (searchProducts / getCategories) followed
+by a WRITE mutation (manageProduct / manageCategories) — before giving your final
+answer. Only claim an action was completed after the matching WRITE tool has
+actually returned a confirmed success result back to you.
 `;
 
-        const contents = history.slice(-6).map((h) => ({
+        const contents: any[] = history.slice(-6).map((h) => ({
           role: h.role === "assistant" ? "model" : "user",
           parts: [{ text: h.content }],
         }));
@@ -284,6 +397,7 @@ After tool execution, verify that database/state verification has passed.
 
         // Execute Gemini call with dynamic tool routing
         const activeTools = getActiveTools({ page: maybeOptions?.page, userRole: maybeOptions?.userRole });
+
         const config: any = {
           systemInstruction,
           temperature: 0.4,
@@ -301,70 +415,110 @@ After tool execution, verify that database/state verification has passed.
           config.tools.push({ googleSearch: {} });
         }
 
-        const response = await ai.models.generateContent({
-          model: currentModel,
-          contents,
-          config,
-        });
-
-        const candidate = response.candidates?.[0];
-        const functionCalls = candidate?.content?.parts?.filter(
-          (p: any) => p.functionCall,
-        );
-
-        // Handle function calls if model called a tool
-        if (functionCalls && functionCalls.length > 0) {
-          const fc = functionCalls[0]?.functionCall;
-          if (fc && fc.name) {
-            const toolName = fc.name as AiToolName;
-            const toolArgs = fc.args || {};
-
-            console.info(`[AI Engine] ⚡ Invoking autonomous tool: ${toolName}`, toolArgs);
-
-            const executionRes = await executeAiTool(toolName, toolArgs, ctx);
-
-            let finalAnswerText = candidate?.content?.parts
-              ?.map((p: any) => p.text || "")
-              .join("")
-              .trim();
-
-          if (!finalAnswerText) {
-            const verificationBadge = executionRes.verified !== false ? " [تم التحقق من قاعدة البيانات بنجاح ✔️]" : "";
-            finalAnswerText = executionRes.ok
-              ? `✅ **تم التنفيذ والتحقق بنجاح:**\n${executionRes.messageAr}${verificationBadge}`
-              : `⚠️ **تعذر إتمام الإجراء:**\n${executionRes.messageAr}`;
-          }
-
-          return {
-            text: finalAnswerText,
-            modelUsed: currentModel,
-            roleUsed: selectedRole,
-            toolResult: executionRes,
-          };
-          } // close if (fc && fc.name)
-        }
-
-        // Plain text answer
-        const textOutput = response.text || "";
+        // ── Agentic Loop ──────────────────────────────────────────────
+        // Each iteration: call the model, and if it responds with one or
+        // more functionCalls, execute them for real and feed the results
+        // back as a functionResponse turn so the model can decide whether
+        // to chain another tool call or give its final answer. This is
+        // the fix for the single-pass defect: previously the very first
+        // tool result was returned to the user without ever going back
+        // to the model, so a pre-check READ call could never be followed
+        // by the WRITE call it was meant to gate.
+        const steps: ExecutedToolStep[] = [];
+        const loopContents = [...contents];
+        let finalModelText = "";
         const groundingSources: Array<{ title?: string; uri?: string }> = [];
 
-        const metadata = candidate?.groundingMetadata;
-        if (metadata?.groundingChunks) {
-          metadata.groundingChunks.forEach((chunk: any) => {
-            if (chunk.web?.uri) {
-              groundingSources.push({
-                title: chunk.web.title || chunk.web.uri,
-                uri: chunk.web.uri,
+        for (let stepIdx = 0; stepIdx < MAX_TOOL_STEPS; stepIdx++) {
+          const response = await ai.models.generateContent({
+            model: currentModel,
+            contents: loopContents,
+            config,
+          });
+
+          const candidate = response.candidates?.[0];
+          const parts: any[] = candidate?.content?.parts || [];
+          const functionCallParts = parts.filter((p: any) => p.functionCall && p.functionCall.name);
+
+          if (functionCallParts.length === 0) {
+            // Model gave its final natural-language answer — stop looping.
+            finalModelText = (
+              response.text ||
+              parts.map((p: any) => p.text || "").join("")
+            ).trim();
+
+            const metadata = candidate?.groundingMetadata;
+            if (metadata?.groundingChunks) {
+              metadata.groundingChunks.forEach((chunk: any) => {
+                if (chunk.web?.uri) {
+                  groundingSources.push({
+                    title: chunk.web.title || chunk.web.uri,
+                    uri: chunk.web.uri,
+                  });
+                }
               });
             }
-          });
+            break;
+          }
+
+          // Record the model's turn (its tool-call request) in the running transcript.
+          loopContents.push({ role: "model", parts });
+
+          // Execute every requested tool call this turn (usually one, but
+          // some models may batch several independent calls together).
+          const functionResponseParts: any[] = [];
+
+          for (const fcPart of functionCallParts) {
+            const fc = fcPart.functionCall;
+            const toolName = fc.name as AiToolName;
+            const toolArgs = (fc.args || {}) as Record<string, unknown>;
+            const isWrite = isWriteToolName(toolName);
+
+            console.info(
+              `[AI Engine] ⚡ Step ${stepIdx + 1}/${MAX_TOOL_STEPS}: invoking ${isWrite ? "WRITE" : "READ"} tool "${toolName}"`,
+              toolArgs,
+            );
+
+            const execRes = await executeAiTool(toolName, toolArgs, ctx);
+            steps.push({ tool: toolName, args: toolArgs, res: execRes, isWrite });
+
+            functionResponseParts.push({
+              functionResponse: {
+                name: toolName,
+                response: {
+                  ok: execRes.ok,
+                  success: execRes.success ?? execRes.ok,
+                  messageAr: execRes.messageAr,
+                  data: execRes.data ?? null,
+                  error: execRes.error ?? null,
+                  verified: execRes.verified ?? null,
+                },
+              },
+            });
+          }
+
+          // Feed the tool result(s) back to the model so it can chain the
+          // next step (e.g. now that it knows the category_id, create the
+          // product) or conclude with a final answer.
+          loopContents.push({ role: "function", parts: functionResponseParts });
+
+          if (stepIdx === MAX_TOOL_STEPS - 1) {
+            // Loop budget exhausted without a conclusive natural-language
+            // answer from the model. finalizeResponse() will still build a
+            // truthful message purely from the executed steps below.
+            finalModelText = "";
+          }
         }
 
+        const finalized = finalizeResponse(steps, finalModelText);
+
         return {
-          text: textOutput,
+          text: finalized.text,
           groundingSources: groundingSources.length > 0 ? groundingSources : undefined,
           modelUsed: currentModel,
           roleUsed: selectedRole,
+          toolResult: finalized.toolResult ?? steps[steps.length - 1]?.res,
+          toolResults: steps.length > 0 ? steps.map((s) => s.res) : undefined,
         };
       } catch (err: any) {
         lastError = err;
@@ -387,23 +541,29 @@ After tool execution, verify that database/state verification has passed.
   const routed = routeCommandToTool(message);
   if (routed) {
     const res = await executeAiTool(routed.tool, routed.args, ctx);
-    const verificationBadge = res.verified !== false ? " [تم التحقق من الحالة ✔️]" : "";
+    const isWrite = isWriteToolName(routed.tool);
+    const finalized = finalizeResponse(
+      [{ tool: routed.tool, args: routed.args, res, isWrite }],
+      "",
+    );
+
     return {
-      text: res.ok
-        ? `⚡ **تم تنفيذ الأمر المباشر والتحقق فوراً:**\n${res.messageAr}${verificationBadge}`
-        : `⚠️ **تعذر تنفيذ الأمر:**\n${res.messageAr}`,
+      text: finalized.text,
       modelUsed: "local-deterministic-engine",
       roleUsed: selectedRole,
       toolResult: res,
+      toolResults: [res],
     };
   }
 
   return {
-    text: `أهلاً بك في **مساعد Gemini الذكي المتطور (Phase 3 Complete 24-Tool AI Engine)** 🚀
+    text: `أهلاً بك في **مساعد Gemini الذكي المتطور (Phase 4 Agentic 26-Tool AI Engine)** 🚀
 
-أنا متصل بقاعدة بيانات Supabase ومزود بحزمة الـ 24 أداة لإدارة المتجر وتطوير الكود والبنية التحتية مع التحقق الفوري:
+أنا متصل بقاعدة بيانات Supabase ومزود بحزمة الـ 26 أداة لإدارة المتجر وتطوير الكود والبنية التحتية مع سلسلة تنفيذ متعددة الخطوات وتحقق فوري:
+
+- 🔎 **بحث حقيقي في الكتالوج**: التحقق من توفر وسعر ومخزون أي منتج عبر searchProducts، وعرض/التحقق من الأقسام عبر getCategories قبل أي إضافة.
 - 🏗️ **تعديل كود المتجر والتخطيط فوراً**: تنفيذ أوامر مركبة فورية على التصميم والألوان والبانرات.
-- 🗄️ **إدارة المنتجات والأقسام والأسعار**: تحكم مباشر في جداول \`products\` و \`categories\` و \`store_settings\`.
+- 🗄️ **إدارة المنتجات والأقسام والأسعار**: تحكم مباشر في جداول \`products\` و \`categories\` و \`store_settings\` مع تحقق قبل الإضافة لتفادي التكرار.
 - 👥 **إدارة المستخدمين والصلاحيات**: تعيين أدوار المشرفين والسائقين والعملاء في \`user_roles\` و \`profiles\`.
 - 📊 **تصدير التقارير والتحليلات**: استخراج إحصائيات المبيعات والأرباح وأعلى المنتجات مبيعاً.
 - 🔔 **بث الإشعارات الفورية (Push)**: إرسال تنبيهات وعروض مباشرة لعملاء المتجر.
@@ -413,7 +573,7 @@ After tool execution, verify that database/state verification has passed.
 - 🛡️ **فحص أخطاء وتشخيص النظام**: استرجاع سجلات الأخطاء \`getAppErrors\` ونقاط استرجاع الأمان.
 - 🚀 **إدارة الإصدارات و Git**: تسجيل \`gitCommitAndPush\` والتراجع \`gitRollbackCommit\` ومزامنة السحابة.
 
-أخبرني بما تريد وسأنفذه وأتحقق منه فوراً! 😊`,
+أخبرني بما تريد وسأتحقق من البيانات وأنفذه وأؤكد لك النتيجة الفعلية فوراً! 😊`,
     modelUsed: "local-deterministic-engine",
     roleUsed: selectedRole,
   };
@@ -480,8 +640,7 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
 
       if (!error && data) {
         // Assume read success if we can fetch settings at all. (raw_metadata doesn't exist).
-        const meta = { [testKey]: { testId } }; 
-
+        const meta = { [testKey]: { testId } };
         if (meta && meta[testKey] && meta[testKey].testId === testId) {
           readSuccess = true;
           verifiedValue = meta[testKey];
@@ -551,6 +710,7 @@ export async function parseAdminCommandToLayoutUpdate(
   const updatedLayout: StoreLayoutConfig = JSON.parse(JSON.stringify(currentLayout));
   const changedKeys: string[] = [];
   const executedActions: ParsedActionDetail[] = [];
+
   const c = command.trim().toLowerCase();
 
   if (c.includes("توهج") || c.includes("glow") || c.includes("أخضر زمردي")) {
@@ -695,8 +855,11 @@ export async function generateAbandonedCartRecovery(
   const name = cart.customerName || "عزيزنا العميل";
 
   const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿
+
 سلتك تحتوي على (${cart.itemsList?.slice(0, 2).join("، ") || "منتجات طازجة مختارة"}) بقيمة ${cart.totalPrice.toFixed(2)} ج.م.
+
 خصّصنا لك كود خصم فوري 🎁 *${coupon}* (10% خصم إضافي) عند إتمام الطلب الآن!
+
 أكمل طلبك واستلم خلال 45 دقيقة: https://alwadi-alakhdar.eg/cart?coupon=${coupon}`;
 
   const cleanPhone = (cart.phone || "01000000000").replace(/[^0-9]/g, "");
