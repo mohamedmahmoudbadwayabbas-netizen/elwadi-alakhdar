@@ -1,6 +1,6 @@
 /* =========================================================================
    GEMINI AI ADMIN ENGINE — UNIFIED TOOL ROUTER & NLP DISPATCHER
-   Routes all 24 tool executions and provides local NLP fallback routing
+   Routes all 26 tool executions and provides local NLP fallback routing
    ========================================================================= */
 
 import type {
@@ -14,6 +14,8 @@ import {
   toolManageProduct,
   toolManageCategories,
   toolBulkPriceUpdate,
+  toolSearchProducts,
+  toolGetCategories,
   toolUpdateLayoutConfig,
   toolUpdateThemeColors,
   toolCreateDiscountBundle,
@@ -39,7 +41,6 @@ import {
   gitCommitAndPush,
   gitRollbackCommit,
 } from "./devopsTools";
-
 import { AI_TOOL_SUITE } from "./toolDefinitions";
 
 async function _executeAiToolInner(
@@ -50,11 +51,13 @@ async function _executeAiToolInner(
   console.info(`[AI Engine] 🚀 Executing tool "${tool}" with args:`, args);
 
   const toolDef = AI_TOOL_SUITE.find((t) => t.name === tool);
+
   if (toolDef?.mutatesState) {
     const supabaseUrl =
       import.meta.env.VITE_SUPABASE_URL ||
       (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) ||
       "";
+
     if (supabaseUrl && !supabaseUrl.includes("gpoqacclpjadzbhevgal")) {
       return {
         tool,
@@ -87,6 +90,12 @@ async function _executeAiToolInner(
       break;
     case "bulkPriceUpdate":
       result = await toolBulkPriceUpdate(args as any, ctx);
+      break;
+    case "searchProducts":
+      result = await toolSearchProducts(args as any, ctx);
+      break;
+    case "getCategories":
+      result = await toolGetCategories(args as any);
       break;
 
     // ── UI ──
@@ -325,6 +334,28 @@ export function routeCommandToTool(
     return { tool: "manageProduct", args: { action: "create", data: { name: nameMatch || "منتج طازج جديد", price_per_unit: priceMatch ? Number(priceMatch[0]) : 45 } } };
   }
 
+  // Read-only catalog lookups (checked last so they never shadow the WRITE
+  // patterns above — e.g. "أضف منتج ... بسعر 45" must match the WRITE rule
+  // above even though it also contains the word "سعر").
+  if (c.includes("الأقسام") || c.includes("أقسام المتجر") || c.includes("عرض الأقسام") || c.includes("categories") || c.includes("getcategories")) {
+    return { tool: "getCategories", args: {} };
+  }
+  if (
+    c.includes("فيه") ||
+    c.includes("متوفر") ||
+    c.includes("بكام") ||
+    c.includes("كام سعر") ||
+    c.includes("ايه سعر") ||
+    c.includes("هل يوجد") ||
+    c.includes("ابحث عن منتج") ||
+    c.includes("searchproducts")
+  ) {
+    const q = command
+      .replace(/فيه|متوفر|بكام|كام سعر|ايه سعر|هل يوجد|ابحث عن منتج|عندكم|عندنا/g, "")
+      .trim();
+    return { tool: "searchProducts", args: { query: q || command } };
+  }
+
   return null;
 }
 
@@ -337,14 +368,15 @@ export async function executeAiTool(
     const result = await _executeAiToolInner(tool, args, ctx);
     const source = typeof window !== "undefined" && window.location.hostname.includes("lovable") ? "lovable" : "ai-studio";
     result.source = source;
-    
+
     // Check if result is explicitly missing success
     if (result.error || result.ok === false) {
       result.success = false;
       result.ok = false;
     }
-    
+
     console.info(`[STRICT_VERIFICATION_LOG] ENV: ${source} | Tool: ${tool} | Args:`, args, `| Raw Response:`, result);
+
     return result;
   } catch (error: any) {
     const source = typeof window !== "undefined" && window.location.hostname.includes("lovable") ? "lovable" : "ai-studio";
