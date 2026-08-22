@@ -75,6 +75,7 @@ export interface ToolExecutionResult {
   data?: Record<string, unknown>;
   rollbackPointId?: string;
   verified?: boolean;
+  source?: "lovable" | "ai-studio";
   verificationDetails?: string;
 }
 

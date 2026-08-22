@@ -177,19 +177,19 @@ export function CartDrawer() {
                 <ArrowLeft className="h-4 w-4 rotate-180" />
               </button>
             )}
-            <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <ShoppingBag className="h-5 w-5 text-[#036233] dark:text-emerald-400" />
             {stage === "cart" ? "سلة تسوّق سوبرماركت الوادي الأخضر" : "إتمام طلب السوبرماركت"}
           </SheetTitle>
         </SheetHeader>
 
         {/* Free Shipping Progress Bar Header (Visible in cart stage when items exist) */}
         {stage === "cart" && items.length > 0 && (
-          <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-5 py-3 space-y-1.5">
+          <div className="bg-[#036233]/10 border-b border-[#036233]/20 px-5 py-3 space-y-1.5">
             <div className="flex items-center justify-between text-xs font-black">
               <span className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
-                <TruckIcon className="h-4 w-4 text-emerald-600 animate-bounce" />
+                <TruckIcon className="h-4 w-4 text-[#036233] animate-bounce" />
                 {freeShipReached ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                  <span className="text-[#036233] dark:text-emerald-400 font-black">
                     تهانينا! لقد حصلت على شحن مجاني 🥳🎉
                   </span>
                 ) : (
@@ -202,7 +202,7 @@ export function CartDrawer() {
                   </span>
                 )}
               </span>
-              <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
+              <span className="text-[11px] font-mono text-[#036233] dark:text-emerald-400">
                 {progressPercent}%
               </span>
             </div>
@@ -229,7 +229,7 @@ export function CartDrawer() {
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-            <div className="grid h-20 w-20 place-items-center rounded-3xl bg-emerald-500/10 text-4xl shadow-inner">
+            <div className="grid h-20 w-20 place-items-center rounded-3xl bg-[#036233]/10 text-4xl shadow-inner">
               🛒
             </div>
             <p className="font-black text-foreground text-base">السلة فارغة حالياً</p>
@@ -255,7 +255,7 @@ export function CartDrawer() {
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="flex gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-xs hover:border-emerald-500/30 transition-all"
+                      className="flex gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-xs hover:border-[#036233]/30 transition-all"
                     >
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-secondary border border-border/40">
                         {it.product.image_url ? (
@@ -275,7 +275,7 @@ export function CartDrawer() {
                               {it.product.name}
                             </h5>
                             {it.product.is_by_weight && (
-                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">
+                              <span className="text-[10px] text-[#036233] dark:text-emerald-400 font-bold bg-[#036233]/10 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">
                                 وزن تقديري:{" "}
                                 {it.selected_weight_label || formatWeightLabel(it.quantity)}
                               </span>
@@ -334,7 +334,7 @@ export function CartDrawer() {
                             </button>
                           </div>
 
-                          <div className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
+                          <div className="text-xs sm:text-sm font-black text-[#036233] dark:text-emerald-400">
                             {lineSubtotal(it.product, it.quantity).toFixed(2)} ج.م
                           </div>
                         </div>
@@ -350,7 +350,7 @@ export function CartDrawer() {
                 <button
                   type="button"
                   onClick={() => setSaveListOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 bg-emerald-500/10 hover:bg-emerald-500/15 px-3 py-1.5 rounded-xl border border-emerald-500/20 transition-all"
+                  className="flex items-center gap-1.5 text-xs font-bold text-[#036233] dark:text-emerald-400 hover:text-emerald-800 bg-[#036233]/10 hover:bg-[#036233]/15 px-3 py-1.5 rounded-xl border border-[#036233]/20 transition-all"
                 >
                   <BookmarkPlus className="h-3.5 w-3.5" />
                   <span>حفظ كقائمة تسوق دورية 📋</span>
@@ -370,7 +370,7 @@ export function CartDrawer() {
               </div>
               <div className="flex items-center justify-between border-t border-border/40 pt-2">
                 <span className="text-sm font-black text-foreground">المبلغ الإجمالي</span>
-                <span className="font-display text-xl font-black text-emerald-600 dark:text-emerald-400">
+                <span className="font-display text-xl font-black text-[#036233] dark:text-emerald-400">
                   {totalPrice.toFixed(2)} ج.م
                 </span>
               </div>
@@ -460,10 +460,10 @@ export function CartDrawer() {
                 </div>
 
                 {form.payment_method === "instapay" && pay.instapay_handle && (
-                  <div className="space-y-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
+                  <div className="space-y-2 rounded-2xl border border-[#036233]/30 bg-[#036233]/5 p-3 text-xs">
                     <div className="font-bold text-foreground">
                       حوّل المبلغ{" "}
-                      <span className="text-emerald-600 font-black">
+                      <span className="text-[#036233] font-black">
                         {totalPrice.toFixed(2)} ج.م
                       </span>{" "}
                       على InstaPay:
@@ -486,10 +486,10 @@ export function CartDrawer() {
                 )}
 
                 {form.payment_method === "bank" && pay.bank_account_info && (
-                  <div className="space-y-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
+                  <div className="space-y-2 rounded-2xl border border-[#036233]/30 bg-[#036233]/5 p-3 text-xs">
                     <div className="font-bold text-foreground">
                       حوّل المبلغ{" "}
-                      <span className="text-emerald-600 font-black">
+                      <span className="text-[#036233] font-black">
                         {totalPrice.toFixed(2)} ج.م
                       </span>{" "}
                       إلى الحساب التالي:
@@ -561,7 +561,7 @@ function PayOption({
       disabled={disabled}
       className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-2.5 text-xs font-black transition-all ${
         active
-          ? "border-emerald-600 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-xs"
+          ? "border-[#036233] bg-[#036233]/10 text-[#036233] dark:text-emerald-400 shadow-xs"
           : "border-border/70 bg-background text-foreground hover:bg-secondary"
       } disabled:cursor-not-allowed disabled:opacity-40`}
     >

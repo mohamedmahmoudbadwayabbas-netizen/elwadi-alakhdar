@@ -248,6 +248,7 @@ function AdminCoPilotPage() {
         enableSearchGrounding: enableGoogleSearch || selectedRole === "market_researcher",
         currentLayout: layoutConfig,
         kpis,
+        refresh: () => queryClient.invalidateQueries(),
       });
 
       const aiMsg: ChatMessage = {

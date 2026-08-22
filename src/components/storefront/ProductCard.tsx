@@ -130,7 +130,7 @@ export function ProductCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card text-card-foreground shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg",
+        "group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/40 bg-card text-card-foreground transition-all duration-300 hover:border-[#036233]/30 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]",
       )}
     >
       {/* منطقة الصورة */}
@@ -159,14 +159,14 @@ export function ProductCard({
         <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/25 via-transparent to-transparent opacity-80" />
 
         {/* شارة الخصم والأكثر مبيعاً */}
-        <div className="absolute top-2 start-2 z-10 flex flex-col gap-1">
+        <div className="absolute top-2.5 start-2.5 z-10 flex flex-col gap-1.5">
           {discount > 0 && (
-            <span className="rounded-lg bg-orange-600 px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
+            <span className="rounded-full bg-[#E55300] px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
               خصم {discount}%
             </span>
           )}
           {isTopSellerActive && discount === 0 && (
-            <span className="flex items-center gap-1 rounded-lg bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white shadow-xs">
+            <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
               <Flame className="h-3 w-3" /> مميز
             </span>
           )}
@@ -228,7 +228,7 @@ export function ProductCard({
           {/* السعر والوحدة */}
           <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-border/40">
             <div className="flex items-baseline gap-1">
-              <span className="text-sm sm:text-base font-black text-emerald-700 dark:text-emerald-400">
+              <span className="text-sm sm:text-base font-black text-[#036233] dark:text-emerald-400">
                 {currentEstPrice.toFixed(2)}
               </span>
               <span className="text-[10px] font-bold text-muted-foreground">ج.م</span>
@@ -237,7 +237,7 @@ export function ProductCard({
               </span>
             </div>
             {product.old_price && product.old_price > product.price_per_unit && (
-              <span className="text-[10px] text-muted-foreground line-through decoration-orange-500/70">
+              <span className="text-[10px] text-muted-foreground line-through decoration-[#E55300]/70">
                 {(product.old_price * (product.is_by_weight ? selectedWeight : 1)).toFixed(2)} ج.م
               </span>
             )}
@@ -264,8 +264,8 @@ export function ProductCard({
                     className={cn(
                       "px-1 py-0.5 rounded text-[9px] font-bold border transition-all text-center active:scale-95",
                       isSelected
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                        : "bg-secondary/60 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground border-border/50",
+                        ? "bg-[#036233] text-white border-[#036233] shadow-xs"
+                        : "bg-secondary/60 hover:bg-[#036233]/5 hover:text-[#036233] text-muted-foreground border-border/50",
                     )}
                   >
                     {w.label}
@@ -277,25 +277,25 @@ export function ProductCard({
         )}
 
         {/* زر الإضافة البرتقالي الجذاب أو عداد الكمية */}
-        <div className="mt-auto pt-1">
+        <div className="mt-auto pt-2">
           {qty > 0 ? (
-            <div className="flex h-9 items-center justify-between rounded-xl border border-orange-300/80 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800/80 px-2 shadow-xs">
+            <div className="flex h-10 items-center justify-between rounded-2xl border border-[#036233]/30 bg-[#036233]/5 dark:bg-[#036233]/10 dark:border-[#036233]/50 px-2 shadow-xs">
               <button
                 type="button"
                 onClick={handleDec}
-                className="grid h-6 w-6 place-items-center rounded-lg bg-orange-200/60 dark:bg-orange-900/60 text-orange-900 dark:text-orange-100 hover:bg-orange-300 transition active:scale-90"
+                className="grid h-7 w-7 place-items-center rounded-xl bg-white dark:bg-black text-[#036233] hover:bg-[#036233] hover:text-white transition active:scale-90 shadow-sm border border-[#036233]/10"
               >
                 <Minus className="h-3 w-3" />
               </button>
               <div className="text-center">
-                <span className="text-xs font-black text-orange-950 dark:text-orange-100 block">
+                <span className="text-xs font-black text-[#036233] dark:text-emerald-300 block">
                   {product.is_by_weight ? formatWeightLabel(qty) : `${qty}`}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleInc}
-                className="grid h-6 w-6 place-items-center rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition active:scale-90 shadow-xs"
+                className="grid h-7 w-7 place-items-center rounded-xl bg-[#036233] text-white hover:bg-[#036233]/90 transition active:scale-90 shadow-sm"
               >
                 <Plus className="h-3 w-3" />
               </button>
@@ -305,7 +305,7 @@ export function ProductCard({
               type="button"
               disabled={outOfStock}
               onClick={handleAdd}
-              className="flex w-full h-9 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs transition-all duration-200 active:scale-95 shadow-xs shadow-orange-500/20 disabled:opacity-50 cursor-pointer"
+              className="flex w-full h-10 items-center justify-center gap-1.5 rounded-2xl bg-[#036233] hover:bg-[#036233]/90 text-white font-black text-xs transition-all duration-200 active:scale-95 shadow-[0_4px_14px_rgba(3,98,51,0.25)] disabled:opacity-50 cursor-pointer"
             >
               <ShoppingCart className="h-3.5 w-3.5" />
               <span>

@@ -43,9 +43,9 @@ export function CategoryGrid({
       {/* رأس قسم التصنيفات مع أزرار التحريك الأفقي */}
       <div className="mb-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="h-6 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500" />
+          <div className="h-6 w-1.5 rounded-full bg-[#036233]" />
           <h2 className="text-base font-black text-foreground sm:text-lg tracking-wide flex items-center gap-2">
-            <Layers className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <Layers className="h-5 w-5 text-[#036233]" />
             <span>تسوّق حسب الأقسام الرئيسية 🛒</span>
           </h2>
         </div>
@@ -54,7 +54,7 @@ export function CategoryGrid({
           {active && active !== "all" && (
             <button
               onClick={() => onSelect(null)}
-              className="rounded-xl bg-emerald-500/10 px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-2xs"
+              className="rounded-full bg-[#036233]/10 px-4 py-1.5 text-xs font-black text-[#036233] hover:bg-[#036233] hover:text-white transition-all cursor-pointer shadow-sm"
             >
               عرض كل المنتجات
             </button>
@@ -95,10 +95,10 @@ export function CategoryGrid({
           type="button"
           onClick={() => onSelect(null)}
           className={cn(
-            "group relative flex flex-col justify-between shrink-0 w-36 sm:w-44 h-36 sm:h-40 overflow-hidden rounded-2xl border text-start transition-all duration-300 snap-start cursor-pointer shadow-xs",
+            "group relative flex flex-col justify-between shrink-0 w-36 sm:w-44 h-36 sm:h-40 overflow-hidden rounded-3xl border text-start transition-all duration-300 snap-start cursor-pointer",
             !active || active === "all"
-              ? "border-emerald-600 bg-emerald-50/90 dark:bg-emerald-950/60 ring-2 ring-emerald-600/40 shadow-md scale-[1.02]"
-              : "border-border/80 bg-card hover:border-emerald-500/60 hover:shadow-md hover:-translate-y-0.5",
+              ? "border-[#036233]/50 bg-[#036233]/5 ring-2 ring-[#036233]/20 shadow-[0_8px_30px_rgb(3,98,51,0.1)] scale-[1.02]"
+              : "border-border/40 bg-card hover:border-[#036233]/30 hover:shadow-lg hover:-translate-y-0.5",
           )}
         >
           {/* الصورة الخلفية البارزة */}
@@ -124,8 +124,8 @@ export function CategoryGrid({
               className={cn(
                 "text-xs font-black truncate transition-colors",
                 !active || active === "all"
-                  ? "text-emerald-700 dark:text-emerald-300"
-                  : "text-foreground group-hover:text-emerald-600",
+                  ? "text-[#036233]"
+                  : "text-foreground group-hover:text-[#036233]",
               )}
             >
               كل الأقسام
@@ -134,8 +134,8 @@ export function CategoryGrid({
               className={cn(
                 "h-2 w-2 rounded-full transition-all shrink-0",
                 !active || active === "all"
-                  ? "bg-emerald-600 scale-125 ring-2 ring-emerald-400"
-                  : "bg-border group-hover:bg-emerald-500",
+                  ? "bg-[#036233] scale-125 ring-2 ring-[#036233]/30"
+                  : "bg-border group-hover:bg-[#036233]/50",
               )}
             />
           </div>
@@ -152,19 +152,18 @@ export function CategoryGrid({
               type="button"
               onClick={() => onSelect(isActive ? null : c.id)}
               className={cn(
-                "group relative flex flex-col justify-between shrink-0 w-36 sm:w-44 h-36 sm:h-40 overflow-hidden rounded-2xl border text-start transition-all duration-300 snap-start cursor-pointer shadow-xs",
+                "group relative flex flex-col justify-between shrink-0 w-36 sm:w-44 h-36 sm:h-40 overflow-hidden rounded-3xl border text-start transition-all duration-300 snap-start cursor-pointer",
                 isActive
-                  ? "border-emerald-600 bg-emerald-50/90 dark:bg-emerald-950/60 ring-2 ring-emerald-600/40 shadow-md scale-[1.02]"
-                  : "border-border/80 bg-card hover:border-emerald-500/60 hover:shadow-md hover:-translate-y-0.5",
+                  ? "border-[#036233]/50 bg-[#036233]/5 ring-2 ring-[#036233]/20 shadow-[0_8px_30px_rgb(3,98,51,0.1)] scale-[1.02]"
+                  : "border-border/40 bg-card hover:border-[#036233]/30 hover:shadow-lg hover:-translate-y-0.5",
               )}
             >
               {/* شارة التمييز الأخضر */}
               {c.badge && (
-                <span className="absolute start-2 top-2 z-10 rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[9px] font-black shadow-md border border-emerald-400/30">
+                <span className="absolute start-2 top-2 z-10 rounded-full bg-[#036233] text-white px-2.5 py-1 text-[10px] font-black shadow-md border border-white/20">
                   {c.badge}
                 </span>
               )}
-
               {/* الصورة الفوتوغرافية البارزة للقسم */}
               <div className="relative h-24 sm:h-28 w-full overflow-hidden bg-secondary">
                 {c.image_url ? (
@@ -175,7 +174,7 @@ export function CategoryGrid({
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 ) : (
-                  <div className="grid h-full w-full place-items-center bg-emerald-100 dark:bg-emerald-950 text-3xl">
+                  <div className="grid h-full w-full place-items-center bg-[#036233]/10 text-3xl">
                     {c.icon ?? "🌿"}
                   </div>
                 )}
@@ -196,8 +195,8 @@ export function CategoryGrid({
                   className={cn(
                     "text-xs font-black truncate transition-colors",
                     isActive
-                      ? "text-emerald-700 dark:text-emerald-300"
-                      : "text-foreground group-hover:text-emerald-600",
+                      ? "text-[#036233]"
+                      : "text-foreground group-hover:text-[#036233]",
                   )}
                 >
                   {c.name}
@@ -206,8 +205,8 @@ export function CategoryGrid({
                   className={cn(
                     "h-2 w-2 rounded-full transition-all shrink-0",
                     isActive
-                      ? "bg-emerald-600 scale-125 ring-2 ring-emerald-400"
-                      : "bg-border group-hover:bg-emerald-500",
+                      ? "bg-[#036233] scale-125 ring-2 ring-[#036233]/30"
+                      : "bg-border group-hover:bg-[#036233]/50",
                   )}
                 />
               </div>

@@ -185,6 +185,7 @@ export interface RunChatOptions {
   attachedFile?: { path: string; name: string };
   currentLayout?: StoreLayoutConfig;
   kpis?: ExecutiveKpiInput;
+  refresh?: () => void;
   ctx?: ToolExecutionContext;
 }
 

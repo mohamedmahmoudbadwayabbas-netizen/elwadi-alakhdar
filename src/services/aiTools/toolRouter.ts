@@ -42,7 +42,7 @@ import {
 
 import { AI_TOOL_SUITE } from "./toolDefinitions";
 
-export async function executeAiTool(
+async function _executeAiToolInner(
   tool: AiToolName,
   args: Record<string, unknown> = {},
   ctx?: ToolExecutionContext,
@@ -326,4 +326,30 @@ export function routeCommandToTool(
   }
 
   return null;
+}
+
+export async function executeAiTool(
+  tool: AiToolName,
+  args: Record<string, unknown> = {},
+  ctx?: any,
+): Promise<ToolExecutionResult> {
+  try {
+    const result = await _executeAiToolInner(tool, args, ctx);
+    const source = typeof window !== "undefined" && window.location.hostname.includes("lovable") ? "lovable" : "ai-studio";
+    result.source = source;
+    
+    // Check if result is explicitly missing success
+    if (result.error || result.ok === false) {
+      result.success = false;
+      result.ok = false;
+    }
+    
+    console.info(`[STRICT_VERIFICATION_LOG] ENV: ${source} | Tool: ${tool} | Args:`, args, `| Raw Response:`, result);
+    return result;
+  } catch (error: any) {
+    const source = typeof window !== "undefined" && window.location.hostname.includes("lovable") ? "lovable" : "ai-studio";
+    const errRes = { tool, ok: false, success: false, error: error.message, messageAr: `خطأ تنفيذي: ${error.message}`, source };
+    console.error(`[STRICT_VERIFICATION_LOG_ERROR] ENV: ${source} | Tool: ${tool} | Error:`, error);
+    return errRes as ToolExecutionResult;
+  }
 }

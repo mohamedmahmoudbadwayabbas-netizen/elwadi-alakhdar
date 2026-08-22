@@ -74,8 +74,8 @@ export function Header() {
                     <h3 className="font-display font-black text-base text-foreground leading-tight">
                       {siteName}
                     </h3>
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] text-[#036233] dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#036233] animate-pulse" />
                       3 فروع متصلة • توصيل سريع
                     </span>
                   </div>
@@ -85,7 +85,7 @@ export function Header() {
                 <div className="p-2.5 rounded-2xl bg-secondary/50 border border-border/60 text-xs space-y-1.5">
                   <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center justify-between">
                     <span>فروع السوبرماركت (3 فروع):</span>
-                    <span className="text-emerald-600 font-bold">خدمة 24/7</span>
+                    <span className="text-[#036233] font-bold">خدمة 24/7</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1 text-[10px] text-center font-bold">
                     <div className="p-1 rounded-lg bg-background/80 border border-border/40 text-foreground">
@@ -113,7 +113,7 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Store className="h-4 w-4 text-emerald-600" />
+                    <Store className="h-4 w-4 text-[#036233]" />
                     <span>الرئيسية وعروض اليوم</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -125,7 +125,7 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Layers className="h-4 w-4 text-emerald-600" />
+                    <Layers className="h-4 w-4 text-[#036233]" />
                     <span>أقسام وسلع السوبرماركت</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -137,11 +137,11 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <ShoppingBag className="h-4 w-4 text-emerald-600" />
+                    <ShoppingBag className="h-4 w-4 text-[#036233]" />
                     <span>سلة المشتريات</span>
                   </div>
                   {totalCount > 0 && (
-                    <Badge className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5">
+                    <Badge className="bg-[#036233] text-white text-[10px] px-1.5 py-0.5">
                       {totalCount}
                     </Badge>
                   )}
@@ -153,7 +153,7 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-emerald-600" />
+                    <User className="h-4 w-4 text-[#036233]" />
                     <span>حسابي وطلباتي السابقة</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -184,13 +184,13 @@ export function Header() {
                     <Link
                       to="/admin/copilot"
                       onClick={() => setDrawerOpen(false)}
-                      className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-xs font-black text-emerald-800 dark:text-emerald-300 transition-all"
+                      className="flex items-center justify-between p-3 rounded-2xl bg-[#036233]/10 hover:bg-[#036233]/15 border border-[#036233]/20 text-xs font-black text-[#036233] dark:text-emerald-300 transition-all"
                     >
                       <div className="flex items-center gap-3">
                         <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
                         <span>{siteName} AI (المساعد الذكي)</span>
                       </div>
-                      <Badge className="bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-0 text-[9px]">
+                      <Badge className="bg-[#036233]/20 text-[#036233] dark:text-emerald-200 border-0 text-[9px]">
                         Gemini
                       </Badge>
                     </Link>
@@ -203,7 +203,7 @@ export function Header() {
                 {user ? (
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 truncate">
-                      <User className="h-4 w-4 text-emerald-600" />
+                      <User className="h-4 w-4 text-[#036233]" />
                       <span className="truncate font-bold text-[11px]">{user.email}</span>
                     </div>
                     <button
@@ -250,7 +250,7 @@ export function Header() {
             <span className="truncate text-base font-black tracking-tight text-foreground sm:text-lg font-display">
               {siteName}
             </span>
-            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold hidden sm:inline -mt-0.5">
+            <span className="text-[9px] text-[#036233] dark:text-emerald-400 font-bold hidden sm:inline -mt-0.5">
               3 فروع نشطة • توصيل فوري
             </span>
           </div>

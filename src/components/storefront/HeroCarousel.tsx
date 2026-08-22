@@ -221,8 +221,7 @@ export function HeroCarousel() {
               onClick={() =>
                 document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })
               }
-              className="mt-3 rounded-full px-8 py-3 text-sm font-black tracking-wide text-white shadow-[0_6px_28px_rgba(255,138,0,0.5)] transition-all duration-300 hover:scale-105 hover:shadow-[0_12px_38px_rgba(255,138,0,0.7)] active:scale-95 sm:mt-4 sm:px-10 sm:py-3.5 sm:text-base"
-              style={{ background: "linear-gradient(135deg, #ff9a1f, #ff6a00)" }}
+              className="mt-3 rounded-full bg-[#E55300] px-8 py-3 text-sm font-black tracking-wide text-white shadow-[0_6px_28px_rgba(229,83,0,0.5)] transition-all duration-300 hover:bg-[#E55300]/90 hover:scale-105 hover:shadow-[0_12px_38px_rgba(229,83,0,0.7)] active:scale-95 sm:mt-4 sm:px-10 sm:py-3.5 sm:text-base border border-white/20"
             >
               {ctaText}
             </button>
