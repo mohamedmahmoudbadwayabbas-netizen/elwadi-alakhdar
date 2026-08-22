@@ -48,8 +48,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
-import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { normalizeDigits } from "@/lib/i18n-context";
 import {
   extractProductDetails,
@@ -188,28 +186,13 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
   // جلب البيانات من Supabase
   const load = async () => {
     setLoading(true);
-    let [{ data: p }, { data: c }] = await Promise.all([
+    const [{ data: p }, { data: c }] = await Promise.all([
       supabase.from("products").select("*").order("created_at", { ascending: false }),
       supabase.from("categories").select("id,name").order("sort_order"),
     ]);
 
-    if (!p || p.length === 0 || !c || c.length === 0) {
-      await autoSeedDatabaseIfNeeded();
-      const [pRes, cRes] = await Promise.all([
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
-        supabase.from("categories").select("id,name").order("sort_order"),
-      ]);
-      p = pRes.data || [];
-      c = cRes.data || [];
-    }
-
     setProducts((p ?? []) as Product[]);
-    const dbCats = (c ?? []) as Category[];
-    if (dbCats.length > 0) {
-      setCats(dbCats);
-    } else {
-      setCats(COMPREHENSIVE_CATEGORIES.map((cat) => ({ id: cat.id, name: cat.name })));
-    }
+    setCats((c ?? []) as Category[]);
     setLoading(false);
   };
 

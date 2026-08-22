@@ -84,7 +84,6 @@ type Settings = {
   hero_style?: "gradient" | "image" | "split";
 };
 
-import { forceSyncAllToSupabase } from "@/lib/auto-seed";
 
 const DEFAULT_SETTINGS: Settings = {
   whatsapp_number: "+201234567890",
@@ -297,27 +296,6 @@ function SettingsPage() {
       setProgress(null);
       setSaving(false);
     }, 300);
-  };
-
-  // Full Database Synchronization with Supabase
-  const [syncingDb, setSyncingDb] = useState(false);
-  const handleFullDatabaseSync = async () => {
-    setSyncingDb(true);
-    toast.info("جاري مزامنة وحفظ الخضروات والمنتجات والأقسام في Supabase... 🌿");
-    try {
-      const res = await forceSyncAllToSupabase();
-      if (res.success) {
-        toast.success(
-          `تمت المزامنة بنجاح! تم تحديث ${res.categoriesCount} قسم و ${res.productsCount} منتج في Supabase 🚀`
-        );
-      } else {
-        toast.error("حدث خطأ أثناء المزامنة: " + res.error);
-      }
-    } catch (err: any) {
-      toast.error("فشل مزامنة قاعدة البيانات: " + err.message);
-    } finally {
-      setSyncingDb(false);
-    }
   };
 
   const updateSetting = <K extends keyof Settings>(k: K, v: Settings[K]) => {
@@ -534,24 +512,6 @@ function SettingsPage() {
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">استعادة الافتراضي</span>
-          </Button>
-
-          {/* Sync All to Supabase */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleFullDatabaseSync}
-            disabled={syncingDb}
-            className="rounded-xl font-bold text-xs gap-1.5 h-9 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
-            title="مزامنة وحفظ جميع بيانات الأقسام والخضروات والمنتجات في قاعدة بيانات سوباباس"
-          >
-            {syncingDb ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Database className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            )}
-            <span>مزامنة سوباباس 🌿</span>
           </Button>
 
           {/* Save Button */}
