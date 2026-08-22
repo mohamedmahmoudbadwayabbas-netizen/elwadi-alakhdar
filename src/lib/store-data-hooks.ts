@@ -45,124 +45,56 @@ function getCachedProducts(): Product[] | undefined {
   return undefined;
 }
 
-// ── 1. Fetch & Cache All Store Products Dynamically ──
+// ── 1. Fetch & Cache All Store Products (real Supabase data only) ──
 export async function fetchStoreProducts(): Promise<Product[]> {
-  try {
-    const { data, error } = await supabase
-      .from("products")
-      .select(PRODUCT_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(500);
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(500);
 
-    if (error) {
-      console.warn("[Store Data] Error fetching products from Supabase:", error.message);
-    }
-
-    let dbProds = (data ?? []) as unknown as Product[];
-
-    // If Supabase table is completely empty, trigger automated initial seeder
-    if (dbProds.length === 0) {
-      const seedRes = await seedInitialProductsToSupabase();
-      if (seedRes.seeded) {
-        const { data: reFetched } = await supabase
-          .from("products")
-          .select(PRODUCT_COLUMNS)
-          .order("created_at", { ascending: false })
-          .limit(500);
-        dbProds = (reFetched ?? []) as unknown as Product[];
-      }
-    }
-
-    if (dbProds.length > 0) {
-      try {
-        localStorage.setItem("alwadi_products_cache", JSON.stringify(dbProds));
-      } catch {}
-      return dbProds;
-    }
-
-    // Try cached products from previous session
-    const cached = getCachedProducts();
-    if (cached && cached.length > 0) {
-      return cached;
-    }
-
+  if (error) {
+    console.warn("Error fetching products:", error.message);
     return [];
-  } catch (err) {
-    console.error("[Store Data] Error in fetchStoreProducts:", err);
-    return getCachedProducts() || [];
   }
+  return (data ?? []) as unknown as Product[];
 }
 
 export function useStoreProducts() {
   return useQuery({
     queryKey: ["store-products"],
     queryFn: fetchStoreProducts,
-    initialData: getCachedProducts,
-    staleTime: 1000 * 60 * 3, // 3 minutes fresh
-    gcTime: 1000 * 60 * 30, // 30 minutes in memory
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
   });
 }
 
-// ── 2. Fetch & Cache All Store Categories ──
-function getInitialCategories(): Category[] {
-  try {
-    const cached = localStorage.getItem("alwadi_categories_cache");
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
-  return COMPREHENSIVE_CATEGORIES as Category[];
-}
-
+// ── 2. Fetch & Cache All Store Categories (real Supabase data only) ──
 export async function fetchStoreCategories(): Promise<Category[]> {
-  try {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("id,name,slug,icon,image_url,sort_order,parent_id")
-      .order("sort_order", { ascending: true });
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id,name,slug,icon,image_url,sort_order,parent_id")
+    .order("sort_order", { ascending: true });
 
-    if (error) {
-      console.warn("[Store Data] Failed to fetch categories from Supabase:", error.message);
-    }
-
-    const dbCats = (data ?? []) as Category[];
-    const mergedCats = getMergedCategories(dbCats);
-    const finalCats = mergedCats.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      icon: c.icon,
-      image_url: c.image_url,
-      sort_order: c.sort_order,
-      badge: c.badge,
-      parent_id: c.parent_id,
-      description: c.description,
-    }));
-
-    try {
-      localStorage.setItem("alwadi_categories_cache", JSON.stringify(finalCats));
-    } catch {}
-    return finalCats;
-  } catch (err) {
-    console.error("[Store Data] Error fetching store categories:", err);
-    return COMPREHENSIVE_CATEGORIES as Category[];
+  if (error) {
+    console.warn("Failed to fetch categories:", error.message);
+    return [];
   }
+  return (data ?? []) as Category[];
 }
 
 export function useStoreCategories() {
   return useQuery({
     queryKey: ["store-categories"],
     queryFn: fetchStoreCategories,
-    initialData: getInitialCategories,
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 60,
     refetchOnWindowFocus: false,
   });
 }
 
-// ── 3. Fetch & Cache Hero Banners ──
+// MARK3 Fetch & Cache Hero Banners ──
 export async function fetchHeroBanners(): Promise<HeroBanner[]> {
   try {
     const { data, error } = await supabase
