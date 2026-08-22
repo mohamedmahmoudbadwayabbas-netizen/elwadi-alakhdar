@@ -21,9 +21,7 @@ import {
   ChevronRight,
   Check,
 } from "lucide-react";
-import { COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
 import { useStoreProducts, useStoreCategories } from "@/lib/store-data-hooks";
-import { INITIAL_PRODUCTS_CATALOG } from "@/lib/auto-seed";
 
 export interface PreviewSettings {
   site_name?: string | null;
@@ -85,12 +83,8 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
   const { data: dynamicCategories } = useStoreCategories();
 
   // Dynamic preview products & categories
-  const previewProducts = (dynamicProducts && dynamicProducts.length > 0)
-    ? dynamicProducts.slice(0, 6)
-    : (INITIAL_PRODUCTS_CATALOG as any[]).slice(0, 6);
-  const previewCategories = (dynamicCategories && dynamicCategories.length > 0)
-    ? dynamicCategories.slice(0, 6)
-    : COMPREHENSIVE_CATEGORIES.slice(0, 6);
+  const previewProducts = (dynamicProducts ?? []).slice(0, 6);
+  const previewCategories = (dynamicCategories ?? []).slice(0, 6);
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -611,7 +605,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
                 <div className="space-y-3 p-1">
                   <h3 className="font-black text-xs">كافة أقسام الهايبر</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {COMPREHENSIVE_CATEGORIES.map((cat) => (
+                    {previewCategories.map((cat) => (
                       <div
                         key={cat.id}
                         className={`p-2.5 ${cardRadius} border bg-card flex items-center gap-2.5 shadow-xs`}

@@ -51,7 +51,6 @@ import { ProductPageSkeleton } from "@/components/storefront/Skeletons";
 import { ProductStatsAndTip } from "@/components/storefront/ProductStatsAndTip";
 import { extractProductDetails } from "@/lib/product-metadata";
 import { flyToCart } from "@/lib/fly-to-cart";
-import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { motion, AnimatePresence } from "motion/react";
 import { useStoreProduct, useStoreProducts } from "@/lib/store-data-hooks";
 import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";

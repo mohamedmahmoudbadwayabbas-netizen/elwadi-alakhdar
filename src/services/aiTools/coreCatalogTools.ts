@@ -138,14 +138,13 @@ export async function toolGenerateProductImage(
   const res = await generateAdminImage({
     prompt,
     aspectRatio: "1:1",
-    imageName: `prod_${Date.now()}`,
   });
 
-  if (!res.ok || !res.imageUrl) {
+  if (!res.success || !res.imageUrl) {
     return {
       tool: "generateProductImage",
       ok: false,
-      messageAr: res.errorAr || "تعذر توليد الصورة بالذكاء الاصطناعي حالياً.",
+      messageAr: res.error || "تعذر توليد الصورة بالذكاء الاصطناعي حالياً.",
     };
   }
 
@@ -206,14 +205,13 @@ export async function toolUploadBannerImage(
   const res = await generateAdminImage({
     prompt,
     aspectRatio: "16:9",
-    imageName: `banner_${Date.now()}`,
   });
 
-  if (!res.ok || !res.imageUrl) {
+  if (!res.success || !res.imageUrl) {
     return {
       tool: "uploadBannerImage",
       ok: false,
-      messageAr: res.errorAr || "تعذر توليد صورة البانر حالياً.",
+      messageAr: res.error || "تعذر توليد صورة البانر حالياً.",
     };
   }
 

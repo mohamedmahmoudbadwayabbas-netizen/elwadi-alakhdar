@@ -16,11 +16,6 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/storefront/EmptyState";
 import { SkeletonBox } from "@/components/storefront/Skeletons";
-import {
-  COMPREHENSIVE_CATEGORIES,
-  ComprehensiveCategory,
-  getMergedCategories,
-} from "@/lib/categories-data";
 import { cn } from "@/lib/utils";
 import { useStoreCategories, type Category } from "@/lib/store-data-hooks";
 
@@ -62,7 +57,7 @@ type Cat = {
 export function CategoriesPage() {
   const navigate = useNavigate();
   const { data: cachedCats, isLoading } = useStoreCategories();
-  const cats: Cat[] = (cachedCats ?? (COMPREHENSIVE_CATEGORIES as Category[])).map((c) => ({
+  const cats: Cat[] = (cachedCats ?? []).map((c) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
@@ -88,16 +83,8 @@ export function CategoriesPage() {
     if (!searchFilter.trim()) return true;
     const q = searchFilter.trim().toLowerCase();
     const kids = childrenOf(p.id);
-    const preset = COMPREHENSIVE_CATEGORIES.find((c) => c.id === p.id);
-    const presetSubcatMatch = preset?.subcategories?.some((s) => s.name.toLowerCase().includes(q));
-    return (
-      p.name.toLowerCase().includes(q) ||
-      kids.some((k) => k.name.toLowerCase().includes(q)) ||
-      Boolean(presetSubcatMatch)
-    );
+    return p.name.toLowerCase().includes(q) || kids.some((k) => k.name.toLowerCase().includes(q));
   });
-
-  const activeCategoryObject = COMPREHENSIVE_CATEGORIES.find((c) => c.id === activeTab);
 
   const scrollTabs = (direction: "left" | "right") => {
     if (tabScrollRef.current) {
@@ -108,7 +95,7 @@ export function CategoriesPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background pb-28 text-right">
-      <h1 className="sr-only">دليل الأقسام الشامل — كل أقسام متجر سمارت ستور</h1>
+      <h1 className="sr-only">دليل الأقسام الشامل — كل أقسام متجر سوبرماركت الوادي الأخضر</h1>
 
       {/* هيدر الصفحة الرئيسي */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-xl">
@@ -119,7 +106,7 @@ export function CategoriesPage() {
             </div>
             <div>
               <span className="font-display text-base font-black text-foreground block leading-tight">
-                سمارت ستور
+                سوبرماركت الوادي الأخضر
               </span>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">
                 دليل الأقسام الشامل
@@ -179,8 +166,7 @@ export function CategoriesPage() {
 
               {parents.map((cat) => {
                 const isActive = activeTab === cat.id;
-                const preset = COMPREHENSIVE_CATEGORIES.find((c) => c.id === cat.id);
-                const bgImage = cat.image_url || preset?.image_url;
+                const bgImage = cat.image_url;
                 return (
                   <button
                     key={cat.id}
@@ -281,23 +267,14 @@ export function CategoriesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {filteredParents.map((p) => {
                 const dbKids = childrenOf(p.id);
-                const presetObj = COMPREHENSIVE_CATEGORIES.find(
-                  (cc) => cc.id === p.id || cc.name === p.name,
-                );
-                const subcategories =
-                  dbKids.length > 0
-                    ? dbKids.map((k) => ({
-                        id: k.id,
-                        name: k.name,
-                        icon: k.icon || "✨",
-                        image_url: k.image_url || undefined,
-                      }))
-                    : (presetObj?.subcategories ?? []);
+                const subcategories = dbKids.map((k) => ({
+                  id: k.id,
+                  name: k.name,
+                  icon: k.icon || "✨",
+                  image_url: k.image_url || undefined,
+                }));
 
-                const coverImage =
-                  p.image_url ||
-                  presetObj?.image_url ||
-                  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
+                const coverImage = p.image_url;
 
                 return (
                   <div
@@ -306,12 +283,18 @@ export function CategoriesPage() {
                   >
                     {/* الصورة عالية الجودة والبادج في الأعلى */}
                     <div className="relative h-44 w-full overflow-hidden bg-secondary">
-                      <img
-                        src={coverImage}
-                        alt={p.name}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
-                      />
+                      {coverImage ? (
+                        <img
+                          src={coverImage}
+                          alt={p.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-4xl">
+                          {p.icon || "🌿"}
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       {/* شارة تمييز القسم */}
@@ -340,9 +323,9 @@ export function CategoriesPage() {
                             {p.name}
                           </h3>
                         </div>
-                        {presetObj?.description && (
+                        {p.description && (
                           <p className="line-clamp-1 text-[11px] text-white/90 font-medium drop-shadow-xs">
-                            {presetObj.description}
+                            {p.description}
                           </p>
                         )}
                       </div>

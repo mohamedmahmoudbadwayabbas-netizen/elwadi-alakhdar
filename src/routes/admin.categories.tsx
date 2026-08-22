@@ -42,8 +42,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { COMPREHENSIVE_CATEGORIES } from "@/lib/categories-data";
-import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 
 type Cat = {
   id: string;
@@ -120,7 +118,6 @@ function CategoriesPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [seeding, setSeeding] = useState(false);
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -136,15 +133,7 @@ function CategoriesPage() {
 
       if (catErr) throw catErr;
 
-      let fetchedCats = catData;
-      if (!fetchedCats || fetchedCats.length === 0) {
-        await autoSeedDatabaseIfNeeded();
-        const { data: retryCats } = await supabase
-          .from("categories")
-          .select("*")
-          .order("sort_order", { ascending: true });
-        fetchedCats = retryCats || [];
-      }
+      const fetchedCats = catData ?? [];
 
       // حساب عدد المنتجات لكل تصنيف
       const counts: Record<string, number> = {};
@@ -316,49 +305,6 @@ function CategoriesPage() {
     ]);
   };
 
-  // زر الاستيراد التلقائي للأقسام القياسية إذا كانت القاعدة فارغة
-  const handleSeedComprehensiveCategories = async () => {
-    setSeeding(true);
-    try {
-      for (const parentCat of COMPREHENSIVE_CATEGORIES) {
-        const { data: insertedParent, error: parentErr } = await supabase
-          .from("categories")
-          .insert({
-            name: parentCat.name,
-            slug: parentCat.slug,
-            icon: parentCat.icon || null,
-            image_url: parentCat.image_url || null,
-            sort_order: parentCat.sort_order,
-            parent_id: null,
-          })
-          .select("id")
-          .single();
-
-        if (parentErr) continue;
-
-        if (parentCat.subcategories && insertedParent?.id) {
-          const subPayloads = parentCat.subcategories.map((sub, idx) => ({
-            name: sub.name,
-            slug: sub.slug,
-            icon: sub.icon || null,
-            image_url: sub.image_url || null,
-            sort_order: idx + 1,
-            parent_id: insertedParent.id,
-          }));
-
-          await supabase.from("categories").insert(subPayloads);
-        }
-      }
-
-      toast.success("تم استيراد كافة أقسام السوبرماركت الفاخرة بنجاح ✨");
-      loadData();
-    } catch (err: any) {
-      toast.error(`حدث خطأ أثناء الاستيراد: ${err.message}`);
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   // فلترة الأقسام بناءً على البحث
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return rows;
@@ -401,22 +347,6 @@ function CategoriesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {rows.length === 0 && (
-            <Button
-              onClick={handleSeedComprehensiveCategories}
-              disabled={seeding}
-              variant="outline"
-              className="rounded-2xl border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold text-xs gap-2 h-10"
-            >
-              {seeding ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Database className="h-4 w-4" />
-              )}
-              <span>استيراد أقسام السوبرماركت القياسية</span>
-            </Button>
-          )}
-
           <Button
             onClick={() => setEditing({ sort_order: rows.length + 1 })}
             className="rounded-2xl hero-gradient text-primary-foreground font-black text-xs gap-2 shadow-md hover:scale-[1.02] active:scale-95 transition-transform h-10 px-4"
@@ -494,22 +424,6 @@ function CategoriesPage() {
                 : "قم بإنشاء أحدث أقسام السوبرماركت لتنظيم منتجات المتجر بأسلوب احترافي"}
             </p>
           </div>
-          {!searchQuery && (
-            <div className="flex justify-center gap-3 pt-2">
-              <Button
-                onClick={handleSeedComprehensiveCategories}
-                disabled={seeding}
-                className="rounded-xl hero-gradient text-primary-foreground font-bold text-xs gap-2"
-              >
-                {seeding ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Database className="h-4 w-4" />
-                )}
-                استيراد الهيكل التمويني الشامل
-              </Button>
-            </div>
-          )}
         </div>
       ) : (
         <motion.div
