@@ -1,6 +1,6 @@
 /* =========================================================================
    GEMINI AI ADMIN ENGINE — TYPE DEFINITIONS
-   Unified 24-Tool Suite Types, Execution Contexts & Payload Interfaces
+   Unified 26-Tool Suite Types, Execution Contexts & Payload Interfaces
    ========================================================================= */
 
 import type { StoreLayoutConfig, ThemeColorPalette, LayoutSectionKey, MiniAdItem, HeroSlideConfig } from "@/types/layout-config";
@@ -11,6 +11,8 @@ export type AiToolName =
   | "manageProduct"
   | "manageCategories"
   | "bulkPriceUpdate"
+  | "searchProducts"
+  | "getCategories"
   | "updateLayoutConfig"
   | "updateThemeColors"
   | "createDiscountBundle"
