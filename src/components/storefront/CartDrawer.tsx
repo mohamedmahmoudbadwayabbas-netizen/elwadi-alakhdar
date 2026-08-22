@@ -145,7 +145,7 @@ export function CartDrawer() {
       toast.error("تعذّر إرسال الطلب", { description: error.message });
       return;
     }
-    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق سمارت ستور قريباً" });
+    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق سوبرماركت الوادي الأخضر قريباً" });
     clear();
     setStage("cart");
     setForm({
@@ -178,7 +178,7 @@ export function CartDrawer() {
               </button>
             )}
             <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            {stage === "cart" ? "سلة تسوّق سمارت ستور" : "إتمام طلب السوبرماركت"}
+            {stage === "cart" ? "سلة تسوّق سوبرماركت الوادي الأخضر" : "إتمام طلب السوبرماركت"}
           </SheetTitle>
         </SheetHeader>
 
@@ -240,7 +240,7 @@ export function CartDrawer() {
               onClick={() => setOpen(false)}
               className="mt-2 rounded-2xl hero-gradient text-primary-foreground font-black text-xs"
             >
-              تصفّح منتجات سمارت ستور
+              تصفّح منتجات سوبرماركت الوادي الأخضر
             </Button>
           </div>
         ) : stage === "cart" ? (

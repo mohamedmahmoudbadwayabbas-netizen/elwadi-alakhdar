@@ -98,10 +98,10 @@ export const Route = createFileRoute("/products/$productId")({
     const url = `${SITE_URL}/products/${params.productId}`;
     const p = loaderData?.seo;
     const name = p?.name ?? "منتج";
-    const title = `${name} — سمارت ستور`.slice(0, 60);
+    const title = `${name} — سوبرماركت الوادي الأخضر`.slice(0, 60);
     const description = (
       p?.description?.trim() ||
-      `اشترِ ${name} طازجًا من متجر سمارت ستور بأفضل سعر مع توصيل سريع لباب بيتك.`
+      `اشترِ ${name} طازجًا من سوبرماركت الوادي الأخضر بأفضل سعر مع توصيل سريع لباب بيتك.`
     ).slice(0, 158);
     return {
       meta: [
@@ -993,7 +993,7 @@ function ProductPage() {
           <StoreGoogleMapsWidget
             title="تغطية التوصيل وموقع المتجر المباشر"
             subtitle={`التوصيل السريع لمنتج ${product.name} إلى موقعك`}
-            storeName="المركز الرئيسي - سمارت ستور"
+            storeName="المركز الرئيسي - سوبرماركت الوادي الأخضر"
             showAiGrounding={true}
           />
         </div>

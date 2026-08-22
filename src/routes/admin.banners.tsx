@@ -88,18 +88,6 @@ const PROMO_PRESETS = [
   },
 ];
 
-const DEFAULT_BANNERS: Banner[] = PROMO_PRESETS.map((p, idx) => ({
-  id: `banner-default-${idx + 1}`,
-  image_url: p.image_url,
-  title: p.title,
-  subtitle: p.subtitle,
-  cta_text: p.cta_text,
-  link_url: p.link_url,
-  sort_order: idx + 1,
-  is_active: true,
-  created_at: new Date().toISOString(),
-}));
-
 function BannersPage() {
   const [rows, setRows] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,34 +99,24 @@ function BannersPage() {
 
   const load = async () => {
     setLoading(true);
-    let localList: Banner[] = [];
-    try {
-      const cached = localStorage.getItem("alwadi_hero_banners");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) localList = parsed;
-      }
-    } catch {}
-
     try {
       const { data, error } = await supabase
         .from("hero_banners")
         .select("*")
         .order("sort_order", { ascending: true });
 
-      if (data && data.length > 0) {
-        setRows(data as Banner[]);
-        try {
-          localStorage.setItem("alwadi_hero_banners", JSON.stringify(data));
-        } catch {}
-        setLoading(false);
-        return;
+      if (error) {
+        console.warn("[Banners] Supabase error:", error.message);
       }
-    } catch {}
 
-    const finalList = localList.length > 0 ? localList : DEFAULT_BANNERS;
-    setRows(finalList);
-    setLoading(false);
+      const result = (data as Banner[]) || [];
+      setRows(result);
+    } catch (err) {
+      console.error("[Banners] Error loading hero banners:", err);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

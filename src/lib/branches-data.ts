@@ -141,46 +141,7 @@ export async function fetchLiveBranches(): Promise<LiveBranch[]> {
       });
     }
 
-    // Default 3 real branches representation connected to database
-    const defaultThreeZones = [
-      {
-        id: "branch-1",
-        name: "فرع الدقي والمهندسين (الرئيسي)",
-        city: "الجيزة",
-        governorate: "الجيزة",
-        address: "شارع مصدق، الدقي، الجيزة",
-        deliveryZones: ["الدقي", "المهندسين", "العجوزة", "الزمالك"],
-        isMain: true,
-      },
-      {
-        id: "branch-2",
-        name: "فرع مدينة نصر والتجمع",
-        city: "القاهرة",
-        governorate: "القاهرة",
-        address: "شارع مكرم عبيد، مدينة نصر، القاهرة",
-        deliveryZones: ["مدينة نصر", "مصر الجديدة", "التجمع الأول", "التجمع الخامس"],
-        isMain: false,
-      },
-      {
-        id: "branch-3",
-        name: "فرع المعادي والمقطم",
-        city: "القاهرة",
-        governorate: "القاهرة",
-        address: "شارع النصر، دجلة المعادي، القاهرة",
-        deliveryZones: ["المعادي", "دجلة", "المقطم", "زهراء المعادي"],
-        isMain: false,
-      },
-    ];
-
-    return defaultThreeZones.map((z, idx) => ({
-      ...z,
-      phone: mainStorePhone,
-      status: "open" as const,
-      stats: calculateLiveStats(orders, products, z.id),
-      estimatedMinutes: 30 + idx * 10,
-      fee: 25 + idx * 5,
-      minOrderAmount: 100,
-    }));
+    return [];
   } catch (err) {
     console.error("Error fetching live branches from Supabase:", err);
     return [];

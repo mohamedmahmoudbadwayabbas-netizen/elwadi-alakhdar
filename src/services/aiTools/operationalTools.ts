@@ -252,15 +252,11 @@ export async function exportReportsAndAnalytics(
   const format = args.format || "json";
   const includeTop = args.includeTopProducts ?? true;
 
-  let totalRevenue = 14850;
-  let totalOrders = 42;
-  let averageOrderValue = 353.5;
+  let totalRevenue = 0;
+  let totalOrders = 0;
+  let averageOrderValue = 0;
   let ordersList: any[] = [];
-  let topProducts: Array<{ name: string; salesCount: number; revenue: number }> = [
-    { name: "جبن قريش فلاحي طازج", salesCount: 85, revenue: 8500 },
-    { name: "حليب بقري طبيعي مبستر", salesCount: 64, revenue: 2880 },
-    { name: "زبدة جاموسي بلدي", salesCount: 22, revenue: 4400 },
-  ];
+  let topProducts: Array<{ name: string; salesCount: number; revenue: number }> = [];
 
   if (isSupabaseConfigured()) {
     try {
@@ -286,8 +282,8 @@ export async function exportReportsAndAnalytics(
       if (prods && prods.length > 0) {
         topProducts = prods.map((p) => ({
           name: p.name,
-          salesCount: Number(p.purchase_count || 12),
-          revenue: Number(p.price_per_unit || 50) * Number(p.purchase_count || 12),
+          salesCount: Number(p.purchase_count || 0),
+          revenue: Number(p.price_per_unit || 0) * Number(p.purchase_count || 0),
         }));
       }
     } catch (e) {

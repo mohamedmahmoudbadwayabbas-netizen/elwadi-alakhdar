@@ -27,19 +27,19 @@ import { useStoreCategories, type Category } from "@/lib/store-data-hooks";
 export const Route = createFileRoute("/categories")({
   head: () => ({
     meta: [
-      { title: "دليل الأقسام الشامل — سمارت ستور" },
+      { title: "دليل الأقسام الشامل — سوبرماركت الوادي الأخضر" },
       {
         name: "description",
         content:
-          "تصفّح أقسام متجر سمارت ستور الشاملة بأعلى جودة وصور احترافية: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات",
+          "تصفّح أقسام متجر سوبرماركت الوادي الأخضر الشاملة بأعلى جودة وصور احترافية: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات",
       },
-      { property: "og:title", content: "دليل الأقسام الشامل — سمارت ستور" },
+      { property: "og:title", content: "دليل الأقسام الشامل — سوبرماركت الوادي الأخضر" },
       {
         property: "og:description",
-        content: "كل أقسام متجر سمارت ستور: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات.",
+        content: "كل أقسام متجر سوبرماركت الوادي الأخضر: خضروات، بقالة، ألبان، لحوم، عطارة ومكسرات.",
       },
       { property: "og:url", content: `${SITE_URL}/categories` },
-      { name: "twitter:title", content: "دليل الأقسام الشامل — سمارت ستور" },
+      { name: "twitter:title", content: "دليل الأقسام الشامل — سوبرماركت الوادي الأخضر" },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/categories` }],
   }),
@@ -237,7 +237,7 @@ export function CategoriesPage() {
               type="text"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="ابحث في جميع الأقسام (مثل: لحوم، بهارات، خضار، أجبان...)"
+              placeholder="ابحث في جميع الأقسام (مثل: تموين، أجبان، لحوم، منظفات...)"
               className="h-10 w-full rounded-2xl border border-border/80 bg-background pe-4 ps-10 text-xs font-medium focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 shadow-xs transition-all"
             />
           </div>

@@ -44,7 +44,7 @@ export type StoreSettings = {
 
 // ⚠️ القيم دي بقت HSL نصي زي "142 76% 24%" مش Hex — لازم تتطابق مع admin.settings.tsx
 const DEFAULTS: StoreSettings = {
-  site_name: "سمارت ستور — هايبر ماركت",
+  site_name: "الوادي الأخضر",
   logo_url: null,
   favicon_url: null,
   primary_color: "142 76% 24%",
@@ -53,17 +53,16 @@ const DEFAULTS: StoreSettings = {
   foreground_color: "120 18% 12%",
   font_family: "Tajawal",
   announcement_text:
-    "🛒 هايبر ماركت سمارت ستور — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
+    "🛒 سوبرماركت الوادي الأخضر — كل احتياجات بيتك وتموينك بتوصيل فوري لباب بيتك ⚡",
   announcement_enabled: true,
   announcement_bg_color: "142 76% 24%",
   whatsapp_number: null,
-  hero_title: "سمارت ستور — هايبر ماركت أونلاين متكامل 🛒",
-  hero_subtitle:
-    "تسوّق جميع سلع البقالة، اللحوم البلدية الطازجة، الأجبان، المشروبات والمنظفات بأسعار الجملة التنافسية وتوصيل سريع لباب المنزل.",
+  hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+  hero_subtitle: "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
   hero_image_url: null,
-  hero_cta_text: "تصفح العروض والمنتجات 🛒",
+  hero_cta_text: "تسوّق الآن 🛒",
   hero_bg_image:
-    "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=85",
+    "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=85",
   login_bg_pattern: null,
   cart_empty_bg: null,
   floating_element_image:
@@ -165,6 +164,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           (merged as any)[key] = DEFAULTS[key];
         }
       }
+
+      // Sanitize legacy or stale cached strings containing vegetable/produce tags
+      if (merged.hero_title && (merged.hero_title.includes("طازج لباب بيتك") || merged.hero_title.includes("خضار"))) {
+        merged.hero_title = DEFAULTS.hero_title;
+      }
+      if (merged.hero_subtitle && (merged.hero_subtitle.includes("الخضار") || merged.hero_subtitle.includes("طازجة يومياً"))) {
+        merged.hero_subtitle = DEFAULTS.hero_subtitle;
+      }
+      if (merged.announcement_text && merged.announcement_text.includes("خضار")) {
+        merged.announcement_text = DEFAULTS.announcement_text;
+      }
+
       setSettings(merged);
       applyTheme(merged);
       try {

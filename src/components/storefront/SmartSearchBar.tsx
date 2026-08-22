@@ -256,7 +256,7 @@ export function SmartSearchBar({
                 </div>
                 <h4 className="text-xs font-bold text-foreground">لم نجد منتجات تطابق "{query}"</h4>
                 <p className="text-[11px] text-muted-foreground">
-                  جرب البحث بكلمة عامة مثل (لحم، خضار، زبادي، أرز)
+                  جرب البحث بكلمة عامة مثل (أرز، زيت، لحم، جبن، مسحوق)
                 </p>
               </div>
             )}

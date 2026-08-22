@@ -150,7 +150,7 @@ export type {
 
 const ROLE_PROMPTS: Record<GeminiRoleChoice, string> = {
   store_architect:
-    "أنت مهندس واجهات ومتجر سمارت ستور (Store Architect). خبير في تحسين تجربة التسوق والتنسيقات المرئية وتخطيط الصفحة الرئيسية والبانرات وإدارة الكود البرمجي وقواعد البيانات.",
+    "أنت مهندس واجهات ومتجر سوبرماركت الوادي الأخضر (Store Architect). خبير في تحسين تجربة التسوق والتنسيقات المرئية وتخطيط الصفحة الرئيسية والبانرات وإدارة الكود البرمجي وقواعد البيانات.",
   market_researcher:
     "أنت باحث تسويق ومحلل سوق التجزئة والسوبرماركت المصري (Market Researcher). خبير في تسعير السلع الأساسية والمنافسة وتحليل سلوك المستهلك المصري.",
   growth_strategist:
@@ -161,9 +161,10 @@ const ROLE_PROMPTS: Record<GeminiRoleChoice, string> = {
 
 // Production model fallback sequence
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
+  "gemini-3.7-flash",
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
+  "gemini-3.5-flash",
+  "gemini-3.1-pro-preview",
 ];
 
 /* ───────────────────────── runAdminCoPilotChat ───────────────────────── */
@@ -280,6 +281,8 @@ After tool execution, verify that database/state verification has passed.
           temperature: 0.4,
           tools: [{ functionDeclarations: GEMINI_TOOL_DECLARATIONS }],
           toolConfig: {
+            includeServerSideToolInvocations: true,
+            include_server_side_tool_invocations: true,
             functionCallingConfig: {
               mode: "AUTO",
             },
@@ -607,51 +610,18 @@ export async function parseAdminCommandToLayoutUpdate(
 export async function generateExecutiveSummary(
   kpis: ExecutiveKpiInput,
 ): Promise<ExecutiveSummaryResult> {
-  const health = kpis.lowStockCount > 5 ? 78 : 94;
+  const isZeroState = (kpis.totalOrders || 0) === 0 && (kpis.totalRevenue || 0) === 0;
 
-  return {
-    headline: `أداء متجر سمارت ستور ممتاز بإجمالي مبيعات ${kpis.totalRevenue.toLocaleString()} ج.م ومعدل طلبات قوي`,
-    overallHealthScore: health,
-    insights: [
-      `حقق المتجر ${kpis.totalOrders} طلباً بمتوسط قيمة سلة ${(kpis.averageOrderValue || 0).toFixed(1)} ج.م.`,
-      `تصنيف «${kpis.topSellingCategory || "الألبان والأجبان"}» يتصدر المبيعات كأعلى عائد ربحي.`,
-      kpis.lowStockCount > 0
-        ? `يوجد ${kpis.lowStockCount} منتج وصل لحد إعادة الطلب ويحتاج لتجديد المخزون.`
-        : "المخزون متوازن ومستقر بالكامل دون نواقص حرجة.",
-    ],
-    actionableTips: [
-      {
-        title: "إعادة تزويد الأصناف الأسرع مبيعاً",
-        description: "قم بزيادة كميات الجبن القريش والحليب الطازج لتفادي نفاد المخزون أثناء ذروة عطلة نهاية الأسبوع.",
-        impact: "High",
-        category: "Inventory",
-        quickActionLabel: "تحديث المخزون",
-        quickActionCommand: "افتح لوحة المنتجات لمراجعة النواقص",
-      },
-      {
-        title: "إطلاق حملة الساعات الذهبية",
-        description: "تفعيل كود خصم 15% على قسم الفواكه والخضروات لرفع معدل تكرار الشراء وتفريغ السلات المتروكة.",
-        impact: "Urgent",
-        category: "Marketing",
-        quickActionLabel: "تفعيل العرض",
-        quickActionCommand: "فعّل عداد عروض الساعات الذهبية لمدة 4 ساعات",
-      },
-    ],
-  };
-}
-
-/* ───────────────────────── generateAbandonedCartRecovery ───────────────────────── */
-
-export async function generateAbandonedCartRecovery(
-  cart: AbandonedCartData,
-): Promise<AbandonedCartDraftResult> {
-  const coupon = cart.couponSuggested || "SAVE10";
-  const name = cart.customerName || "عزيزنا العميل";
-
-  const message = `أهلاً بك يا ${name} 👋 من سمارت ستور 🌿
+  if (isZeroState) {
+    return {
+      headline: "لا توجد طلبات مسجلة حالياً في قاعدة البيانات — المتجر جاهز لاستقبال الطلبات",
+      overallHealthScore: 100,
+      insights: [
+        "إجمالي الطلبات والمبيعات الحالية: 0 ج.م (قاعدة البيانات فارغة أو لا توجد طلبات اليوم).",
+        `تصنيف المنتجات الأكثر وفرة: ${kpis.topSelli  const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿
 سلتك تحتوي على (${cart.itemsList?.slice(0, 2).join("، ") || "منتجات طازجة مختارة"}) بقيمة ${cart.totalPrice.toFixed(2)} ج.م.
-خصصنا لك كود خصم فوري 🎁 *${coupon}* (10% خصم إضافي) عند إتمام الطلب الآن!
-أكمل طلبك واستلم خلال 45 دقيقة: https://smartstore.eg/cart?coupon=${coupon}`;
+خصّصنا لك كود خصم فوري 🎁 *${coupon}* (10% خصم إضافي) عند إتمام الطلب الآن!
+أكمل طلبك واستلم خلال 45 دقيقة: https://alwadi-alakhdar.eg/cart?coupon=${coupon}`;
 
   const cleanPhone = (cart.phone || "01000000000").replace(/[^0-9]/g, "");
   const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;
@@ -676,7 +646,73 @@ export async function generateProductCopywriting(
   return {
     enhancedTitle: `${title} فاخر طازج يومياً`,
     shortDescription: `مختار بعناية فائقة من أجود المزارع المصرية، طبيعي 100% بدون أي مواد حافظة أو إضافات صناعية.`,
-    seoDescription: `اشتري ${title} طازج بأفضل سعر في مصر من سمارت ستور مع توصيل سريع في أقل من 45 دقيقة.`,
+    seoDescription: `اشتري ${title} طازج بأفضل سعر في مصر من سوبرماركت الوادي الأخضر مع توصيل سريع في أقل من 45 دقيقة.`,ن ${kpis.totalOrders} طلب`,
+    overallHealthScore: health,
+    insights: [
+      `حقق المتجر ${kpis.totalOrders} طلباً بمتوسط قيمة سلة ${(kpis.averageOrderValue || 0).toFixed(1)} ج.م.`,
+      `تصنيف «${kpis.topSellingCategory || "عام"}» يتصدر النشاط.`,
+      kpis.lowStockCount > 0
+        ? `يوجد ${kpis.lowStockCount} منتج وصل لحد إعادة الطلب ويحتاج لتجديد المخزون.`
+        : "المخزون متوازن ومستقر بالكامل دون نواقص حرجة.",
+    ],
+    actionableTips: [
+      {
+        title: "إعادة تزويد الأصناف الأسرع مبيعاً",
+        description: "قم بزيادة كميات السلع الأكثر طلباً لتفادي نفاد المخزون أثناء أوقات الذروة.",
+        impact: "High",
+        category: "Inventory",
+        quickActionLabel: "تحديث المخزون",
+        quickActionCommand: "افتح لوحة المنتجات لمراجعة النواقص",
+      },
+      {
+        title: "إطلاق حملة تنشيط السلات",
+        description: "تفعيل كود خصم على المنتجات لرفع معدل تكرار الشراء وتفريغ السلات المتروكة.",
+        impact: "Urgent",
+        category: "Marketing",
+        quickActionLabel: "تفعيل العرض",
+        quickActionCommand: "فعّل عداد عروض الساعات الذهبية لمدة 4 ساعات",
+      },
+    ],
+  };
+}
+
+/* ───────────────────────── generateAbandonedCartRecovery ───────────────────────── */
+
+export async function generateAbandonedCartRecovery(
+  cart: AbandonedCartData,
+): Promise<AbandonedCartDraftResult> {
+  const coupon = cart.couponSuggested || "SAVE10";
+  const name = cart.customerName || "عزيزنا العميل";
+
+  const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿
+سلتك تحتوي على (${cart.itemsList?.slice(0, 2).join("، ") || "منتجات طازجة مختارة"}) بقيمة ${cart.totalPrice.toFixed(2)} ج.م.
+خصّصنا لك كود خصم فوري 🎁 *${coupon}* (10% خصم إضافي) عند إتمام الطلب الآن!
+أكمل طلبك واستلم خلال 45 دقيقة: https://alwadi-alakhdar.eg/cart?coupon=${coupon}`;
+
+  const cleanPhone = (cart.phone || "01000000000").replace(/[^0-9]/g, "");
+  const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;
+  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+
+  return {
+    messageText: message,
+    whatsappUrl,
+    suggestedDiscountCode: coupon,
+    strategy: "استرداد قائم على الحافز السعري والسرعة اللوجستية",
+  };
+}
+
+/* ───────────────────────── generateProductCopywriting ───────────────────────── */
+
+export async function generateProductCopywriting(
+  input: ProductCopywriterInput,
+): Promise<ProductCopywriterResult> {
+  const title = input.productName || "جبن قريش فلاحي طازج";
+  const isWeight = Boolean(input.isByWeight);
+
+  return {
+    enhancedTitle: `${title} فاخر طازج يومياً`,
+    shortDescription: `مختار بعناية فائقة من أجود المزارع المصرية، طبيعي 100% بدون أي مواد حافظة أو إضافات صناعية.`,
+    seoDescription: `اشتري ${title} طازج بأفضل سعر في مصر من سوبرماركت الوادي الأخضر مع توصيل سريع في أقل من 45 دقيقة.`,
     tags: ["طازج", "بلدي", "صحي", "سوبرماركت", "عروض"],
     cookingTip: "يُحفظ في الثلاجة في وعاء زجاجي محكم لضمان أقصى درجات النضارة والمذاق الأصيل.",
     characteristics: ["طبيعي 100%", "خالٍ من المواد الحافظة", "توصيل طازج يومياً"],

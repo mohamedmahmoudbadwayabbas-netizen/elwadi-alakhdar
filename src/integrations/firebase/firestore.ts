@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./config";
 import { StoreBranch, Product, Order, StoreSettings } from "./types";
-import { INITIAL_BRANCHES, INITIAL_PRODUCTS, INITIAL_STORE_SETTINGS } from "./seed-data";
+import { INITIAL_STORE_SETTINGS } from "./seed-data";
 
 // In-Memory & LocalStorage Cache for instant reactive rendering & offline tolerance
 const STORAGE_KEY_BRANCHES = "alwadi_firestore_branches_v1";
@@ -54,8 +54,7 @@ export async function getBranches(): Promise<StoreBranch[]> {
     console.warn("Firestore getBranches fallback to local:", e);
   }
 
-  // Fallback / Initial Seed
-  const cached = loadFromLocal<StoreBranch[]>(STORAGE_KEY_BRANCHES, INITIAL_BRANCHES);
+  const cached = loadFromLocal<StoreBranch[]>(STORAGE_KEY_BRANCHES, []);
   return cached;
 }
 
@@ -76,7 +75,7 @@ export async function updateBranchStatus(
   }
 
   // Update local cache
-  const list = loadFromLocal<StoreBranch[]>(STORAGE_KEY_BRANCHES, INITIAL_BRANCHES);
+  const list = loadFromLocal<StoreBranch[]>(STORAGE_KEY_BRANCHES, []);
   const updated = list.map((b) => (b.id === branchId ? { ...b, status } : b));
   saveToLocal(STORAGE_KEY_BRANCHES, updated);
   return true;
@@ -100,7 +99,7 @@ export async function getProducts(branchId?: string): Promise<Product[]> {
     console.warn("Firestore getProducts fallback to local:", e);
   }
 
-  const cached = loadFromLocal<Product[]>(STORAGE_KEY_PRODUCTS, INITIAL_PRODUCTS);
+  const cached = loadFromLocal<Product[]>(STORAGE_KEY_PRODUCTS, []);
   if (branchId && branchId !== "all") {
     return cached.filter((p) => p.branchInventory?.[branchId]?.isAvailable !== false);
   }
@@ -115,7 +114,7 @@ export async function saveProduct(product: Product): Promise<boolean> {
     console.warn("Firestore saveProduct fallback:", e);
   }
 
-  const list = loadFromLocal<Product[]>(STORAGE_KEY_PRODUCTS, INITIAL_PRODUCTS);
+  const list = loadFromLocal<Product[]>(STORAGE_KEY_PRODUCTS, []);
   const exists = list.some((p) => p.id === product.id);
   const updated = exists ? list.map((p) => (p.id === product.id ? product : p)) : [product, ...list];
   saveToLocal(STORAGE_KEY_PRODUCTS, updated);
@@ -154,7 +153,7 @@ export async function deleteProduct(productId: string): Promise<boolean> {
     console.warn("Firestore deleteProduct fallback:", e);
   }
 
-  const list = loadFromLocal<Product[]>(STORAGE_KEY_PRODUCTS, INITIAL_PRODUCTS);
+  const list = loadFromLocal<Product[]>(STORAGE_KEY_PRODUCTS, []);
   const updated = list.filter((p) => p.id !== productId);
   saveToLocal(STORAGE_KEY_PRODUCTS, updated);
   return true;

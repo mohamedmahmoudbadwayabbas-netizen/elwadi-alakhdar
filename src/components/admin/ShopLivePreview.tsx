@@ -218,7 +218,7 @@ export function ShopLivePreview({ layout }: ShopLivePreviewProps) {
                 🌿
               </div>
               <div>
-                <div className="font-display font-bold text-xs text-foreground">سمارت ستور</div>
+                <div className="font-display font-bold text-xs text-foreground">سوبرماركت الوادي الأخضر</div>
                 <div className="text-[9px] text-muted-foreground">أونلاين هايبر ماركت</div>
               </div>
             </div>
@@ -353,8 +353,8 @@ export function ShopLivePreview({ layout }: ShopLivePreviewProps) {
                           img: "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=300&q=80",
                         },
                         {
-                          name: "خضار وفاكهة 🍎",
-                          img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=300&q=80",
+                          name: "بقالة وتموين 🥫",
+                          img: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?auto=format&fit=crop&w=300&q=80",
                         },
                         {
                           name: "مشروبات وبقالة 🧃",

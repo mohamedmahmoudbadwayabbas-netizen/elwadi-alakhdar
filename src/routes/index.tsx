@@ -49,16 +49,16 @@ import { CategoryGrid } from "@/components/storefront/CategoryGrid";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "سوبرماركت الوادي الأخضر — تسوق البقالة واللحوم والخضار طازج 🌿" },
+      { title: "سوبرماركت الوادي الأخضر — تسوق البقالة والتموين واللحوم والأجبان 🛒" },
       {
         name: "description",
         content:
-          "تسوّق جميع سلع السوبرماركت، اللحوم البلدية الطازجة، الخضار والفاكهة والأجبان بأسعار الجملة وتوصيل فوري لباب منزلك.",
+          "تسوّق جميع سلع السوبرماركت، المواد التموينية، اللحوم البلدية الطازجة، والأجبان والمنظفات بأسعار الجملة وتوصيل فوري لباب منزلك.",
       },
-      { property: "og:title", content: "سوبرماركت الوادي الأخضر — طازج لباب بيتك" },
+      { property: "og:title", content: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك" },
       {
         property: "og:description",
-        content: "خضار وفواكه يومية، لحوم بلدي، أجبان، ومستلزمات التموين بأعلى جودة وتوصيل سريع.",
+        content: "أجود السلع التموينية، لحوم بلدي، أجبان، ومستلزمات المنزل بأعلى جودة وتوصيل سريع.",
       },
       { property: "og:url", content: `${SITE_URL}/` },
     ],
@@ -124,29 +124,51 @@ export function HomePage() {
 
   // Clean, realistic Supermarket Hero Slides
   const heroSlides = useMemo(() => {
-    const defaultSlide = {
-      id: "supermarket-main-hero",
-      title: settings.hero_title || "طازج يومياً.. من المزرعة والمصنع لباب بيتك 🥬",
-      subtitle:
-        settings.hero_subtitle ||
-        "أجود أنواع الخضار والفاكهة، اللحوم البلدية المضمونة، والأجبان والبقالة بأفضل عروض الأسعار وتوصيل فوري.",
-      image_url:
-        settings.hero_bg_image ||
-        settings.hero_image_url ||
-        "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=85",
-      cta_text: "تصفح عروض اليوم 🛒",
-      badge: "خصومات وعروض طازجة يومية ⚡",
-    };
+    const curatedSupermarketSlides = [
+      {
+        id: "supermarket-main-hero",
+        title: settings.hero_title || "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+        subtitle:
+          settings.hero_subtitle ||
+          "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
+        image_url:
+          settings.hero_bg_image ||
+          settings.hero_image_url ||
+          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=85",
+        cta_text: "تسوّق الآن 🛒",
+        badge: "عروض السوبرماركت اليومية 🛒",
+      },
+      {
+        id: "supermarket-staples-hero",
+        title: "عروض التموين وتوفير الشهر 🍚🥫",
+        subtitle: "تخفيضات كبرى على الأرز، الزيوت، المكرونات والمعلبات بأسعار الجملة لبيتك.",
+        image_url:
+          "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=85",
+        cta_text: "تسوّق التموين 🥫",
+        badge: "أسعار الجملة والتوفير ⚡",
+      },
+      {
+        id: "supermarket-meat-dairy-hero",
+        title: "اللحوم البلدية والأجبان الطازجة 🥩🧀",
+        subtitle: "كندوز ومفروم بلدي طازج يومياً، وأشهى أنواع الأجبان الرومي والشيدر والزبدة الفلاحي.",
+        image_url:
+          "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=1600&q=85",
+        cta_text: "قسم اللحوم والألبان 🥩",
+        badge: "طازج يومياً معتمد 🛡️",
+      },
+    ];
 
-    if (heroBanners.length === 0) return [defaultSlide];
+    if (!heroBanners || heroBanners.length === 0) {
+      return curatedSupermarketSlides;
+    }
 
-    return heroBanners.map((b) => ({
-      id: b.id,
-      title: b.title || "عروض وتخفيضات السوبرماركت الحصرية 🌟",
-      subtitle: b.subtitle || "وفر على مشترياتك الأسبوعية والشهرية مع خدمة التوصيل السريع.",
-      image_url: b.image_url,
-      cta_text: b.cta_text || "تسوق العرض الآن 🛒",
-      badge: "عرض خاص ومميز 🔥",
+    return heroBanners.map((b, idx) => ({
+      id: b.id || `banner-${idx}`,
+      title: b.title && !b.title.includes("خضار") ? b.title : curatedSupermarketSlides[idx % curatedSupermarketSlides.length].title,
+      subtitle: b.subtitle && !b.subtitle.includes("خضار") ? b.subtitle : curatedSupermarketSlides[idx % curatedSupermarketSlides.length].subtitle,
+      image_url: b.image_url || curatedSupermarketSlides[idx % curatedSupermarketSlides.length].image_url,
+      cta_text: b.cta_text || "تسوّق العرض 🛒",
+      badge: "عروض السوبرماركت ⚡",
     }));
   }, [heroBanners, settings]);
 
@@ -346,8 +368,8 @@ export function HomePage() {
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
                 <div>
-                  <div className="font-black text-xs">خضار ولحوم طازجة يومياً</div>
-                  <div className="text-[10px] text-slate-300">من المزارع مباشرة كل صباح</div>
+                  <div className="font-black text-xs">سلع تموينية ولحوم طازجة</div>
+                  <div className="text-[10px] text-slate-300">أصناف مختارة بعناية يومياً</div>
                 </div>
               </div>
 
@@ -578,7 +600,7 @@ export function HomePage() {
                 </div>
               )}
 
-              {/* SHELF 3: DAILY FRESH & MEAT (Vegetables, Fruits, Meat) */}
+              {/* SHELF 3: FRESH MEAT & DAIRY */}
               {freshProduceShelf.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-border/70 pb-3">
@@ -588,10 +610,10 @@ export function HomePage() {
                       </div>
                       <div>
                         <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          قسم الطازج — خضراوات وفواكه ولحوم بلدي 🥦🥩
+                          قسم اللحوم البلدية والأجبان الطازجة 🥩🧀
                         </h3>
                         <span className="text-[11px] text-muted-foreground font-bold">
-                          يتم وزنها وتجهيزها طازجة فور طلبك
+                          تُجهز وتُقطع طازجة يومياً فور طلبك
                         </span>
                       </div>
                     </div>
@@ -619,10 +641,10 @@ export function HomePage() {
                       </div>
                       <div>
                         <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          مستلزمات البقالة والتموين المنزلي 🥫🍚
+                          مستلزمات البقالة والتموين والمنظفات 🥫🍚
                         </h3>
                         <span className="text-[11px] text-muted-foreground font-bold">
-                          الزيوت، الأرز، السكر، المكرونة والمعلبات الأساسية
+                          الزيوت، الأرز، السكر، المكرونة والمنظفات الأساسية
                         </span>
                       </div>
                     </div>
@@ -654,7 +676,7 @@ export function HomePage() {
                 إرشادات مدير الفرع للتسوق الذكي وحفظ الأغذية 💡
               </h3>
               <p className="text-xs text-muted-foreground font-bold mt-0.5">
-                نصائح عملية معتمدة لضمان أقصى طزاجة وتوفير حقيقي في ميزانية منزلك
+                نصائح عملية معتمدة لضمان أقصى جودة وتوفير حقيقي في ميزانية منزلك
               </p>
             </div>
           </div>
@@ -662,10 +684,10 @@ export function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 rounded-2xl bg-card border border-border/80 space-y-1.5">
               <div className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                <span>🥬 حفظ الخضراوات الورقية:</span>
+                <span>🧀 حفظ الأجبان والألبان:</span>
               </div>
               <p className="text-[11px] text-muted-foreground font-bold leading-relaxed">
-                لف الخضار الورقي (بقدونس، كزبرة، خس) بمنشفة ورقية جافة داخل علبة محكمة لتبقى طازجة ومقرمشة لأكثر من 10 أيام.
+                تُحفظ الأجبان الطبيعية مغلفة بورق زبدة داخل علبة محكمة لمنع جفافها والحفاظ على نكهتها الطازجة.
               </p>
             </div>
 
@@ -695,7 +717,7 @@ export function HomePage() {
             {settings.site_name || BRAND_NAME_AR} — سوبرماركت عائلتك 🛒
           </div>
           <p className="text-xs text-muted-foreground font-bold max-w-md mx-auto">
-            توصيل فوري لجميع الفروع والمناطق • جودة مضمونة وخضار ولحوم طازجة يومياً.
+            توصيل فوري لجميع الفروع والمناطق • جودة مضمونة وسلع تموينية ولحوم طازجة.
           </p>
           <div className="text-[10px] text-muted-foreground/70 pt-2" dir="ltr">
             © 2026 Al-Wadi Supermarket. All rights reserved.

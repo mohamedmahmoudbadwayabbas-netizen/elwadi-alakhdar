@@ -9,9 +9,9 @@ export const BRAND_NAME_AR = "سوبرماركت الوادي الأخضر";
 export const BRAND_NAME_EN = "Al-Wadi Al-Akhdar Supermarket";
 export const BRAND_NAME = `${BRAND_NAME_AR} — ${BRAND_NAME_EN}`;
 
-export const BRAND_TAGLINE_AR = "سلسلة فروع الوادي الأخضر — جودة طازجة، أسعار الجملة، وتوصيل فوري";
+export const BRAND_TAGLINE_AR = "هايبر ماركت وسوبرماركت الوادي الأخضر — أقوى العروض، أسعار الجملة، وتوصيل فوري";
 export const BRAND_DESCRIPTION_AR =
-  "سلسلة سوبرماركت الوادي الأخضر عبر 3 فروع رئيسية: الدقي، مدينة نصر، والمعادي. خضار وفواكه طازجة، ألبان وأجبان، لحوم بلدية، ومنتجات منزلية بأعلى معايير الجودة.";
+  "سوبرماركت وهايبرماركت الوادي الأخضر: تسوق جميع سلع البقالة، التموين، الألبان والأجبان، المعلبات، اللحوم، المنظفات والمستلزمات المنزلية بأسعار تنافسية وتوصيل سريع لباب البيت.";
 
 export const ADMIN_PRIMARY_EMAIL = "adminstoresupermarketinvo@gmail.com";
 

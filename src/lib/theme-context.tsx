@@ -23,9 +23,9 @@ const DEFAULTS: ThemeSettings = {
   accent_hex: "#E85D2F",
   card_radius_px: 24,
   hero_grid_images: [],
-  hero_title: "سمارت ستور",
-  hero_subtitle: "سوبر ماركت وعطارة - أفضل أنواع الاختيارات وتوصيل سريع مباشر لباب بيتك",
-  hero_cta_text: "تسوّق الآن",
+  hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+  hero_subtitle: "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
+  hero_cta_text: "تسوّق الآن 🛒",
   auth_bg_url: null,
   cart_empty_bg_url: null,
 };

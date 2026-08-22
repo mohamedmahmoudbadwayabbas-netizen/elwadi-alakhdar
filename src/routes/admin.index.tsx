@@ -17,16 +17,11 @@ import {
   Clock,
   CheckCircle2,
   Sparkles,
-  Filter,
-  RefreshCw,
-  Eye,
   PackageCheck,
   Zap,
-  TrendingDown,
-  ShoppingBag,
+  Eye,
   Store,
-  ChevronRight,
-  Ban,
+  ChevronLeft,
   Package,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,20 +29,16 @@ import { Button } from "@/components/ui/button";
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   ResponsiveContainer,
   Tooltip,
   CartesianGrid,
-  LineChart,
-  Line,
 } from "recharts";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BranchSelector, Branch } from "@/components/admin/BranchSelector";
+import { BranchSelector } from "@/components/admin/BranchSelector";
 import { StockAndExpiryAlertsModal } from "@/components/admin/StockAndExpiryAlertsModal";
 import { ExecutiveSummaryWidget } from "@/components/admin/ExecutiveSummaryWidget";
 import { BranchCardsOverview } from "@/components/admin/BranchCardsOverview";
@@ -80,27 +71,6 @@ type OrderRow = {
 type ChartFilter = "today" | "7days" | "month";
 type ChartMetric = "sales" | "count";
 
-// تشغيل صوت نغمة التنبيه للطلبات الجديدة
-function playOrderChime() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.3);
-  } catch (e) {
-    // تجاهل إذا لم يسمح المتصفح بالتشغيل التلقائي
-  }
-}
-
-// مكون عداد الأرقام التصاعدي السلس
 function AnimatedCounter({
   value,
   prefix = "",
@@ -117,7 +87,7 @@ function AnimatedCounter({
   useEffect(() => {
     let frameId: number;
     const startTime = performance.now();
-    const duration = 1200;
+    const duration = 1000;
     const startVal = 0;
     const endVal = value;
 
@@ -148,13 +118,12 @@ function AnimatedCounter({
   );
 }
 
-// حساب الوقت المنقضي بالنسبة للطلب
 function getRelativeTime(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
   const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (diffSec < 15) return "الآن ⚡";
+  if (diffSec < 15) return "الآن";
   if (diffSec < 60) return `منذ ${diffSec} ثانية`;
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
@@ -175,10 +144,8 @@ function OverviewPage() {
   const [loading, setLoading] = useState(true);
   const [chartFilter, setChartFilter] = useState<ChartFilter>("7days");
   const [chartMetric, setChartMetric] = useState<ChartMetric>("sales");
-  const [newLiveOrderId, setNewLiveOrderId] = useState<string | null>(null);
   const [previewOrder, setPreviewOrder] = useState<OrderRow | null>(null);
 
-  // جلب البيانات مع ربط Supabase Realtime
   const loadData = async () => {
     try {
       const [{ data: ords }, { data: prods }, liveBranches] = await Promise.all([
@@ -206,18 +173,12 @@ function OverviewPage() {
   useEffect(() => {
     loadData();
 
-    // القناة الفورية للطلبات والمنتجات ومناطق التوصيل
     const channel = supabase
       .channel("admin-overview-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
         const newOrd = payload.new as OrderRow;
         setOrders((prev) => [newOrd, ...prev.filter((o) => o.id !== newOrd.id)]);
-        setNewLiveOrderId(newOrd.id);
-        playOrderChime();
-        toast.success(`🎉 طلب جديد بقيمة ${newOrd.total_price} ج.م!`, {
-          description: `العميل: ${newOrd.customer_name || "عميل المتجر"}`,
-          duration: 6000,
-        });
+        toast.success(`طلب جديد بقيمة ${newOrd.total_price} ج.م`);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
         const updated = payload.new as OrderRow;
@@ -246,7 +207,6 @@ function OverviewPage() {
     };
   }, []);
 
-  // تصفية الطلبات بناءً على الفرع المختار
   const filteredOrders = useMemo(() => {
     if (selectedBranchId === "all" || !selectedBranchId) return orders;
     return orders.filter(
@@ -256,7 +216,6 @@ function OverviewPage() {
     );
   }, [orders, selectedBranchId]);
 
-  // الحسابات المباشرة للإحصاءات
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -320,57 +279,20 @@ function OverviewPage() {
 
     if (prev7Revenue > 0) {
       const diff = ((last7Revenue - prev7Revenue) / prev7Revenue) * 100;
-      return diff >= 0 ? `+${diff.toFixed(1)}% نمو` : `${diff.toFixed(1)}%`;
+      return diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
     }
-    return last7Revenue > 0 ? "+100% نشاط" : "مباشر";
+    return last7Revenue > 0 ? "+100%" : "0%";
   }, [filteredOrders]);
 
   const ordersPipeline = useMemo(() => {
-    const fresh = ordersTodayList.filter(
-      (o) => o.status === "new" || o.status === "pending",
-    ).length;
-    const prep = ordersTodayList.filter(
-      (o) => o.status === "processing" || o.status === "confirmed",
-    ).length;
-    const transit = ordersTodayList.filter(
-      (o) => o.status === "shipped" || o.status === "delivering",
-    ).length;
     const done = ordersTodayList.filter(
       (o) => o.status === "delivered" || o.status === "completed",
     ).length;
     const total = ordersTodayList.length || 1;
     const completionRate = Math.round((done / total) * 100);
-    return { fresh, prep, transit, done, completionRate };
+    return { done, completionRate };
   }, [ordersTodayList]);
 
-  const abandonedCartsStats = useMemo(() => {
-    const estimatedAbandoned = Math.max(Math.round(newOrdersToday * 0.3), 0);
-    const recovered = Math.round(estimatedAbandoned * 0.4);
-    const recoverableAmount = Math.round(estimatedAbandoned * (avgOrderValue || 250));
-    return {
-      abandonedCount: estimatedAbandoned,
-      recoveredCount: recovered,
-      recoveryRate: estimatedAbandoned > 0 ? Math.round((recovered / estimatedAbandoned) * 100) : 100,
-      recoverableAmount,
-    };
-  }, [newOrdersToday, avgOrderValue]);
-
-  const processingCount = useMemo(() => {
-    return filteredOrders.filter(
-      (o) =>
-        o.status === "new" ||
-        o.status === "pending" ||
-        o.status === "processing" ||
-        o.status === "confirmed" ||
-        o.status === "shipped",
-    ).length;
-  }, [filteredOrders]);
-
-  const newCount = useMemo(() => {
-    return filteredOrders.filter((o) => o.status === "new" || o.status === "pending").length;
-  }, [filteredOrders]);
-
-  // تجهيز بيانات الرسم البياني حسب الفلتر
   const chartData = useMemo(() => {
     if (chartFilter === "today") {
       const todayStr = new Date().toDateString();
@@ -421,7 +343,6 @@ function OverviewPage() {
       return result;
     }
 
-    // This month (divided into 6 5-day intervals)
     const result: { label: string; value: number }[] = [];
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -449,7 +370,6 @@ function OverviewPage() {
     return result;
   }, [revenueOrders, chartFilter, chartMetric]);
 
-  // قائمة أفضل المنتجات المبيعة
   const bestSellers = useMemo(() => {
     const tally = new Map<string, number>();
     for (const o of revenueOrders) {
@@ -460,147 +380,126 @@ function OverviewPage() {
       }
     }
     return Array.from(tally.entries())
-      .map(([name, qty]) => ({ name, qty: +qty.toFixed(2) }))
+      .map(([name, qty]) => ({ name, qty: +qty.toFixed(0) }))
       .sort((a, b) => b.qty - a.qty)
-      .slice(0, 6);
+      .slice(0, 5);
   }, [revenueOrders]);
 
-  // أحدث 8 طلبات واردة للفيد المباشر
-  const liveOrdersFeed = useMemo(() => orders.slice(0, 8), [orders]);
+  const liveOrdersFeed = useMemo(() => orders.slice(0, 6), [orders]);
 
-  // شاشة الهيكل العظمي النبضي الشفاف أثناء التحميل
   if (loading) {
     return <OverviewSkeleton />;
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="space-y-6 p-4 sm:p-6"
-    >
-      {/* رأس لوحة التحكم مع اختيار الفروع وتنبيهات المخزون */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border/60 pb-5">
+    <div className="space-y-6 p-4 sm:p-6 font-sans">
+      {/* 1. Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800 pb-4">
         <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="font-display text-2xl font-black text-foreground">
-              لوحة تحكم هايبر الوادي ⚡
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              لوحة المؤشرات
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              مزامنة فورية نشطة
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 text-[10px] font-medium rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              مزامنة فورية
             </span>
           </div>
-          <p className="text-xs font-bold text-muted-foreground mt-1">
-            متابعة فورية للمبيعات متعددة الفروع، مسار تجهيز الطلبات، وتنبيهات المخزون الحرج
+          <p className="text-xs text-zinc-500 mt-0.5">
+            متابعة المبيعات ومسار الطلبات والمخزون
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* محدد الفروع */}
+        <div className="flex items-center gap-2 flex-wrap">
           <BranchSelector
             selectedBranchId={selectedBranchId}
             branches={branches}
             onBranchChange={(b) => {
               setSelectedBranchId(b.id);
-              toast.info(`تم التبديل إلى: ${b.name}`);
             }}
           />
 
-          {/* زر نافذة تنبيهات المخزون والصلاحية */}
           <StockAndExpiryAlertsModal open={alertsModalOpen} onOpenChange={setAlertsModalOpen} />
 
           <Link to="/admin/orders">
             <Button
               size="sm"
-              className="rounded-2xl hero-gradient text-primary-foreground font-black gap-2 shadow-xs transition-transform hover:scale-[1.02] active:scale-95"
+              className="h-8 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium gap-1.5 shadow-xs cursor-pointer"
             >
-              <Receipt className="h-4 w-4" />
-              <span>إدارة الطلبات ({newCount > 0 ? `${newCount} جديد` : filteredOrders.length})</span>
+              <Receipt className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <span>إدارة الطلبات ({filteredOrders.length})</span>
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* 3 بطاقات الفروع المخصصة في أعلى الصفحة */}
+      {/* 2. Branch Cards Overview */}
       <BranchCardsOverview
         branches={branches}
         selectedBranchId={selectedBranchId}
         onSelectBranch={(bId) => {
           setSelectedBranchId(bId);
-          toast.info(`تم تصفية العرض حسب الفرع المحدد`);
         }}
       />
 
-      {/* 3 كروت KPI أساسية فائقة النقاء (Stripe & Shopify Standard) */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {/* كارت 1: المبيعات ومتوسط السلة */}
-        <Card className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+      {/* 3. STRICT KPI CARDS (3 Elements Only: Label, Value, Delta Badge) */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {/* Card 1: Revenue */}
+        <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              إجمالي مبيعات اليوم
+            <span className="text-xs font-medium text-zinc-500">
+              مبيعات اليوم
             </span>
-            <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-200/60 dark:border-emerald-800">
+              {weeklyGrowth}
+            </span>
           </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-              <AnimatedCounter value={salesToday} decimals={2} suffix="ج.م" />
-            </div>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              الشهر الحالي: {salesMonth.toLocaleString("ar-EG")} ج.م • متوسط السلة {avgOrderValue.toFixed(1)} ج.م
-            </p>
+          <div className="mt-2 text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            <AnimatedCounter value={salesToday} decimals={2} suffix="ج.م" />
           </div>
         </Card>
 
-        {/* كارت 2: الطلبات ومسار التسليم */}
-        <Card className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+        {/* Card 2: Orders */}
+        <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs font-medium text-zinc-500">
               طلبات اليوم
             </span>
-            <Zap className="h-4 w-4 text-zinc-700 dark:text-zinc-300" strokeWidth={1.5} />
+            <span className="text-[11px] font-medium text-zinc-700 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 px-1.5 py-0.2 rounded">
+              %{ordersPipeline.completionRate} إنجاز
+            </span>
           </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-              <AnimatedCounter value={newOrdersToday} decimals={0} suffix="طلب" />
-            </div>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              معدل الإنجاز {ordersPipeline.completionRate}% • {processingCount} طلب جاري معالجته
-            </p>
+          <div className="mt-2 text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            <AnimatedCounter value={newOrdersToday} decimals={0} suffix="طلب" />
           </div>
         </Card>
 
-        {/* كارت 3: تنبيهات المخزون والتوريد */}
+        {/* Card 3: Stock Alert */}
         <Card
           onClick={() => setAlertsModalOpen(true)}
-          className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 cursor-pointer hover:border-zinc-300 transition-colors"
+          className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs font-medium text-zinc-500">
               أصناف تحت حد الأمان
             </span>
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
+            <span
+              className={`text-[11px] font-medium px-1.5 py-0.2 rounded ${
+                lowStock.length > 0
+                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800"
+                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              {lowStock.length > 0 ? "تنبيه" : "مستقر"}
+            </span>
           </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-              <AnimatedCounter
-                value={lowStock.length}
-                decimals={0}
-                suffix="أصناف"
-              />
-            </div>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              {lowStock.length > 0 ? "اضغط لإصدار أمر التوريد السريع" : "المخزون متزن ومكتمل"}
-            </p>
+          <div className="mt-2 text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            <AnimatedCounter value={lowStock.length} decimals={0} suffix="صنف" />
           </div>
         </Card>
       </div>
 
-      {/* الموجز التنفيذي والاستشاري الذكي المدعوم بـ Gemini 3.6 Flash */}
+      {/* 4. AI Advisory Widget */}
       <ExecutiveSummaryWidget
         kpis={{
           totalRevenue: salesMonth || salesToday || 0,
@@ -609,591 +508,221 @@ function OverviewPage() {
           lowStockCount: lowStock.filter((p) => (p.stock_quantity ?? 0) > 0).length,
           outOfStockCount: lowStock.filter((p) => (p.stock_quantity ?? 0) <= 0).length,
           topSellingCategory: "كافة الأقسام",
-          abandonedCartsCount: abandonedCartsStats.abandonedCount,
+          abandonedCartsCount: 0,
         }}
       />
 
-      {/* روابط الوصول السريع لإدارات المتجر */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-        <Link
-          to="/admin/copilot"
-          className="flex items-center gap-2.5 p-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-black text-xs transition-all shadow-xs"
-        >
-          <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
-          <span>AI Co-Pilot 🚀</span>
-        </Link>
-        <QuickLink
-          to="/admin/orders"
-          icon={Receipt}
-          label="الطلبات"
-          badge={newCount > 0 ? `${newCount}` : undefined}
-        />
-        <QuickLink to="/admin/products" icon={Tag} label="المنتجات" />
-        <QuickLink to="/admin/categories" icon={Layers} label="الأقسام" />
-        <QuickLink to="/admin/delivery-zones" icon={Truck} label="مناطق التوصيل" />
-        <QuickLink to="/admin/coupons" icon={Ticket} label="الكوبونات" />
-        <QuickLink to="/admin/banners" icon={Image} label="البنرات" />
-      </div>
-
-      {/* القسم الرئيسي: الرسم البياني التفاعلي للمبيعات + أحدث الطلبات الفورية */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* الرسم البياني المتقدم للمبيعات (2 الأعمدة على الشاشات الكبيرة) */}
-        <Card className="card-glass border-0 lg:col-span-2 shadow-sm">
-          <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 5. Charts & Live Orders */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Sales Chart */}
+        <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs lg:col-span-2">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
             <div>
-              <CardTitle className="font-display flex items-center gap-2 text-base font-black">
-                <Activity className="h-5 w-5 text-emerald-500" />
-                <span>تحليلات المبيعات والنشاط 📈</span>
-              </CardTitle>
-              <CardDescription className="text-xs font-semibold mt-0.5">
-                تتبع القيمة المالية وعدد الطلبات عبر الفترات الزمنية
-              </CardDescription>
+              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                تحليل المبيعات
+              </h3>
+              <p className="text-[11px] text-zinc-400">
+                تتبع النشاط المالي وعدد الطلبات
+              </p>
             </div>
 
-            {/* أزرار التبديل والفلاتر */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* تبديل الفلتر الزمني */}
-              <div className="flex bg-secondary/80 rounded-2xl p-1 text-xs font-bold">
-                <button
-                  onClick={() => setChartFilter("today")}
-                  className={`px-3 py-1.5 rounded-xl transition-all ${
-                    chartFilter === "today"
-                      ? "bg-primary text-primary-foreground font-black shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  اليوم
-                </button>
-                <button
-                  onClick={() => setChartFilter("7days")}
-                  className={`px-3 py-1.5 rounded-xl transition-all ${
-                    chartFilter === "7days"
-                      ? "bg-primary text-primary-foreground font-black shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  7 أيام
-                </button>
-                <button
-                  onClick={() => setChartFilter("month")}
-                  className={`px-3 py-1.5 rounded-xl transition-all ${
-                    chartFilter === "month"
-                      ? "bg-primary text-primary-foreground font-black shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  هذا الشهر
-                </button>
-              </div>
-
-              {/* تبديل المقياس: المبيعات أم عدد الطلبات */}
-              <div className="flex bg-secondary/80 rounded-2xl p-1 text-xs font-bold">
-                <button
-                  onClick={() => setChartMetric("sales")}
-                  className={`px-2.5 py-1.5 rounded-xl transition-all ${
-                    chartMetric === "sales"
-                      ? "bg-amber-500 text-white font-black shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  ج.م
-                </button>
-                <button
-                  onClick={() => setChartMetric("count")}
-                  className={`px-2.5 py-1.5 rounded-xl transition-all ${
-                    chartMetric === "count"
-                      ? "bg-amber-500 text-white font-black shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  الطلبات
-                </button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            {chartData.every((d) => d.value === 0) ? (
-              <div className="rounded-2xl bg-secondary/30 border border-border/50 p-12 text-center text-xs font-bold text-muted-foreground">
-                لا توجد بيانات مبيعات مسجلة في هذه الفترة الزمنية
-              </div>
-            ) : (
-              <div className="h-72 w-full pt-2" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="salesGlow" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="var(--border)"
-                      opacity={0.4}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: "var(--muted-foreground)", fontWeight: 600 }}
-                      axisLine={{ stroke: "var(--border)" }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: "var(--muted-foreground)", fontWeight: 600 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      cursor={{ stroke: "var(--primary)", strokeWidth: 1, strokeDasharray: "4 4" }}
-                      contentStyle={{
-                        borderRadius: 16,
-                        border: "1px solid var(--border)",
-                        background: "var(--card)",
-                        color: "var(--foreground)",
-                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
-                        padding: "8px 14px",
-                        fontWeight: "bold",
-                        fontSize: 12,
-                      }}
-                      formatter={(val: any) => [
-                        `${val} ${chartMetric === "sales" ? "ج.م" : "طلب"}`,
-                        chartMetric === "sales" ? "إجمالي المبيعات" : "عدد الطلبات",
-                      ]}
-                      labelStyle={{ color: "var(--muted-foreground)", marginBottom: 4 }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke="var(--primary)"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#salesGlow)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* بث الطلبات المباشر (Real-time Live Feed) */}
-        <Card className="card-glass border-0 shadow-sm flex flex-col">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="font-display flex items-center gap-2 text-base font-black">
-              <Sparkles className="h-5 w-5 text-amber-500" />
-              <span>أحدث الطلبات الحية ⚡</span>
-            </CardTitle>
-            <span className="text-[11px] font-extrabold text-muted-foreground bg-secondary px-2 py-1 rounded-lg">
-              لحظة بلحظة
-            </span>
-          </CardHeader>
-
-          <CardContent className="p-3 pt-0 flex-1 flex flex-col justify-between">
-            {liveOrdersFeed.length === 0 ? (
-              <div className="rounded-2xl bg-secondary/30 p-8 text-center text-xs font-bold text-muted-foreground my-auto">
-                في انتظار وصول طلبات جديدة... 🛒
-              </div>
-            ) : (
-              <div className="space-y-2 overflow-y-auto max-h-[340px] pe-1">
-                <AnimatePresence initial={false}>
-                  {liveOrdersFeed.map((ord) => {
-                    const isJustAdded = ord.id === newLiveOrderId;
-                    return (
-                      <motion.div
-                        key={ord.id}
-                        initial={{ opacity: 0, x: -15, scale: 0.98 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.3 }}
-                        onClick={() => setPreviewOrder(ord)}
-                        className={`group relative flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${
-                          isJustAdded
-                            ? "bg-emerald-500/10 border-emerald-500/50 shadow-md ring-2 ring-emerald-500/30"
-                            : "bg-card/80 border-border/60 hover:border-emerald-500/40 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl font-extrabold text-xs ${getStatusStyle(ord.status)}`}
-                          >
-                            {ord.status === "new"
-                              ? "جديد"
-                              : ord.status === "delivering"
-                                ? "توصيل"
-                                : "طلب"}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-extrabold text-xs text-foreground truncate">
-                                {ord.customer_name || "عميل المتجر"}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground font-semibold">
-                                ({ord.items?.length ?? 1} أصناف)
-                              </span>
-                              {ord.notes?.includes("الاتصال هاتفياً") && (
-                                <span className="rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 text-[9px] font-black">
-                                  📞 اتصال
-                                </span>
-                              )}
-                              {ord.notes?.includes("أفضل بديل") && (
-                                <span className="rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 text-[9px] font-black">
-                                  ⚡ بديل تلقائي
-                                </span>
-                              )}
-                              {ord.notes?.includes("عدم الاستبدال") && (
-                                <span className="rounded-md bg-rose-500/20 text-rose-700 dark:text-rose-300 px-1.5 py-0.2 text-[9px] font-black">
-                                  🚫 لا استبدال
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground font-bold flex items-center gap-1.5 mt-0.5">
-                              <Clock className="h-3 w-3 text-emerald-500" />
-                              <span>{getRelativeTime(ord.created_at)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-end shrink-0 ms-2">
-                          <div className="font-display font-black text-xs text-primary">
-                            {Number(ord.total_price).toFixed(2)} ج.م
-                          </div>
-                          <span className="text-[10px] text-emerald-600 font-extrabold group-hover:underline flex items-center gap-0.5 justify-end">
-                            عرض التفاصيل <Eye className="h-3 w-3" />
-                          </span>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            )}
-
-            <Link to="/admin/orders" className="mt-3 block">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full rounded-xl text-xs font-black border-dashed border-border hover:bg-secondary"
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg text-xs">
+              <button
+                onClick={() => setChartFilter("today")}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  chartFilter === "today"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500"
+                }`}
               >
-                عرض كل الطلبات في المتجر ←
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+                اليوم
+              </button>
+              <button
+                onClick={() => setChartFilter("7days")}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  chartFilter === "7days"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500"
+                }`}
+              >
+                7 أيام
+              </button>
+              <button
+                onClick={() => setChartFilter("month")}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  chartFilter === "month"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500"
+                }`}
+              >
+                الشهر
+              </button>
+            </div>
+          </div>
 
-      {/* قسم المنتجات الأكثر مبيعاً وتنبيهات المخزون */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* الأكثر مبيعاً */}
-        <Card className="card-glass border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center justify-between text-base font-black">
-              <span className="flex items-center gap-2">
-                <PackageCheck className="h-5 w-5 text-emerald-500" />
-                المنتجات الأكثر مبيعاً 🏆
-              </span>
-              <span className="text-xs font-normal text-muted-foreground">أعلى المنتجات طلباً</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {bestSellers.length === 0 ? (
-              <div className="rounded-2xl bg-secondary/30 p-8 text-center text-xs font-bold text-muted-foreground">
-                لا توجد طلبات مسجلة بعد
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {bestSellers.map((item, idx) => {
-                  const maxQty = bestSellers[0]?.qty || 1;
-                  const pct = Math.min((item.qty / maxQty) * 100, 100);
-                  return (
-                    <div key={item.name} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-extrabold">
-                        <span className="flex items-center gap-2 truncate">
-                          <span
-                            className={`grid h-5 w-5 place-items-center rounded-full text-[10px] font-black ${
-                              idx === 0
-                                ? "bg-amber-400 text-amber-950"
-                                : idx === 1
-                                  ? "bg-slate-300 text-slate-900"
-                                  : idx === 2
-                                    ? "bg-amber-700 text-amber-50"
-                                    : "bg-secondary text-muted-foreground"
-                            }`}
-                          >
-                            {idx + 1}
-                          </span>
-                          <span className="truncate text-foreground">{item.name}</span>
-                        </span>
-                        <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-black">
-                          {item.qty} كمية/وحدة
-                        </span>
+          <div className="h-64 w-full pt-3" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" opacity={0.5} vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 8,
+                    border: "1px solid #e4e4e7",
+                    background: "#ffffff",
+                    fontSize: 11,
+                    padding: "6px 10px",
+                  }}
+                  formatter={(val: any) => [`${val} ج.م`, "المبيعات"]}
+                />
+                <Area type="monotone" dataKey="value" stroke="#059669" strokeWidth={2} fill="#ecfdf5" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Live Orders Feed */}
+        <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                أحدث الطلبات
+              </h3>
+              <span className="text-[10px] text-zinc-400">مباشر</span>
+            </div>
+
+            <div className="space-y-2 pt-3">
+              {liveOrdersFeed.length === 0 ? (
+                <div className="p-8 text-center text-xs text-zinc-400">
+                  لا توجد طلبات مسجلة
+                </div>
+              ) : (
+                liveOrdersFeed.map((ord) => (
+                  <div
+                    key={ord.id}
+                    onClick={() => setPreviewOrder(ord)}
+                    className="flex items-center justify-between p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                        {ord.customer_name || "عميل"}
                       </div>
-                      <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
-                          style={{ width: `${pct}%` }}
-                        />
+                      <div className="text-[10px] text-zinc-400">
+                        {getRelativeTime(ord.created_at)}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <div className="text-end">
+                      <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                        {Number(ord.total_price).toFixed(2)} ج.م
+                      </div>
+                      <span className="text-[10px] text-zinc-400">
+                        {ord.status === "new" ? "جديد" : ord.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-        {/* تنبيهات المخزون المنخفض */}
-        <Card className="card-glass border border-amber-300/60 dark:border-amber-800/40 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between font-display text-base font-black text-amber-800 dark:text-amber-400">
-              <span className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500 animate-bounce" />
-                تنبيهات المخزون المنخفض ({lowStock.length})
-              </span>
-              <Link
-                to="/admin/products"
-                className="text-xs font-extrabold underline flex items-center gap-1 hover:text-amber-900"
-              >
-                إدارة المنتجات <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lowStock.length === 0 ? (
-              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-8 text-center text-xs font-extrabold text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-5 w-5" /> جميع المنتجات في المتجر متوفرة بمخزون كافٍ ✨
-              </div>
-            ) : (
-              <ul className="grid gap-2.5 sm:grid-cols-1">
-                {lowStock.slice(0, 5).map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex items-center justify-between rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-500/5 px-3.5 py-2.5 text-xs font-bold"
-                  >
-                    <span className="truncate font-black text-foreground">{p.name}</span>
-                    <span className="shrink-0 text-muted-foreground ms-2">
-                      متبقي{" "}
-                      <span className="font-black text-rose-600 bg-rose-100 dark:bg-rose-950 px-2 py-0.5 rounded-md">
-                        {p.stock_quantity}
-                      </span>{" "}
-                      (حد الأمان {p.low_stock_threshold})
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
+          <Link to="/admin/orders" className="pt-3 block">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs font-medium text-zinc-500 hover:text-zinc-900 h-7"
+            >
+              عرض كافة الطلبات ←
+            </Button>
+          </Link>
         </Card>
       </div>
 
-      {/* نافذة معاينة الطلب المباشرة عند الضغط من الفيد */}
+      {/* 6. Top Selling Products */}
+      <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
+        <div className="pb-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+            المنتجات الأكثر طلباً
+          </h3>
+          <Link to="/admin/products" className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline">
+            إدارة المنتجات
+          </Link>
+        </div>
+
+        <div className="pt-3 space-y-2">
+          {bestSellers.length === 0 ? (
+            <div className="p-6 text-center text-xs text-zinc-400">
+              لا توجد بيانات مبيعات بعد
+            </div>
+          ) : (
+            bestSellers.map((item, idx) => (
+              <div key={item.name} className="flex items-center justify-between text-xs py-1">
+                <span className="text-zinc-800 dark:text-zinc-200 font-medium truncate">
+                  {idx + 1}. {item.name}
+                </span>
+                <span className="text-zinc-500 font-mono text-[11px]">
+                  {item.qty} وحدة
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+
+      {/* Order Preview Dialog */}
       <Dialog open={!!previewOrder} onOpenChange={() => setPreviewOrder(null)}>
-        <DialogContent className="max-w-md rounded-3xl p-6 bg-card">
-          <DialogHeader className="pb-2 border-b border-border">
-            <DialogTitle className="font-display text-lg font-black text-foreground flex items-center justify-between">
-              <span>تفاصيل الطلب 🛒</span>
-              <span className="text-xs font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-xl">
-                {previewOrder?.status === "new" ? "طلب جديد" : previewOrder?.status}
+        <DialogContent className="max-w-sm rounded-xl p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800" dir="rtl">
+          <DialogHeader className="pb-2 border-b border-zinc-100 dark:border-zinc-800">
+            <DialogTitle className="text-sm font-bold flex items-center justify-between">
+              <span>تفاصيل الطلب</span>
+              <span className="text-xs font-normal text-zinc-500">
+                {previewOrder?.status}
               </span>
             </DialogTitle>
           </DialogHeader>
 
           {previewOrder && (
-            <div className="space-y-4 pt-3 text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-secondary/40 p-3 rounded-2xl border border-border/60">
-                <div>
-                  <div className="text-muted-foreground font-semibold">العميل:</div>
-                  <div className="font-black text-foreground mt-0.5">
-                    {previewOrder.customer_name || "غير محدد"}
-                  </div>
+            <div className="space-y-3 pt-2 text-xs">
+              <div className="space-y-1">
+                <div className="text-zinc-500">العميل:</div>
+                <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {previewOrder.customer_name || "بدون اسم"} • {previewOrder.phone || ""}
                 </div>
-                <div>
-                  <div className="text-muted-foreground font-semibold">رقم الهاتف:</div>
-                  <div className="font-black text-foreground mt-0.5 dir-ltr text-end">
-                    {previewOrder.phone || "بدون هاتف"}
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-muted-foreground font-semibold">العنوان:</div>
-                  <div className="font-bold text-foreground mt-0.5">
-                    {previewOrder.address || "استلام من الفرع / بدون عنوان"}
-                  </div>
+                <div className="text-zinc-400 text-[11px]">
+                  {previewOrder.address || "استلام من الفرع"}
                 </div>
               </div>
 
-              <div>
-                <div className="font-black text-foreground mb-2">
-                  المنتجات المطلوبة ({previewOrder.items?.length ?? 0}):
-                </div>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pe-1">
-                  {previewOrder.items?.map((it, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center p-2 rounded-xl bg-card border border-border text-xs font-bold"
-                    >
-                      <span>
-                        {it.name} × {it.quantity}
-                      </span>
-                      <span className="text-primary font-black">
-                        {Number(it.subtotal || 0).toFixed(2)} ج.م
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 border-t border-border font-black text-sm">
-                <span>الإجمالي الكلي:</span>
-                <span className="text-primary text-base font-black">
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between font-bold">
+                <span>الإجمالي:</span>
+                <span className="text-emerald-700 dark:text-emerald-400 text-sm">
                   {Number(previewOrder.total_price).toFixed(2)} ج.م
                 </span>
               </div>
 
-              <div className="pt-2 flex gap-2">
-                <Link to="/admin/orders" className="flex-1">
-                  <Button className="w-full rounded-2xl hero-gradient font-black text-white text-xs">
-                    انتقال لصفحة الطلبات الكاملة ←
-                  </Button>
-                </Link>
-              </div>
+              <Link to="/admin/orders" className="block pt-2">
+                <Button className="w-full h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                  الانتقال لصفحة الطلبات
+                </Button>
+              </Link>
             </div>
           )}
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </div>
   );
 }
 
-// مكون بطاقات الإحصاءات المصممة باستخدام HSL Variables
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  tone,
-  trend,
-}: {
-  label: string;
-  value: React.ReactNode;
-  icon: any;
-  tone: "primary" | "accent" | "gold" | "purple";
-  trend: string;
-}) {
-  const toneClasses = {
-    primary: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    gold: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
-    purple: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-  }[tone];
-
-  return (
-    <Card className="card-glass border-0 shadow-sm relative overflow-hidden transition-all hover:scale-[1.01]">
-      <CardContent className="p-4 flex flex-col justify-between h-full">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-xs font-bold text-muted-foreground">{label}</div>
-            <div className="font-display text-2xl font-black text-foreground mt-1 tracking-tight">
-              {value}
-            </div>
-          </div>
-          <div
-            className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border ${toneClasses}`}
-          >
-            <Icon className="h-6 w-6" />
-          </div>
-        </div>
-
-        <div className="mt-3 pt-2 border-t border-border/40 text-[11px] font-extrabold text-muted-foreground flex items-center gap-1">
-          <Sparkles className="h-3 w-3 text-amber-500" />
-          <span>{trend}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// روابط الوصول السريع
-function QuickLink({
-  to,
-  icon: Icon,
-  label,
-  badge,
-}: {
-  to: string;
-  icon: any;
-  label: string;
-  badge?: string;
-}) {
-  return (
-    <Link
-      to={to}
-      className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl bg-card border border-border hover:border-primary hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-all text-center relative group shadow-xs"
-    >
-      {badge && (
-        <span className="absolute top-2 end-2 bg-rose-600 text-white rounded-full text-[10px] font-black px-1.5 py-0.2 shadow-xs animate-pulse">
-          {badge}
-        </span>
-      )}
-      <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
-        <Icon className="h-5 w-5" />
-      </div>
-      <span className="text-xs font-black text-foreground">{label}</span>
-    </Link>
-  );
-}
-
-// تنسيقات حالة الطلبات
-function getStatusStyle(status: string) {
-  switch (status) {
-    case "new":
-    case "pending":
-      return "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30";
-    case "delivering":
-    case "shipped":
-      return "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30";
-    case "completed":
-      return "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30";
-    default:
-      return "bg-secondary text-muted-foreground border border-border";
-  }
-}
-
-// شاشة الهيكل العظمي النبضي الشفاف أثناء التحميل (Skeleton Shimmer Effect)
 function OverviewSkeleton() {
   return (
-    <div className="space-y-6 p-4 sm:p-6 animate-pulse">
-      <div className="flex justify-between items-center pb-4 border-b border-border/60">
-        <div className="space-y-2">
-          <div className="h-7 w-48 bg-secondary rounded-xl" />
-          <div className="h-4 w-64 bg-secondary/60 rounded-lg" />
-        </div>
-        <div className="h-10 w-36 bg-secondary rounded-2xl" />
+    <div className="space-y-4 p-4 sm:p-6 animate-pulse">
+      <div className="h-8 w-48 bg-zinc-200 dark:bg-zinc-800 rounded-lg" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="h-24 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
+        <div className="h-24 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
+        <div className="h-24 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
       </div>
-
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-28 rounded-2xl bg-secondary/60 border border-border/40 p-4 space-y-3"
-          >
-            <div className="flex justify-between">
-              <div className="h-4 w-24 bg-secondary rounded-md" />
-              <div className="h-10 w-10 bg-secondary rounded-xl" />
-            </div>
-            <div className="h-6 w-32 bg-secondary rounded-lg" />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-20 rounded-2xl bg-secondary/50 border border-border/40" />
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 h-80 rounded-3xl bg-secondary/50 border border-border/40 p-4" />
-        <div className="h-80 rounded-3xl bg-secondary/50 border border-border/40 p-4" />
-      </div>
+      <div className="h-48 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
     </div>
   );
 }

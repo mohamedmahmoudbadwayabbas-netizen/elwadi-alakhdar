@@ -88,26 +88,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { property: "og:site_name", content: "سمارت ستور" },
+      { property: "og:site_name", content: "الوادي الأخضر" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
-      { property: "og:title", content: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
-      { name: "twitter:title", content: "سمارت ستور — سوبر ماركت أونلاين وتوصيل سريع" },
+      { title: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك 🛒" },
+      { property: "og:title", content: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك 🛒" },
+      { name: "twitter:title", content: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك 🛒" },
       {
         name: "description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من سمارت ستور بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق جميع سلع البقالة والتموين، الألبان والأجبان، اللحوم البلدية والمنظفات من سوبرماركت الوادي الأخضر بأفضل الأسعار وتوصيل فوري لباب بيتك.",
       },
       {
         property: "og:description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من سمارت ستور بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق جميع سلع البقالة والتموين، الألبان والأجبان، اللحوم البلدية والمنظفات من سوبرماركت الوادي الأخضر بأفضل الأسعار وتوصيل فوري لباب بيتك.",
       },
       {
         name: "twitter:description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من سمارت ستور بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق جميع سلع البقالة والتموين، الألبان والأجبان، اللحوم البلدية والمنظفات من سوبرماركت الوادي الأخضر بأفضل الأسعار وتوصيل فوري لباب بيتك.",
       },
       {
         property: "og:image",
@@ -135,11 +135,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "سمارت ستور",
+          name: "الوادي الأخضر",
           url: `${SITE_URL}/`,
           logo: `${SITE_URL}/favicon.svg`,
           description:
-            "سوبر ماركت ومحل عطارة أونلاين: بقالة، لحوم، خضار وفاكهة وعطارة مع توصيل سريع.",
+            "سوبرماركت الوادي الأخضر أونلاين: سلع تموينية، لحوم بلدية، أجبان، منظفات وبقالة مع توصيل سريع.",
         }),
       },
     ],

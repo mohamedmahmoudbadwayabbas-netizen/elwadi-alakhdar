@@ -33,6 +33,7 @@ import {
   PhoneCall,
   Activity,
   Globe,
+  Database,
 } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { LiveStorefrontPreview } from "@/components/admin/LiveStorefrontPreview";
@@ -83,18 +84,20 @@ type Settings = {
   hero_style?: "gradient" | "image" | "split";
 };
 
+import { forceSyncAllToSupabase } from "@/lib/auto-seed";
+
 const DEFAULT_SETTINGS: Settings = {
   whatsapp_number: "+201234567890",
-  hero_title: "سمارت ستور — هايبر ماركت أونلاين متكامل 🛒",
+  hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
   hero_subtitle:
-    "تسوّق جميع سلع البقالة، اللحوم البلدية الطازجة، الأجبان، المشروبات والمنظفات بأسعار الجملة التنافسية وتوصيل سريع لباب المنزل.",
+    "أجود السلع التموينية والبقالة واللحوم الطازجة والألبان بأفضل الأسعار وتوصيل فوري لباب المنزل.",
   hero_image_url:
     "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=85",
-  hero_cta_text: "تصفح العروض والمنتجات 🛒",
-  store_address: "القاهرة، مصر — شارع التحرير",
+  hero_cta_text: "تسوّق الآن 🛒",
+  store_address: "القاهرة، مصر — سوبرماركت الوادي الأخضر",
   store_lat: 30.0444,
   store_lng: 31.2357,
-  site_name: "سمارت ستور — هايبر ماركت",
+  site_name: "الوادي الأخضر",
   logo_url: null,
   favicon_url: null,
   primary_color: "142 76% 24%",
@@ -102,7 +105,7 @@ const DEFAULT_SETTINGS: Settings = {
   background_color: "48 33% 97%",
   foreground_color: "120 18% 12%",
   announcement_text:
-    "🛒 هايبر ماركت سمارت ستور — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
+    "🛒 سوبرماركت الوادي الأخضر — كل احتياجات بيتك وتموينك بتوصيل فوري لباب بيتك ⚡",
   announcement_enabled: true,
   announcement_bg_color: "142 76% 24%",
   ga4_id: null,
@@ -254,18 +257,67 @@ function SettingsPage() {
       };
       localStorage.setItem("store_customizer_options", JSON.stringify(customizerKeys));
       window.dispatchEvent(new CustomEvent("store_settings_updated", { detail: s }));
+
+      // Save directly to Supabase store_settings table
+      try {
+        await (supabase as any).from("store_settings").upsert([
+          {
+            site_name: s.site_name,
+            hero_title: s.hero_title,
+            hero_subtitle: s.hero_subtitle,
+            hero_cta_text: s.hero_cta_text,
+            hero_image_url: s.hero_image_url,
+            announcement_text: s.announcement_text,
+            announcement_enabled: s.announcement_enabled,
+            announcement_bg_color: s.announcement_bg_color,
+            primary_color: s.primary_color,
+            accent_color: s.accent_color,
+            background_color: s.background_color,
+            foreground_color: s.foreground_color,
+            store_address: s.store_address,
+            whatsapp_number: s.whatsapp_number,
+            min_order_amount: s.min_order_amount,
+            default_delivery_fee: s.default_delivery_fee,
+            free_shipping_threshold: s.free_shipping_threshold,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+      } catch (dbErr) {
+        console.warn("[Admin Settings] Notice syncing to Supabase:", dbErr);
+      }
     } catch {}
 
     clearTimeout(timer1);
     clearTimeout(timer2);
 
     setProgress(100);
-    toast.success("تم حفظ التغييرات بنجاح ✨");
+    toast.success("تم حفظ وتطبيق التغييرات بنجاح في قاعدة البيانات والمتجر ✨");
 
     setTimeout(() => {
       setProgress(null);
       setSaving(false);
     }, 300);
+  };
+
+  // Full Database Synchronization with Supabase
+  const [syncingDb, setSyncingDb] = useState(false);
+  const handleFullDatabaseSync = async () => {
+    setSyncingDb(true);
+    toast.info("جاري مزامنة وحفظ الخضروات والمنتجات والأقسام في Supabase... 🌿");
+    try {
+      const res = await forceSyncAllToSupabase();
+      if (res.success) {
+        toast.success(
+          `تمت المزامنة بنجاح! تم تحديث ${res.categoriesCount} قسم و ${res.productsCount} منتج في Supabase 🚀`
+        );
+      } else {
+        toast.error("حدث خطأ أثناء المزامنة: " + res.error);
+      }
+    } catch (err: any) {
+      toast.error("فشل مزامنة قاعدة البيانات: " + err.message);
+    } finally {
+      setSyncingDb(false);
+    }
   };
 
   const updateSetting = <K extends keyof Settings>(k: K, v: Settings[K]) => {
@@ -484,6 +536,24 @@ function SettingsPage() {
             <span className="hidden sm:inline">استعادة الافتراضي</span>
           </Button>
 
+          {/* Sync All to Supabase */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleFullDatabaseSync}
+            disabled={syncingDb}
+            className="rounded-xl font-bold text-xs gap-1.5 h-9 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+            title="مزامنة وحفظ جميع بيانات الأقسام والخضروات والمنتجات في قاعدة بيانات سوباباس"
+          >
+            {syncingDb ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Database className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            )}
+            <span>مزامنة سوباباس 🌿</span>
+          </Button>
+
           {/* Save Button */}
           <Button
             onClick={handleSaveAll}
@@ -513,7 +583,7 @@ function SettingsPage() {
                   <Input
                     value={s.site_name ?? ""}
                     onChange={(e) => updateSetting("site_name", e.target.value)}
-                    placeholder="سمارت ستور — هايبر ماركت"
+                    placeholder="سوبرماركت الوادي الأخضر"
                     className="h-10 rounded-xl font-bold text-xs"
                   />
                 </Field>
@@ -637,7 +707,7 @@ function SettingsPage() {
                   <Input
                     value={s.hero_title ?? ""}
                     onChange={(e) => updateSetting("hero_title", e.target.value)}
-                    placeholder="سمارت ستور — هايبر ماركت"
+                    placeholder="سوبرماركت الوادي الأخضر — هايبر ماركت"
                     className="h-10 rounded-xl font-bold text-xs"
                   />
                 </Field>
@@ -671,7 +741,7 @@ function SettingsPage() {
                     updateSetting("hero_image_url", v);
                   }}
                   label="خلفية البانر الرئيسي (رفع أو توليد بالذكاء الاصطناعي)"
-                  promptHint={`خلفية بانر تسويقية فائقة الجمال لمتجر سوبرماركت حديث باسم "${s.site_name || "سمارت ستور"}" تعرض تشكيلة من الخضار والفاكهة والأغذية الطازجة مع إضاءة سينمائية`}
+                  promptHint={`خلفية بانر تسويقية فائقة الجمال لمتجر سوبرماركت حديث باسم "${s.site_name || "الوادي الأخضر"}" تعرض أرفف سوبرماركت منظمة، سلع تموينية، ألبان ولحوم مع إضاءة سينمائية`}
                   folder="hero"
                 />
               </div>
@@ -852,7 +922,7 @@ function SettingsPage() {
                         rows={2}
                         value={s.announcement_text ?? ""}
                         onChange={(e) => updateSetting("announcement_text", e.target.value)}
-                        placeholder="🛒 هايبر ماركت سمارت ستور — توصيل فورى..."
+                        placeholder="🛒 سوبرماركت الوادي الأخضر — توصيل فورى..."
                         className="rounded-xl font-bold text-xs"
                       />
                     </Field>

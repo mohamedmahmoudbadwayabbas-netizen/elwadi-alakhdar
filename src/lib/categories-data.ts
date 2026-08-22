@@ -72,51 +72,14 @@ export const COMPREHENSIVE_CATEGORIES: ComprehensiveCategory[] = [
     ],
   },
   {
-    id: "cat-meat",
-    name: "اللحوم والدواجن الطازجة",
-    slug: "meats-poultry",
-    icon: "🥩",
-    image_url:
-      "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80",
-    badge: "ذبح يومي طازج",
-    sort_order: 2,
-    description: "لحوم بلدي كندوز وضاني طازجة، دواجن منظفة ومفروم جاهز للطهي",
-    subcategories: [
-      {
-        id: "sub-fresh-meat",
-        name: "لحوم بلدي طازجة",
-        slug: "fresh-beef",
-        icon: "🥩",
-        image_url:
-          "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?auto=format&fit=crop&w=300&q=80",
-      },
-      {
-        id: "sub-poultry",
-        name: "دواجن كاملة ومقطعة",
-        slug: "poultry",
-        icon: "🍗",
-        image_url:
-          "https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=300&q=80",
-      },
-      {
-        id: "sub-minced",
-        name: "مفروم ومصنعات بلدي",
-        slug: "minced-meat",
-        icon: "🍔",
-        image_url:
-          "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=300&q=80",
-      },
-    ],
-  },
-  {
     id: "cat-dairy",
     name: "الألبان والأجبان",
     slug: "dairy-cheese",
     icon: "🧀",
     image_url:
       "https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&w=600&q=80",
-    badge: "قسم الأجبان البلدية",
-    sort_order: 3,
+    badge: "أجبان وألبان يومية",
+    sort_order: 2,
     description: "أجبان رومي وشيدر وبراميلي، حليب طازج يومياً، زبادي، قشطة وزبدة طبيعية",
     subcategories: [
       {
@@ -154,47 +117,39 @@ export const COMPREHENSIVE_CATEGORIES: ComprehensiveCategory[] = [
     ],
   },
   {
-    id: "cat-veg-fruit",
-    name: "خضروات وفواكه طازجة",
-    slug: "vegetables-fruits",
-    icon: "🥑",
+    id: "cat-meat",
+    name: "اللحوم والدواجن",
+    slug: "meats-poultry",
+    icon: "🥩",
     image_url:
-      "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=600&q=80",
-    badge: "فرز أول يومياً",
-    sort_order: 4,
-    description: "خضروات وفواكه طازجة نخب أول مجمعة يومياً من أفضل المزارع",
+      "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80",
+    badge: "ذبح يومي طازج",
+    sort_order: 3,
+    description: "لحوم بلدي كندوز وضاني طازجة، دواجن منظفة ومفروم جاهز للطهي",
     subcategories: [
       {
-        id: "sub-veg-leafy",
-        name: "خضروات ورقية وأعشاب",
-        slug: "leafy-greens",
-        icon: "🥬",
+        id: "sub-fresh-meat",
+        name: "لحوم بلدي طازجة",
+        slug: "fresh-beef",
+        icon: "🥩",
         image_url:
-          "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=300&q=80",
+          "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?auto=format&fit=crop&w=300&q=80",
       },
       {
-        id: "sub-veg-fresh",
-        name: "خضروات طازجة متنوعة",
-        slug: "fresh-vegetables",
-        icon: "🥕",
+        id: "sub-poultry",
+        name: "دواجن كاملة ومقطعة",
+        slug: "poultry",
+        icon: "🍗",
         image_url:
-          "https://images.unsplash.com/photo-1598170845058-12ef4a457539?auto=format&fit=crop&w=300&q=80",
+          "https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=300&q=80",
       },
       {
-        id: "sub-fruit-local",
-        name: "فواكه موسمية محليّة",
-        slug: "local-fruits",
-        icon: "🍊",
+        id: "sub-minced",
+        name: "مفروم ومصنعات بلدي",
+        slug: "minced-meat",
+        icon: "🍔",
         image_url:
-          "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=300&q=80",
-      },
-      {
-        id: "sub-fruit-import",
-        name: "فواكه مستوردة فاخرة",
-        slug: "imported-fruits",
-        icon: "🍎",
-        image_url:
-          "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=300&q=80",
+          "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=300&q=80",
       },
     ],
   },
@@ -594,11 +549,11 @@ export function getMergedCategories(dbCats?: any[]): ComprehensiveCategory[] {
           c.slug === dbCat.slug ||
           c.name.trim().toLowerCase().includes(dbNameNorm) ||
           dbNameNorm.includes(c.name.trim().toLowerCase()) ||
-          (dbNameNorm.includes("خضار") && c.id === "cat-veg-fruit") ||
+          (dbNameNorm.includes("بقالة") && c.id === "cat-grocery") ||
+          (dbNameNorm.includes("تموين") && c.id === "cat-grocery") ||
           (dbNameNorm.includes("لحم") && c.id === "cat-meat") ||
           (dbNameNorm.includes("لبن") && c.id === "cat-dairy") ||
           (dbNameNorm.includes("جبن") && c.id === "cat-dairy") ||
-          (dbNameNorm.includes("بقالة") && c.id === "cat-grocery") ||
           (dbNameNorm.includes("عطارة") && c.id === "cat-spices") ||
           (dbNameNorm.includes("مكسرات") && c.id === "cat-roastery") ||
           (dbNameNorm.includes("مخبوز") && c.id === "cat-bakery") ||

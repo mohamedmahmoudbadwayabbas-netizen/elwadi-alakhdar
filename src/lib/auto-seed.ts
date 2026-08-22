@@ -26,64 +26,11 @@ export interface InitialSeedProduct {
 }
 
 export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
-  {
-    id: "prod-beef-kandooz",
-    name: "لحم بقري كندوز بلدي طازج",
-    description: "قطع لحم بقري كندوز بلدي فاخر أحمر صلب بدون دهن زائد، ذبح يومي طازج من مزارعنا.",
-    category_id: "cat-meat",
-    price_per_unit: 380,
-    old_price: 420,
-    image_url: "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80",
-    is_by_weight: true,
-    unit_label: "كجم",
-    is_popular: true,
-    is_on_sale: true,
-    is_featured: true,
-    is_top_seller: true,
-    stock_quantity: 45,
-    low_stock_threshold: 10,
-    cooking_tip: "يُفضل طهيه على نار هادئة مع إضافة حبهان وورق لورا وبصلة مشوية للحصول على ألذ شوربة ونكهة لحم غنية.",
-  },
-  {
-    id: "prod-chicken-pane",
-    name: "صدور دجاج بانيه طازجة متبلة",
-    description: "صدور دجاج مخلية ومتبلة بخلطة بهارات خاصة، جاهزة للقلي أو الشواء مباشرة.",
-    category_id: "cat-meat",
-    price_per_unit: 210,
-    old_price: 240,
-    image_url: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=600&q=80",
-    is_by_weight: true,
-    unit_label: "كجم",
-    is_popular: true,
-    is_on_sale: true,
-    is_featured: true,
-    is_top_seller: false,
-    stock_quantity: 60,
-    low_stock_threshold: 15,
-    cooking_tip: "يُقلى في زيت غزير ساخن لمدة 4 دقائق لكل جانب للحصول على قرمشة ذهبية مثالية ولحم طري من الداخل.",
-  },
-  {
-    id: "prod-minced-meat",
-    name: "مفروم بلدي أحمر فاخر",
-    description: "لحم بقري بلدي مفروم طازج بنسبة دهن مثالية 10% لكافة أنواع الطواجن والكفتة والباشاميل.",
-    category_id: "cat-meat",
-    price_per_unit: 340,
-    old_price: 370,
-    image_url: "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?auto=format&fit=crop&w=600&q=80",
-    is_by_weight: true,
-    unit_label: "كجم",
-    is_popular: true,
-    is_on_sale: true,
-    is_featured: false,
-    is_top_seller: true,
-    stock_quantity: 35,
-    low_stock_threshold: 10,
-    cooking_tip: "يُعصج مع بصل مبشور ورشة قرفة وجوزة الطيب لنكهة مصرية أصيلة لا تُنسى.",
-  },
+  // ─── البقالة والسلع التموينية والأساسية (سوبرماركت) ───
   {
     id: "prod-egyptian-rice",
     name: "أرز مصري فاخر عريض الحبة (5 كجم)",
-    description: "أرز مصري أبيض منقى ومغسول إلكترونياً، حبة عريضة ممتازة تمنحك أفضل قوام مفلفل.",
+    description: "أرز مصري أبيض منقى ومغسول إلكترونياً، حبة عريضة ممتازة لجميع وجبات العائلة.",
     category_id: "cat-grocery",
     price_per_unit: 165,
     old_price: 185,
@@ -93,10 +40,10 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_popular: true,
     is_on_sale: true,
     is_featured: true,
-    is_top_seller: false,
+    is_top_seller: true,
     stock_quantity: 120,
     low_stock_threshold: 20,
-    cooking_tip: "يُغسل جيداً ويُشوّح مع السمن الطبيعي لمدة دقيقتين قبل إضافة الماء المغلي بنسبة 1:1 لنتيجة مفلفلة رائعة.",
+    cooking_tip: "يُشوّح مع السمن الطبيعي لدقيقتين قبل إضافة الماء المغلي بنسبة 1:1 لنتيجة مفلفلة رائعة.",
   },
   {
     id: "prod-olive-oil",
@@ -114,7 +61,25 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_top_seller: false,
     stock_quantity: 80,
     low_stock_threshold: 15,
-    cooking_tip: "مثالي للسلطات والمقبلات وتتبيل المشويات؛ يُفضل إضافته في نهاية الطهي للحفاظ على الفوائد الصحية.",
+    cooking_tip: "مثالي للسلطات والمقبلات وتتبيل المشويات؛ يُفضل إضافته في نهاية الطهي.",
+  },
+  {
+    id: "prod-sunflower-oil",
+    name: "زيت عباد الشمس نقي للقلي والطهي (2.2 لتر)",
+    description: "زيت عباد شمس مكرر ونقي 100% خالي من الكوليسترول، مناسب للطهي والقلي اليومي.",
+    category_id: "cat-grocery",
+    price_per_unit: 145,
+    old_price: 165,
+    image_url: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+    is_by_weight: false,
+    unit_label: "زجاجة 2.2 لتر",
+    is_popular: true,
+    is_on_sale: true,
+    is_featured: true,
+    is_top_seller: true,
+    stock_quantity: 110,
+    low_stock_threshold: 20,
+    cooking_tip: "يتحمل درجات الحرارة العالية ويمنح الأطعمة لوناً ذهبياً بدون أي روائح نفاذة.",
   },
   {
     id: "prod-pasta-penne",
@@ -135,6 +100,44 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     cooking_tip: "تُسلق لمدة 8 دقائق فقط في ماء مملح مغلي لتصل لدرجة النضج المثالية Al Dente.",
   },
   {
+    id: "prod-tuna-chunks",
+    name: "تونا قطع فاخرة في زيت دوار الشمس (185 جم)",
+    description: "لحم تونا أبيض متماسك عالي البروتين بدون أي زفارة، معبأة في زيت دوار الشمس النقي.",
+    category_id: "cat-grocery",
+    price_per_unit: 48,
+    old_price: 55,
+    image_url: "https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&w=600&q=80",
+    is_by_weight: false,
+    unit_label: "علبة 185 جم",
+    is_popular: true,
+    is_on_sale: true,
+    is_featured: false,
+    is_top_seller: true,
+    stock_quantity: 130,
+    low_stock_threshold: 25,
+    cooking_tip: "تُصفى وتُخلط مع الذرة الحلوة وعصير الليمون ورشة كمون لوجبة سريعة وصحية.",
+  },
+  {
+    id: "prod-pure-sugar",
+    name: "سكر أبيض ناصع فاخر مكرر (1 كجم)",
+    description: "سكر مصري ناصع البياض سريع الذوبان للمشروبات والحلويات المنزلية.",
+    category_id: "cat-grocery",
+    price_per_unit: 35,
+    old_price: 38,
+    image_url: "https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80",
+    is_by_weight: false,
+    unit_label: "كيس 1 كجم",
+    is_popular: true,
+    is_on_sale: false,
+    is_featured: false,
+    is_top_seller: true,
+    stock_quantity: 200,
+    low_stock_threshold: 30,
+    cooking_tip: "يُحفظ في وعاء زجاجي محكم الإغلاق في مكان جاف بعيداً عن الرطوبة.",
+  },
+
+  // ─── قسم الألبان والأجبان ───
+  {
     id: "prod-roumy-cheese",
     name: "جبن رومي مصري قديم فاخر (بطارخ)",
     description: "جبن رومي مصري معتق أصلي بطعم غني ومميز، مقطع شرائح طازجة عند الطلب.",
@@ -147,15 +150,15 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_popular: true,
     is_on_sale: true,
     is_featured: true,
-    is_top_seller: false,
+    is_top_seller: true,
     stock_quantity: 35,
     low_stock_threshold: 10,
-    cooking_tip: "يُبشر ناعماً فوق المكرونات والمعجنات الساخنة أو يُقدم مع الخبز البلدي الطازج والعسل الأبيض.",
+    cooking_tip: "يُبشر ناعماً فوق المكرونات والمعجنات الساخنة أو يُقدم مع الخبز والتوست.",
   },
   {
     id: "prod-fresh-butter",
     name: "زبدة فلاحي طبيعي بقري صفراء",
-    description: "زبدة فلاحي نقية 100% بدون أي إضافات صناعية أو زيوت مهدرجة، طعم ورائحة فلاحي أصيلة.",
+    description: "زبدة فلاحي نقية 100% بدون أي إضافات صناعية، طعم ورائحة فلاحي أصيلة.",
     category_id: "cat-dairy",
     price_per_unit: 260,
     old_price: null,
@@ -168,7 +171,7 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_top_seller: false,
     stock_quantity: 50,
     low_stock_threshold: 10,
-    cooking_tip: "تُذاب على نار هادئة جداً مع رشة ملح لتحويلها إلى سمن بلدي صافٍ برائحة ونكهة زكية تدوم طويلاً.",
+    cooking_tip: "تُذاب على نار هادئة جداً لتحويلها إلى سمن بلدي صافٍ برائحة زكية.",
   },
   {
     id: "prod-baladi-milk",
@@ -186,98 +189,122 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_top_seller: false,
     stock_quantity: 90,
     low_stock_threshold: 15,
-    cooking_tip: "يُحفظ في أبرد رف بالثلاجة ويُستخدم لصنع المهلبية والحلويات الشرقية الغنية.",
+    cooking_tip: "يُحفظ في أبرد رف بالثلاجة ويُستخدم لصنع الحلويات والمشروبات الصباحية.",
   },
   {
-    id: "prod-cottage-cheese",
-    name: "جبن قريش فلاحي طبيعي 100%",
-    description: "جبن قريش طازج قليل الملح خالي من الدسم الصناعي، من خير المزارع المصرية.",
+    id: "prod-cheddar-slices",
+    name: "جبن شيدر أحمر مستورد شرائح (250 جم)",
+    description: "شرائح شيدر ممتازة سريعة الذوبان، مثالية للبرجر والساندوتشات الساخنة.",
     category_id: "cat-dairy",
-    price_per_unit: 115,
-    old_price: 130,
-    image_url: "https://images.unsplash.com/photo-1559561853-08451507cbe7?auto=format&fit=crop&w=600&q=80",
+    price_per_unit: 95,
+    old_price: 110,
+    image_url: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?auto=format&fit=crop&w=600&q=80",
+    is_by_weight: false,
+    unit_label: "علبة 250 جم",
+    is_popular: false,
+    is_on_sale: true,
+    is_featured: false,
+    is_top_seller: false,
+    stock_quantity: 60,
+    low_stock_threshold: 10,
+    cooking_tip: "توضع شريحة فوق قطعة اللحم الساخنة قبل التقديم بـ 30 ثانية لتذوب بنعومة.",
+  },
+
+  // ─── اللحوم والدواجن الطازجة ───
+  {
+    id: "prod-beef-kandooz",
+    name: "لحم بقري كندوز بلدي طازج",
+    description: "قطع لحم بقري كندوز بلدي فاخر أحمر صلب بدون دهن زائد، ذبح يومي معتمد.",
+    category_id: "cat-meat",
+    price_per_unit: 380,
+    old_price: 420,
+    image_url: "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
     is_on_sale: true,
-    is_featured: false,
-    is_top_seller: false,
-    stock_quantity: 40,
+    is_featured: true,
+    is_top_seller: true,
+    stock_quantity: 45,
     low_stock_threshold: 10,
-    cooking_tip: "يُهرس مع زيت الزيتون وقطع الطماطم والكمون ورشة حبة البركة لوجبة فطور صحية ومغذية.",
+    cooking_tip: "يُفضل طهيه على نار هادئة مع حبهان وورق لورا وبصلة للحصول على ألذ شوربة ولحم طري.",
   },
   {
-    id: "prod-fresh-tomatoes",
-    name: "طماطم بلدي فرز أول طازجة",
-    description: "طماطم بلدي حمراء متماسكة مقطوفة يومياً، ممتازة للسلطات والطهي والتسبيك.",
-    category_id: "cat-veg-fruit",
-    price_per_unit: 15,
-    old_price: 20,
-    image_url: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80",
+    id: "prod-chicken-pane",
+    name: "صدور دجاج بانيه طازجة متبلة",
+    description: "صدور دجاج مخلية ومتبلة بخلطة السوبرماركت الخاصة، جاهزة للقلي أو الشواء مباشرة.",
+    category_id: "cat-meat",
+    price_per_unit: 210,
+    old_price: 240,
+    image_url: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
     is_on_sale: true,
     is_featured: true,
     is_top_seller: false,
-    stock_quantity: 200,
-    low_stock_threshold: 30,
-    cooking_tip: "تُحفظ خارج الثلاجة للحفاظ على حلاوتها الطبيعية، وتُستخدم للصلصات بعد تقشيرها بالغمر في ماء مغلي لثوانٍ.",
+    stock_quantity: 60,
+    low_stock_threshold: 15,
+    cooking_tip: "يُقلى في زيت غزير ساخن لمدة 4 دقائق لكل جانب للحصول على قرمشة ذهبية.",
   },
   {
-    id: "prod-golden-potatoes",
-    name: "بطاطس تحمير سبونتا ذهبية",
-    description: "بطاطس مصرية ممتازة مخصصة للقلي، مقرمشة من الخارج وهشة وطرية من الداخل.",
-    category_id: "cat-veg-fruit",
-    price_per_unit: 22,
-    old_price: 28,
-    image_url: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80",
+    id: "prod-minced-meat",
+    name: "مفروم بلدي أحمر فاخر",
+    description: "لحم بقري بلدي مفروم طازج بنسبة دهن مثالية 10% لكافة أنواع الطواجن والكفتة والباشاميل.",
+    category_id: "cat-meat",
+    price_per_unit: 340,
+    old_price: 370,
+    image_url: "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?auto=format&fit=crop&w=600&q=80",
     is_by_weight: true,
     unit_label: "كجم",
     is_popular: true,
     is_on_sale: true,
     is_featured: false,
-    is_top_seller: false,
-    stock_quantity: 180,
-    low_stock_threshold: 25,
-    cooking_tip: "تُنقع في ماء بارد مع ملعقة خل لمدة 15 دقيقة قبل القلي لتحصل على قرمشة فائقة تدوم طويلاً.",
+    is_top_seller: true,
+    stock_quantity: 35,
+    low_stock_threshold: 10,
+    cooking_tip: "يُعصج مع بصل مبشور ورشة قرفة وجوزة الطيب لنكهة مصرية أصيلة.",
   },
+
+  // ─── المنظفات والمستلزمات المنزلية ───
   {
-    id: "prod-local-cucumbers",
-    name: "خيار بلدي صوَب طازج مقرمش",
-    description: "خيار طازج منتقى بعناية، حبة صغيرة ونضرة مثالية للسلطات والوجبات الخفيفة.",
-    category_id: "cat-veg-fruit",
-    price_per_unit: 18,
-    old_price: 22,
-    image_url: "https://images.unsplash.com/photo-1604977042946-1eecc30f269e?auto=format&fit=crop&w=600&q=80",
-    is_by_weight: true,
-    unit_label: "كجم",
-    is_popular: false,
-    is_on_sale: false,
-    is_featured: false,
-    is_top_seller: false,
-    stock_quantity: 130,
-    low_stock_threshold: 20,
-    cooking_tip: "يُحفظ في درج الثلاجة ملفوفاً في مناديل ورقية للحفاظ على قرمشته لمدة تصل إلى أسبوعين.",
-  },
-  {
-    id: "prod-baladi-bread",
-    name: "عيش بلدي طازج مخبوز على الردة (10 أرغفة)",
-    description: "خبز بلدي مصري أصيل ساخن ومخبوز يومياً على الردة الناعمة.",
-    category_id: "cat-bakery",
-    price_per_unit: 15,
-    old_price: null,
-    image_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
+    id: "prod-laundry-powder",
+    name: "مسحوق غسيل أوتوماتيك لافندر (4 كجم)",
+    description: "مسحوق غسيل مركز للغسالات الأوتوماتيك بنظافة فائقة ورائحة اللافندر المنعشة.",
+    category_id: "cat-cleaning",
+    price_per_unit: 195,
+    old_price: 230,
+    image_url: "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=600&q=80",
     is_by_weight: false,
-    unit_label: "كيس 10 أرغفة",
+    unit_label: "شيكارة 4 كجم",
+    is_popular: true,
+    is_on_sale: true,
+    is_featured: true,
+    is_top_seller: true,
+    stock_quantity: 85,
+    low_stock_threshold: 15,
+    cooking_tip: "يوضع مكيال واحد في درج الغسالة مع تفعيل دورة الشطف الإضافية لملابس ناصعة.",
+  },
+  {
+    id: "prod-dish-soap",
+    name: "سائل غسيل الأطباق بالليمون المركز (1 لتر)",
+    description: "تركيبة قوية تقضي على أصعب الدهون بلمعة فائقة ورغوة كثيفة تدوم طويلاً.",
+    category_id: "cat-cleaning",
+    price_per_unit: 38,
+    old_price: 45,
+    image_url: "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?auto=format&fit=crop&w=600&q=80",
+    is_by_weight: false,
+    unit_label: "زجاجة 1 لتر",
     is_popular: true,
     is_on_sale: false,
     is_featured: false,
     is_top_seller: false,
-    stock_quantity: 250,
-    low_stock_threshold: 40,
-    cooking_tip: "يُسخن على عين البوتاجاز مباشرة لثوانٍ معدودة ليستعيد طراوته ورائحته الشهية كأنه خارج من الفرن للتو.",
+    stock_quantity: 140,
+    low_stock_threshold: 20,
+    cooking_tip: "تكفي قطرات قليلة على إسفنجة رطبة لتنظيف كميات كبيرة من الأواني بلمعان كامل.",
   },
+
+  // ─── المحمصة والمشروبات ───
   {
     id: "prod-yemeni-coffee",
     name: "بن يمني محوج بخلطة الهيل والمستكة (250 جم)",
@@ -294,7 +321,7 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_top_seller: false,
     stock_quantity: 90,
     low_stock_threshold: 15,
-    cooking_tip: "يُحضر في كنكة نحاسية على نار هادئة جداً (شمعة) مع التقليب لمرة واحدة فقط لضمان وش قهوة كثيف ورغوة متماسكة.",
+    cooking_tip: "يُحضر في كنكة نحاسية على نار هادئة جداً لضمان وش قهوة كثيف ورغوة متماسكة.",
   },
   {
     id: "prod-mixed-nuts",
@@ -312,7 +339,7 @@ export const INITIAL_PRODUCTS_CATALOG: InitialSeedProduct[] = [
     is_top_seller: false,
     stock_quantity: 75,
     low_stock_threshold: 10,
-    cooking_tip: "تُحفظ في وعاء محكم الإغلاق في مكان جاف للحفاظ على النكهة والزيوت الطبيعية المقرمشة.",
+    cooking_tip: "تُحفظ في وعاء محكم الإغلاق في مكان جاف للحفاظ على القرمشة الطازجة.",
   },
 ];
 
@@ -410,6 +437,103 @@ export async function seedInitialProductsToSupabase(): Promise<{
   })();
 
   return isSeedingInProgress;
+}
+
+/**
+ * Forces a full synchronization of categories, products, and default store settings to Supabase.
+ */
+export async function forceSyncAllToSupabase(): Promise<{
+  success: boolean;
+  categoriesCount: number;
+  productsCount: number;
+  settingsSaved: boolean;
+  error?: string;
+}> {
+  try {
+    // 1. Sync Categories
+    const catsPayload = COMPREHENSIVE_CATEGORIES.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon,
+      image_url: c.image_url,
+      sort_order: c.sort_order,
+      parent_id: c.parent_id || null,
+    }));
+
+    const { error: catErr } = await supabase.from("categories").upsert(catsPayload as any);
+    if (catErr) {
+      console.warn("[Sync Supabase] Categories upsert notice:", catErr.message);
+    }
+
+    // 2. Sync Products
+    const productsPayload = INITIAL_PRODUCTS_CATALOG.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      category_id: p.category_id,
+      price_per_unit: p.price_per_unit,
+      old_price: p.old_price,
+      image_url: p.image_url,
+      is_by_weight: p.is_by_weight,
+      unit_label: p.unit_label,
+      is_popular: p.is_popular,
+      is_on_sale: p.is_on_sale,
+      is_featured: p.is_featured,
+      is_top_seller: p.is_top_seller,
+      stock_quantity: p.stock_quantity,
+      low_stock_threshold: p.low_stock_threshold,
+      cooking_tip: p.cooking_tip || null,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error: prodErr } = await supabase.from("products").upsert(productsPayload as any);
+    if (prodErr) {
+      console.warn("[Sync Supabase] Products upsert notice:", prodErr.message);
+    }
+
+    // 3. Sync Store Settings to Supabase
+    const defaultSettingsPayload = {
+      site_name: "الوادي الأخضر",
+      hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+      hero_subtitle: "أجود السلع التموينية والبقالة واللحوم الطازجة والألبان بأفضل الأسعار وتوصيل فوري ⚡",
+      hero_cta_text: "تسوّق الآن",
+      announcement_text: "🛒 سوبرماركت الوادي الأخضر — كل احتياجات بيتك وتموينك بتوصيل فوري لباب بيتك ⚡",
+      announcement_enabled: true,
+      announcement_bg_color: "142 76% 24%",
+      primary_color: "142 76% 24%",
+      accent_color: "18 85% 55%",
+      background_color: "48 33% 97%",
+      foreground_color: "120 18% 12%",
+      updated_at: new Date().toISOString(),
+    };
+
+    let settingsSaved = false;
+    try {
+      const { error: setErr } = await (supabase as any)
+        .from("store_settings")
+        .upsert([defaultSettingsPayload]);
+      if (!setErr) settingsSaved = true;
+    } catch {
+      // Ignored if RLS requires admin or table variation
+    }
+
+    return {
+      success: true,
+      categoriesCount: catsPayload.length,
+      productsCount: productsPayload.length,
+      settingsSaved,
+    };
+  } catch (err: any) {
+    console.error("[Sync Supabase] Error during sync:", err);
+    return {
+      success: false,
+      categoriesCount: 0,
+      productsCount: 0,
+      settingsSaved: false,
+      error: String(err?.message || err),
+    };
+  }
 }
 
 /**

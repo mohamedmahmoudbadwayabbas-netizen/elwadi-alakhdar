@@ -419,7 +419,7 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border" dir="rtl">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         <Link to="/" className="text-xl font-black text-emerald-600">
-          سمارت ستور 🌿
+          سوبرماركت الوادي الأخضر 🌿
         </Link>
         {/* Search Bar & Cart Actions */}
       </div>

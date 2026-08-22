@@ -266,7 +266,7 @@ export function routeCommandToTool(
     return { tool: "exportReportsAndAnalytics", args: { timeframe: "last_30_days", format: "json" } };
   }
   if (c.includes("إشعار") || c.includes("تنبيه") || c.includes("بث") || c.includes("push notification") || c.includes("sendpush")) {
-    return { tool: "sendPushNotification", args: { title: "عرض خاص من سمارت ستور ⚡", message: command, targetAudience: "all" } };
+    return { tool: "sendPushNotification", args: { title: "عرض خاص من سوبرماركت الوادي الأخضر ⚡", message: command, targetAudience: "all" } };
   }
   if (c.includes("توصيل") || c.includes("شحن") || c.includes("منطقة") || c.includes("رسوم التوصيل") || c.includes("managedeliveryzones")) {
     const feeMatch = command.match(/\d+/);

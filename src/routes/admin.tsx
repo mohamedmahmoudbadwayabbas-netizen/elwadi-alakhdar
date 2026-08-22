@@ -54,6 +54,8 @@ export function AdminLayout() {
     return null;
   }
 
+  const isCopilotRoute = pathname.startsWith("/admin/copilot");
+
   return (
     <ColorModeProvider storageKey="admin-color-mode" defaultMode="light">
       <SidebarProvider>
@@ -108,7 +110,7 @@ export function AdminLayout() {
               </div>
             </header>
 
-            <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full">
+            <main className={isCopilotRoute ? "flex-1 w-full h-[calc(100dvh-3.5rem)] overflow-hidden" : "flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full"}>
               <Outlet />
             </main>
           </SidebarInset>

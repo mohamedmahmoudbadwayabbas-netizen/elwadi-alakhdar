@@ -59,91 +59,9 @@ interface StockAndExpiryAlertsModalProps {
   triggerButton?: React.ReactNode;
 }
 
-const DEFAULT_LOW_STOCK: StockAlertItem[] = [
-  {
-    id: "low-1",
-    name: "جبن رومي مصري قديم معتق (بطارخ)",
-    category: "ألبان وجبن",
-    branchName: "فرع الواحة الرئيسي",
-    currentStock: 3,
-    threshold: 10,
-    unit: "كجم",
-    reorderQuantity: 25,
-  },
-  {
-    id: "low-2",
-    name: "لحم بقري كندوز بلدي طازج",
-    category: "اللحوم والدواجن",
-    branchName: "فرع الشيخ زايد",
-    currentStock: 4.5,
-    threshold: 12,
-    unit: "كجم",
-    reorderQuantity: 30,
-  },
-  {
-    id: "low-3",
-    name: "زيت زيتون بكر ممتاز (معصور بارد 1 لتر)",
-    category: "البقالة والزيوت",
-    branchName: "فرع التجمع الخامس",
-    currentStock: 5,
-    threshold: 15,
-    unit: "زجاجة",
-    reorderQuantity: 40,
-  },
-  {
-    id: "low-4",
-    name: "بن يمني محوج فاخر بالهيل والمستكة",
-    category: "عطارة ومحمصة",
-    branchName: "فرع الواحة الرئيسي",
-    currentStock: 6,
-    threshold: 18,
-    unit: "علبة",
-    reorderQuantity: 35,
-  },
-];
-
-const DEFAULT_EXPIRY_ALERTS: ExpiryAlertItem[] = [
-  {
-    id: "exp-1",
-    name: "زبادي طبيعي بلدي طازج فخار (1 كجم)",
-    category: "ألبان وطازج",
-    batchNumber: "LOT-2026-08A",
-    branchName: "فرع الواحة الرئيسي",
-    stockCount: 14,
-    expiryDate: "2026-08-22",
-    daysRemaining: 4,
-    originalPrice: 45,
-    discountPrice: 32,
-  },
-  {
-    id: "exp-2",
-    name: "صدور دجاج متبلة بانيه طازجة",
-    category: "لحوم ودواجن",
-    batchNumber: "LOT-CH-99",
-    branchName: "فرع الشيخ زايد",
-    stockCount: 8,
-    expiryDate: "2026-08-24",
-    daysRemaining: 6,
-    originalPrice: 210,
-    discountPrice: 175,
-  },
-  {
-    id: "exp-3",
-    name: "توست حبوب كاملة طازج صحي",
-    category: "مخبوزات",
-    batchNumber: "LOT-BRD-42",
-    branchName: "فرع التجمع الخامس",
-    stockCount: 12,
-    expiryDate: "2026-08-21",
-    daysRemaining: 3,
-    originalPrice: 38,
-    discountPrice: 25,
-  },
-];
-
 export function StockAndExpiryAlertsModal({
-  lowStockItems = DEFAULT_LOW_STOCK,
-  expiryAlertItems = DEFAULT_EXPIRY_ALERTS,
+  lowStockItems = [],
+  expiryAlertItems = [],
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   triggerButton,
@@ -245,154 +163,174 @@ export function StockAndExpiryAlertsModal({
           {/* تبويب انخفاض المخزون */}
           <TabsContent value="low-stock" className="space-y-3 focus:outline-hidden">
             <div className="max-h-[380px] overflow-y-auto space-y-2.5 pe-1">
-              {lowStockItems.map((item) => {
-                const isOrdered = requestedSupplies[item.id];
-                const percentage = Math.min(
-                  Math.round((item.currentStock / item.threshold) * 100),
-                  100,
-                );
+              {lowStockItems.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-secondary/20 text-muted-foreground">
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500 opacity-70" />
+                  <p className="text-xs font-bold text-foreground">المخزون متوازن ومستقر بالكامل</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    لا توجد منتجات وصلت إلى حد الأمان الأدنى في المخازن حالياً
+                  </p>
+                </div>
+              ) : (
+                lowStockItems.map((item) => {
+                  const isOrdered = requestedSupplies[item.id];
+                  const percentage = Math.min(
+                    Math.round((item.currentStock / item.threshold) * 100),
+                    100,
+                  );
 
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-foreground truncate">
-                          {item.name}
-                        </span>
-                        <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded-md font-semibold shrink-0">
-                          {item.category}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span>
-                          الفرع: <strong className="text-foreground">{item.branchName}</strong>
-                        </span>
-                        <span>•</span>
-                        <span>
-                          المخزون الحالي:{" "}
-                          <strong className="text-rose-600 dark:text-rose-400">
-                            {item.currentStock} {item.unit}
-                          </strong>{" "}
-                          / حد الأمان: {item.threshold} {item.unit}
-                        </span>
-                      </div>
-
-                      {/* شريط نسبة المخزون */}
-                      <div className="w-48 max-w-full h-1.5 rounded-full bg-secondary overflow-hidden mt-1">
-                        <div
-                          className="h-full bg-amber-500 rounded-full transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      disabled={isOrdered}
-                      onClick={() => handleRequestSupply(item)}
-                      className={cn(
-                        "h-8 px-3 rounded-xl text-xs font-black gap-1.5 shrink-0 transition-all",
-                        isOrdered
-                          ? "bg-emerald-600 text-white"
-                          : "bg-primary text-primary-foreground hover:bg-primary/90",
-                      )}
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
                     >
-                      {isOrdered ? (
-                        <>
-                          <Check className="h-3.5 w-3.5" />
-                          <span>تم طلب التوريد</span>
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          <span>
-                            طلب توريد ({item.reorderQuantity} {item.unit})
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-foreground truncate">
+                            {item.name}
                           </span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                );
-              })}
+                          <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded-md font-semibold shrink-0">
+                            {item.category}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                          <span>
+                            الفرع: <strong className="text-foreground">{item.branchName}</strong>
+                          </span>
+                          <span>•</span>
+                          <span>
+                            المخزون الحالي:{" "}
+                            <strong className="text-rose-600 dark:text-rose-400">
+                              {item.currentStock} {item.unit}
+                            </strong>{" "}
+                            / حد الأمان: {item.threshold} {item.unit}
+                          </span>
+                        </div>
+
+                        {/* شريط نسبة المخزون */}
+                        <div className="w-48 max-w-full h-1.5 rounded-full bg-secondary overflow-hidden mt-1">
+                          <div
+                            className="h-full bg-amber-500 rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        disabled={isOrdered}
+                        onClick={() => handleRequestSupply(item)}
+                        className={cn(
+                          "h-8 px-3 rounded-xl text-xs font-black gap-1.5 shrink-0 transition-all",
+                          isOrdered
+                            ? "bg-emerald-600 text-white"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90",
+                        )}
+                      >
+                        {isOrdered ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" />
+                            <span>تم طلب التوريد</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            <span>
+                              طلب توريد ({item.reorderQuantity} {item.unit})
+                            </span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </TabsContent>
 
           {/* تبويب قرب انتهاء الصلاحية */}
           <TabsContent value="expiry" className="space-y-3 focus:outline-hidden">
             <div className="max-h-[380px] overflow-y-auto space-y-2.5 pe-1">
-              {expiryAlertItems.map((item) => {
-                const isDiscounted = appliedDiscounts[item.id];
+              {expiryAlertItems.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-secondary/20 text-muted-foreground">
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500 opacity-70" />
+                  <p className="text-xs font-bold text-foreground">جميع تواريخ الصلاحية سليمة</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    لا توجد منتجات وشيكة الانتهاء أو دفعات حرجة في قاعدة البيانات
+                  </p>
+                </div>
+              ) : (
+                expiryAlertItems.map((item) => {
+                  const isDiscounted = appliedDiscounts[item.id];
 
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 transition-colors"
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-foreground truncate">
-                          {item.name}
-                        </span>
-                        <span className="text-[10px] bg-rose-500/15 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full font-black">
-                          متبقي {item.daysRemaining} أيام فقط ⏳
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                        <span>
-                          الفرع: <strong className="text-foreground">{item.branchName}</strong>
-                        </span>
-                        <span>•</span>
-                        <span>
-                          الكمية:{" "}
-                          <strong className="text-foreground">{item.stockCount} عبوة</strong>
-                        </span>
-                        <span>•</span>
-                        <span>
-                          تاريخ الانتهاء:{" "}
-                          <strong className="text-foreground">{item.expiryDate}</strong>
-                        </span>
-                      </div>
-
-                      <div className="text-[11px] font-bold text-foreground flex items-center gap-2 pt-0.5">
-                        <span>السعر الحالي: {item.originalPrice} ج.م</span>
-                        {item.discountPrice && (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            → السعر المقترح للترويج: {item.discountPrice} ج.م
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      disabled={isDiscounted}
-                      onClick={() => handleApplyDiscount(item)}
-                      className={cn(
-                        "h-8 px-3 rounded-xl text-xs font-black gap-1.5 shrink-0 transition-all",
-                        isDiscounted
-                          ? "bg-emerald-600 text-white"
-                          : "bg-rose-600 hover:bg-rose-700 text-white shadow-xs",
-                      )}
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 transition-colors"
                     >
-                      {isDiscounted ? (
-                        <>
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>الخصم نشط في المتجر</span>
-                        </>
-                      ) : (
-                        <>
-                          <Tag className="h-3.5 w-3.5" />
-                          <span>تطبيق خصم سريع 🔥</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                );
-              })}
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-foreground truncate">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] bg-rose-500/15 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full font-black">
+                            متبقي {item.daysRemaining} أيام فقط ⏳
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                          <span>
+                            الفرع: <strong className="text-foreground">{item.branchName}</strong>
+                          </span>
+                          <span>•</span>
+                          <span>
+                            الكمية:{" "}
+                            <strong className="text-foreground">{item.stockCount} عبوة</strong>
+                          </span>
+                          <span>•</span>
+                          <span>
+                            تاريخ الانتهاء:{" "}
+                            <strong className="text-foreground">{item.expiryDate}</strong>
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] font-bold text-foreground flex items-center gap-2 pt-0.5">
+                          <span>السعر الحالي: {item.originalPrice} ج.م</span>
+                          {item.discountPrice && (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              → السعر المقترح للترويج: {item.discountPrice} ج.م
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        disabled={isDiscounted}
+                        onClick={() => handleApplyDiscount(item)}
+                        className={cn(
+                          "h-8 px-3 rounded-xl text-xs font-black gap-1.5 shrink-0 transition-all",
+                          isDiscounted
+                            ? "bg-emerald-600 text-white"
+                            : "bg-rose-600 hover:bg-rose-700 text-white shadow-xs",
+                        )}
+                      >
+                        {isDiscounted ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>الخصم نشط في المتجر</span>
+                          </>
+                        ) : (
+                          <>
+                            <Tag className="h-3.5 w-3.5" />
+                            <span>تطبيق خصم سريع 🔥</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </TabsContent>
         </Tabs>

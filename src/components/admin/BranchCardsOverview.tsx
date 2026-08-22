@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Package, Clock, MapPin, Sparkles } from "lucide-react";
+import { Building2, Package, Clock, MapPin } from "lucide-react";
 import { AnimatedCounter } from "@/components/admin/AnimatedCounter";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -72,49 +72,37 @@ export function BranchCardsOverview({
 
   if (loading && branches.length === 0) {
     return (
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-44 rounded-3xl bg-secondary/40 animate-pulse border border-border/60" />
+          <div key={i} className="h-36 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse border border-zinc-200/60 dark:border-zinc-800" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-3">
       {/* Section Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-display text-sm font-black text-foreground tracking-tight">
-                فروع السوبرماركت المباشرة ({branches.length} فروع)
-              </h3>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
-                مزامنة حية • Supabase
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground font-semibold">
-              انقر على أي فرع لتصفية التحليلات وعرض حركة المبيعات والمخزون المباشر
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-emerald-600" strokeWidth={1.5} />
+          <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+            فروع السوبرماركت ({branches.length})
+          </h3>
         </div>
 
         {activeId !== UNIFIED_ALL_BRANCHES_ID && (
           <button
             onClick={() => handleCardClick(UNIFIED_ALL_BRANCHES_ID)}
-            className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/20 cursor-pointer"
+            className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
           >
-            عرض النظرة الموحدة لكافة الفروع ↺
+            عرض كافة الفروع
           </button>
         )}
       </div>
 
-      {/* Spacious Visual Cards (Live Supabase Data) */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Modern SaaS Cards */}
+      <div className="grid gap-3 md:grid-cols-3">
         {branches.map((branch) => {
           const isMain = branch.isMain;
           const isSelected = activeId === branch.id;
@@ -123,110 +111,66 @@ export function BranchCardsOverview({
             <div
               key={branch.id}
               onClick={() => handleCardClick(branch.id)}
-              className={`group relative rounded-3xl border p-5 transition-all duration-300 cursor-pointer backdrop-blur-2xl ${
+              className={`rounded-xl border p-4 transition-colors cursor-pointer bg-white dark:bg-zinc-900 shadow-xs ${
                 isSelected
-                  ? "bg-card/95 border-emerald-500/80 shadow-elegant ring-2 ring-emerald-500/30 scale-[1.01]"
-                  : "bg-card/70 border-border/70 hover:border-emerald-500/40 hover:bg-card/90 hover:shadow-md"
+                  ? "border-emerald-600 ring-1 ring-emerald-600"
+                  : "border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
               }`}
             >
-              {/* Top Row: Branch Header & Location */}
+              {/* Header */}
               <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-display font-black text-sm text-foreground truncate">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
                       {branch.name}
                     </span>
                     {isMain && (
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                        الفرع الرئيسي ⭐
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                        الرئيسي
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1 truncate">
-                    <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  <div className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5 truncate">
+                    <MapPin className="h-3 w-3 text-zinc-400 shrink-0" strokeWidth={1.5} />
                     <span className="truncate">{branch.address}</span>
                   </div>
                 </div>
 
-                <div
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl transition-transform group-hover:scale-105 ${
-                    isSelected
-                      ? "hero-gradient text-white shadow-sm"
-                      : "bg-secondary text-foreground border border-border/60"
+                <span
+                  className={`h-2 w-2 rounded-full shrink-0 mt-1 ${
+                    branch.status === "open" ? "bg-emerald-600" : "bg-zinc-400"
                   }`}
-                >
-                  <Building2 className="h-5 w-5" />
-                </div>
+                />
               </div>
 
-              {/* 3 Metrics: Sales, Active Orders, Stock */}
-              <div className="grid grid-cols-3 gap-2 my-3.5 p-3 rounded-2xl bg-secondary/40 border border-border/50">
-                {/* Metric 1: Sales */}
+              {/* Metrics */}
+              <div className="grid grid-cols-3 gap-2 my-3 p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
                 <div>
-                  <span className="text-[10px] font-bold text-muted-foreground block">
-                    مبيعات اليوم
-                  </span>
-                  <span className="font-display font-black text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">
+                  <span className="text-[10px] text-zinc-500 block">المبيعات</span>
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                     <AnimatedCounter value={branch.stats.todayRevenue} suffix="ج.م" />
                   </span>
                 </div>
-
-                {/* Metric 2: Active Orders */}
                 <div>
-                  <span className="text-[10px] font-bold text-muted-foreground block">
-                    طلبات جارية
-                  </span>
-                  <span className="font-display font-black text-xs sm:text-sm text-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-amber-500 shrink-0" />
-                    <span>{branch.stats.activeOrders} طلب</span>
+                  <span className="text-[10px] text-zinc-500 block">الطلبات</span>
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    {branch.stats.activeOrders}
                   </span>
                 </div>
-
-                {/* Metric 3: Stock Health */}
                 <div>
-                  <span className="text-[10px] font-bold text-muted-foreground block">
-                    جاهزية الرفوف
-                  </span>
-                  <span className="font-display font-black text-xs sm:text-sm text-foreground flex items-center gap-1">
-                    <Package className="h-3 w-3 text-emerald-600 shrink-0" />
-                    <span>{branch.stats.stockHealth}%</span>
+                  <span className="text-[10px] text-zinc-500 block">الجاهزية</span>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    %{branch.stats.stockHealth}
                   </span>
                 </div>
               </div>
 
-              {/* Status and Low Stock Notification */}
-              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40 font-bold">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <span className="text-[10px]">إجمالي الأصناف:</span>
-                  <strong className="text-foreground">{branch.stats.totalProducts} صنف</strong>
-                  {branch.stats.lowStockItems > 0 && (
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5 font-bold">
-                      • {branch.stats.lowStockItems} بحاجة لتوريد
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px]">
-                    {branch.status === "open" ? "جاهز للتوصيل" : "مغلق مؤقتاً"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Delivery zones pills */}
-              <div className="mt-3 flex items-center gap-1 flex-wrap">
-                {branch.deliveryZones.slice(0, 3).map((zone) => (
-                  <span
-                    key={zone}
-                    className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-background/80 border border-border/60 text-muted-foreground"
-                  >
-                    {zone}
-                  </span>
-                ))}
-                {branch.deliveryZones.length > 3 && (
-                  <span className="text-[9px] font-bold text-muted-foreground">
-                    +{branch.deliveryZones.length - 3} أخرى
+              {/* Footer info */}
+              <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
+                <span>{branch.stats.totalProducts} صنف</span>
+                {branch.stats.lowStockItems > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">
+                    {branch.stats.lowStockItems} نقص مخزون
                   </span>
                 )}
               </div>

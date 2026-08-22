@@ -20,6 +20,7 @@ import {
   Trash2,
   Wand2,
   X,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   ShieldCheck,
@@ -33,7 +34,7 @@ import {
   ArrowRight,
   Building2,
   Cpu,
-  CornerDownLeft,
+  Sliders,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +71,13 @@ import {
   type AiToolGroup,
   type RollbackPoint,
 } from "@/services/geminiToolsEngine";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -80,7 +88,7 @@ import { BRAND_NAME_AR } from "@/lib/brand";
 export const Route = createFileRoute("/admin/copilot")({
   head: () => ({
     meta: [
-      { title: "Gemini AI Studio — المساعد الذكي وإدارة السلسلة" },
+      { title: "المساعد الذكي — إدارة المتجر" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
@@ -89,33 +97,33 @@ export const Route = createFileRoute("/admin/copilot")({
 
 const STARTER_PROMPTS = [
   {
-    title: "تعديل صفحة السلة cart.tsx 🛒",
-    desc: "أضف خيار التوصيل السريع وربط ويدجت الخرائط لحفظ الموقع الافتراضي",
+    title: "تعديل صفحة السلة",
+    desc: "إضافة خيار التوصيل السريع وحفظ الموقع الافتراضي",
     targetFile: "/src/routes/cart.tsx",
     prompt:
       "عدل كود صفحة السلة /src/routes/cart.tsx لإضافة خيار التوصيل الفوري السريع وتفعيل حفظ الموقع الافتراضي للمستخدم عبر الخريطة",
     icon: ShoppingBag,
   },
   {
-    title: "تطوير بوابة المندوب driver.tsx 🛵",
-    desc: "تفعيل التوجيه ثنائي المراحل، التنبيه الصوتي وإظهار مسار الوصول ETA",
+    title: "تطوير بوابة المندوب",
+    desc: "تفعيل التوجيه ثنائي المراحل والتنبيه الصوتي",
     targetFile: "/src/routes/driver.tsx",
     prompt:
       "عدل ملف /src/routes/driver.tsx لتعزيز التوجيه ثنائي المراحل (المتجر ثم العميل) وإضافة تنبيه صوتي عند وصول الطلب",
     icon: Zap,
   },
   {
-    title: "تغيير تصميم وثيم المتجر بالكامل 🎨",
-    desc: "ثيم أخضر داكن فاخر + حواف دائرية + إعلانات ألبان بخصم 30%",
+    title: "تحديث نسق ألوان المتجر",
+    desc: "تطبيق النمط الزمردي الهادئ وحواف البطاقات المنظمة",
     prompt:
-      "غيّر لون المتجر للأخضر الداكن الفاخر، واجعل حواف الكروت دائرية بالكامل، وأضف قسم إعلانات مصغرة للألبان والأجبان بخصم 30%",
+      "قم بضبط نسق المتجر على اللون الأخضر الزمردي الهادئ، واجعل حواف البطاقات ناعمة مع إضافة قسم إعلانات مصغرة",
     icon: Layout,
   },
   {
-    title: "أبحاث أسعار السوق في مصر (Google Search) 🌐",
-    desc: "جلب أحدث أسعار الألبان والزيوت في سلاسل الهايبرماركت ومقارنتها",
+    title: "أبحاث أسعار السوق",
+    desc: "مقارنة أسعار السلع الأساسية وتقديم توصيات تسعير",
     prompt:
-      "ابحث في جوجل عن أحدث أسعار الألبان والجبن الطازج والزيوت بالسوق المصري وسلاسل الهايبرماركت الكبرى وقدم توصية تسعيرية لمتجري",
+      "ابحث عن أحدث أسعار الألبان والزيوت والسلع الأساسية في السوق وقدم توصية تسعيرية للمتجر",
     icon: Search,
   },
 ];
@@ -128,7 +136,7 @@ function AdminCoPilotPage() {
 
   // Active workspace mode
   const [activeMode, setActiveMode] = useState<
-    "chat" | "files-studio" | "store-engine" | "advisory" | "abandoned-carts"
+    "chat" | "files-studio" | "store-engine" | "advisory"
   >("chat");
 
   // Prompt input and attached file
@@ -144,10 +152,10 @@ function AdminCoPilotPage() {
 
   // Modals & Tools
   const [copywriterModalOpen, setCopywriterModalOpen] = useState(false);
+  const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
 
   // 10-Tool Executable Engine state
   const queryClient = useQueryClient();
-  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
   const [activeToolName, setActiveToolName] = useState<string | null>(null);
   const [lastRollback, setLastRollback] = useState<RollbackPoint | null>(null);
 
@@ -187,7 +195,7 @@ function AdminCoPilotPage() {
     setLastRollback(getLastRollbackPoint());
     if (res.ok) toast.success(res.messageAr);
     else toast.info(res.messageAr);
-    pushAssistantMessage(`↩️ **نظام التراجع الآمن:** ${res.messageAr}`);
+    pushAssistantMessage(`تم التراجع عن الإجراء الأخير: ${res.messageAr}`);
   };
 
   // Multi-Turn Chat History
@@ -197,13 +205,7 @@ function AdminCoPilotPage() {
       role: "assistant",
       modelUsed: "gemini-2.5-flash",
       roleUsed: "store_architect",
-      content: `مرحباً بك! أنا **${aiAssistantName}**، مساعدك الذكي المدمج المعتمد على **Gemini 3.1 Pro** والمربوط بقاعدة بيانات **Supabase** وسلسلة الفروع الثلاثة 🏬✨
-
-يمكنك التفاعل معي مباشرة من خلال:
-1. 💻 **البرمجة وتعديل أي ملف في الكود**: اكتب طلبك أو ارفق أي ملف 📎 وسأقوم ببناء التعديل وعرض الفروقات البرمجية فوراً.
-2. 🎨 **تعديل واجهة وثيم الفروع بالأوامر الصوتية والنصية**: تغيير الألوان، البانرات، وخصومات الفروع.
-3. 🌐 **أبحاث أسعار السوق (Google Search Grounding)**: فحص الأسعار التنافسية في مصر لحظياً.
-4. 📈 **إدارة المخزون والطلبات**: الاستعلام والتعديل على جداول الفروع الثلاثة.`,
+      content: `مرحباً بك في المساعد الذكي لإدارة ${storeName}.\n\nيمكنك تنفيذ المهام التالية مباشرة:\n• تعديل أي ملف برمجي في المتجر أو استعراض الفروقات (Diffs).\n• التحكم في ألوان وتخطيط المتجر وتفعيل العروض.\n• أبحاث أسعار السوق اللحظية عبر محرك البحث.\n• متابعة مؤشرات المبيعات وتحليل المخزون.`,
       timestamp: "الآن",
     },
   ]);
@@ -270,7 +272,6 @@ function AdminCoPilotPage() {
 
     const lower = prompt.toLowerCase();
 
-    // Check if user is asking to modify a specific file (or has attached a file)
     const isFileCodeRequest =
       targetFile !== null ||
       lower.includes(".tsx") ||
@@ -283,7 +284,6 @@ function AdminCoPilotPage() {
       lower.includes("صفحة المندوب") ||
       lower.includes("الهيدر");
 
-    // Add user message to history
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -298,7 +298,6 @@ function AdminCoPilotPage() {
     setIsProcessing(true);
 
     try {
-      // ── 10-TOOL EXECUTABLE ENGINE: try tool routing first ──
       const routed = !targetFile ? routeCommandToTool(prompt) : null;
       if (routed) {
         const meta = AI_TOOL_SUITE.find((t) => t.name === routed.tool);
@@ -310,11 +309,11 @@ function AdminCoPilotPage() {
         setActiveToolName(null);
         setLastRollback(getLastRollbackPoint());
         pushAssistantMessage(
-          `${result.ok ? "🛠️" : "⚠️"} **${meta?.labelAr || routed.tool}** — \`${routed.tool}()\`\n\n${result.messageAr}${
+          `**${meta?.labelAr || routed.tool}** — \`${routed.tool}()\`\n\n${result.messageAr}${
             result.data && "imageUrl" in result.data
               ? `\n\n![generated](${String(result.data.imageUrl)})`
               : ""
-          }${result.ok && meta?.mutatesState ? "\n\n✅ تم التنفيذ الفوري على المتجر الحي، ويمكنك التراجع من زر «تراجع عن آخر أمر»." : ""}`,
+          }${result.ok && meta?.mutatesState ? "\n\nتم تطبيق التعديل مباشرة على المتجر." : ""}`,
         );
         if (result.ok) toast.success(result.messageAr);
         else toast.error(result.messageAr);
@@ -357,7 +356,7 @@ function AdminCoPilotPage() {
           role: "assistant",
           modelUsed: selectedModel,
           roleUsed: "store_architect",
-          content: `💻 **${codeResult.summary}**\n\n${codeResult.explanation}\n\nيمكنك مراجعة وتطبيق التعديل مباشرة أدناه:`,
+          content: `**${codeResult.summary}**\n\n${codeResult.explanation}`,
           codeModification: {
             filePath: codeResult.filePath,
             originalCode: codeResult.originalCode,
@@ -370,7 +369,7 @@ function AdminCoPilotPage() {
         };
 
         setChatHistory((prev) => [...prev, aiMsg]);
-        toast.success(`تم توليد تعديل الكود لملف ${filePath}! ✨`);
+        toast.success(`تم توليد تعديل الكود لملف ${filePath}`);
       } else if (
         lower.includes("لون") ||
         lower.includes("ثيم") ||
@@ -390,7 +389,7 @@ function AdminCoPilotPage() {
           role: "assistant",
           modelUsed: selectedModel,
           roleUsed: "store_architect",
-          content: `✨ **${result.actionSummary}**\n\n${result.explanation}\n\n✅ تم تطبيق كافة التعديلات فوراً على واجهة المتجر والفروع.`,
+          content: `**${result.actionSummary}**\n\n${result.explanation}`,
           executedActions: result.executedActions,
           timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
           suggestedAction: {
@@ -428,7 +427,7 @@ function AdminCoPilotPage() {
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         role: "assistant",
-        content: "عذراً، حدث خطأ أثناء المعالجة. يرجى المحاولة مرة أخرى.",
+        content: "حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.",
         timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
       };
       setChatHistory((prev) => [...prev, errorMsg]);
@@ -444,7 +443,7 @@ function AdminCoPilotPage() {
         role: "assistant",
         modelUsed: selectedModel,
         roleUsed: selectedRole,
-        content: `تم بدء جلسة محادثة جديدة مع **${aiAssistantName}** ✨\n\nكيف يمكنني مساعدتك الآن في إدارة وتطوير الفروع الثلاثة؟`,
+        content: `تم بدء جلسة محادثة جديدة مع **${aiAssistantName}**.\n\nكيف يمكنني مساعدتك الآن؟`,
         timestamp: "الآن",
       },
     ]);
@@ -455,45 +454,35 @@ function AdminCoPilotPage() {
 
   return (
     <div
-      className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between text-right pb-6 font-sans select-text"
+      className="relative h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-zinc-50 dark:bg-zinc-950 font-sans"
       dir="rtl"
     >
-      {/* ─── AMBIENT COSMIC GEMINI BACKGROUND ─── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-1/4 right-1/3 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute bottom-1/3 left-1/4 h-80 w-80 rounded-full bg-teal-500/10 blur-3xl" />
-      </div>
-
-      {/* ─── 1. SLEEK TOP GEMINI HEADER ─── */}
-      <div className="max-w-5xl mx-auto w-full mb-4">
-        <div className="rounded-3xl border border-border/70 bg-card/70 backdrop-blur-2xl p-4 shadow-elegant flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Identity */}
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="h-11 w-11 rounded-2xl hero-gradient text-white grid place-items-center shadow-md shrink-0">
-              <Sparkles className="h-5 w-5 text-amber-300 animate-pulse" />
+      {/* ─── 1. TOP HEADER & NAVIGATION ─── */}
+      <div className="flex-none border-b border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 z-20">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Identity & Status */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-zinc-900 text-white dark:bg-emerald-600 shadow-xs shrink-0">
+              <Sparkles className="h-4 w-4" strokeWidth={1.5} />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-display font-black text-base text-foreground tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
                   {aiAssistantName}
-                </h1>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Gemini 3.1 Pro • Supabase DB
+                </span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  Gemini 3.1 Pro
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground font-semibold">
-                المساعد الذكي المركزي لإدارة الأكواد والأسعار والمخزون للفروع الثلاثة
-              </p>
             </div>
           </div>
 
-          {/* Quick Tabs & Actions */}
+          {/* Mode Switcher & Actions */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto">
-            {/* Mode Switcher */}
-            <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-2xl border border-border/60">
+            <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200/60 dark:border-zinc-700">
               {[
-                { id: "chat", label: "محادثة Gemini", icon: MessageSquare },
+                { id: "chat", label: "المحادثة", icon: MessageSquare },
                 { id: "files-studio", label: "محرر الأكواد", icon: FileCode },
                 { id: "store-engine", label: "محرك الواجهة", icon: Layout },
                 { id: "advisory", label: "التقارير", icon: TrendingUp },
@@ -504,486 +493,456 @@ function AdminCoPilotPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveMode(tab.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                       isActive
-                        ? "hero-gradient text-white shadow-xs"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                        ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                     }`}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
                     <span>{tab.label}</span>
                   </button>
                 );
               })}
             </div>
 
+            {/* AI Tools Sheet Trigger (Clean Dropdown/Drawer) */}
+            <Sheet open={toolsSheetOpen} onOpenChange={setToolsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 rounded-lg text-xs font-medium border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer gap-1"
+                >
+                  <Wrench className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.5} />
+                  <span>الأدوات</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">({AI_TOOL_SUITE.length})</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-80 sm:w-96 p-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col" dir="rtl">
+                <SheetHeader className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+                  <SheetTitle className="text-sm font-bold flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-emerald-600" strokeWidth={1.5} />
+                    <span>أدوات الذكاء الاصطناعي التنفيذية</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {(Object.keys(AI_TOOL_GROUP_LABELS) as AiToolGroup[]).map((group) => {
+                    const tools = AI_TOOL_SUITE.filter((t) => t.group === group);
+                    if (!tools.length) return null;
+                    return (
+                      <div key={group} className="space-y-1.5">
+                        <div className="text-[11px] font-semibold text-zinc-400">
+                          {AI_TOOL_GROUP_LABELS[group]}
+                        </div>
+                        <div className="space-y-1.5">
+                          {tools.map((tool) => (
+                            <div
+                              key={tool.name}
+                              className="rounded-lg border border-zinc-200/70 dark:border-zinc-800 p-2.5 bg-zinc-50/50 dark:bg-zinc-800/30"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                  {tool.labelAr}
+                                </span>
+                                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                                  {tool.name}()
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-500 mt-1 leading-snug">
+                                {tool.descriptionAr}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SheetContent>
+            </Sheet>
+
             <Button
               variant="outline"
               size="sm"
               onClick={handleStartNewChat}
-              className="h-9 rounded-2xl text-xs font-bold gap-1 border-border/80 hover:bg-secondary cursor-pointer"
-              title="محادثة جديدة"
+              className="h-7 px-2 rounded-lg text-xs font-medium border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer gap-1"
+              title="جلسة جديدة"
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden md:inline">جديد</span>
+              <Plus className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.5} />
+              <span>جديد</span>
             </Button>
           </div>
         </div>
       </div>
 
       {/* ─── 2. MAIN CHAT / WORKSPACE VIEW ─── */}
-      <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col justify-between space-y-4">
+      <div className="flex-1 min-h-0 relative">
         {activeMode === "chat" && (
-          <div className="flex-1 flex flex-col justify-between space-y-6">
-            {/* Messages Stream */}
-            <div className="space-y-6 py-2">
-              {chatHistory.map((msg) => {
-                const isUser = msg.role === "user";
+          <div className="h-full flex flex-col">
+            {/* Scrollable messages container with safe padding bottom */}
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-36">
+              <div className="max-w-3xl mx-auto space-y-4">
+                {chatHistory.map((msg) => {
+                  const isUser = msg.role === "user";
 
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex items-start gap-3.5 ${
-                      isUser ? "flex-row-reverse" : "flex-row"
-                    }`}
-                  >
-                    {/* Avatar */}
+                  return (
                     <div
-                      className={`grid h-9 w-9 shrink-0 place-items-center rounded-2xl ${
-                        isUser
-                          ? "bg-secondary text-foreground border border-border"
-                          : "hero-gradient text-white shadow-sm"
+                      key={msg.id}
+                      className={`flex items-start gap-3 ${
+                        isUser ? "flex-row-reverse" : "flex-row"
                       }`}
                     >
-                      {isUser ? <Bot className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    </div>
-
-                    {/* Message Bubble (Gemini Web Style) */}
-                    <div className={`space-y-2 max-w-[85%] ${isUser ? "text-right" : "text-right"}`}>
-                      {/* Top info badge */}
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-bold">
-                        <span>{isUser ? "المدير العام (Root Admin)" : aiAssistantName}</span>
-                        <span>•</span>
-                        <span className="text-[10px] opacity-75">{msg.timestamp}</span>
-                      </div>
-
+                      {/* Avatar */}
                       <div
-                        className={`rounded-3xl p-5 text-sm leading-relaxed backdrop-blur-2xl ${
+                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
                           isUser
-                            ? "bg-emerald-600/90 text-white rounded-tr-xs shadow-md font-bold"
-                            : "bg-card/85 text-foreground border border-border/70 rounded-tl-xs shadow-elegant font-normal"
+                            ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                            : "bg-emerald-600 text-white"
                         }`}
                       >
-                        {/* Attached File Chip if present */}
-                        {msg.attachedFile && (
-                          <div className="mb-3 inline-flex items-center gap-2 bg-black/20 text-white px-3 py-1 rounded-xl text-xs font-mono border border-white/20">
-                            <Paperclip className="h-3.5 w-3.5" />
-                            <span>الملف المستهدف: {msg.attachedFile.path}</span>
-                          </div>
+                        {isUser ? (
+                          <Bot className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
                         )}
+                      </div>
 
-                        <div className="whitespace-pre-line text-sm sm:text-base leading-relaxed">
-                          {msg.content}
+                      {/* Bubble */}
+                      <div className={`space-y-1 max-w-[85%] ${isUser ? "text-right" : "text-right"}`}>
+                        <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-medium px-1">
+                          <span>{isUser ? "المسؤول" : aiAssistantName}</span>
+                          <span>•</span>
+                          <span>{msg.timestamp}</span>
                         </div>
 
-                        {/* Interactive Code Diff Viewer */}
-                        {msg.codeModification && (
-                          <div className="mt-4">
-                            <GeminiCodeDiffViewer
-                              filePath={msg.codeModification.filePath}
-                              originalCode={msg.codeModification.originalCode}
-                              modifiedCode={msg.codeModification.modifiedCode}
-                              summary={msg.codeModification.summary}
-                              explanation={msg.codeModification.explanation}
-                              diffSummary={msg.codeModification.diffSummary}
-                            />
-                          </div>
-                        )}
-
-                        {/* Google Search Grounding Sources */}
-                        {msg.groundingSources && msg.groundingSources.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
-                            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                              <Globe className="h-3.5 w-3.5" />
-                              <span>بيانات حية من Google Search ({msg.groundingSources.length}):</span>
-                            </span>
-                            <div className="flex flex-wrap gap-2">
-                              {msg.groundingSources.map((src, sIdx) => (
-                                <a
-                                  key={sIdx}
-                                  href={src.uri}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-xl border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
-                                >
-                                  <span>{src.title || "بيانات الأسعار"}</span>
-                                </a>
-                              ))}
+                        <div
+                          className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
+                            isUser
+                              ? "bg-emerald-600 text-white rounded-tr-xs shadow-xs font-medium"
+                              : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800 rounded-tl-xs shadow-xs"
+                          }`}
+                        >
+                          {/* Attached File */}
+                          {msg.attachedFile && (
+                            <div className="mb-2.5 inline-flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-2.5 py-1 rounded-md text-xs font-mono">
+                              <Paperclip className="h-3 w-3" strokeWidth={1.5} />
+                              <span>{msg.attachedFile.path}</span>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* Executed Actions Breakdown */}
-                        {msg.executedActions && msg.executedActions.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-border/60 space-y-1.5">
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>الإجراءات المنفذة لحظياً:</span>
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
+                          <div className="whitespace-pre-line leading-relaxed">
+                            {msg.content}
+                          </div>
+
+                          {/* Code Diff Viewer */}
+                          {msg.codeModification && (
+                            <div className="mt-3">
+                              <GeminiCodeDiffViewer
+                                filePath={msg.codeModification.filePath}
+                                originalCode={msg.codeModification.originalCode}
+                                modifiedCode={msg.codeModification.modifiedCode}
+                                summary={msg.codeModification.summary}
+                                explanation={msg.codeModification.explanation}
+                                diffSummary={msg.codeModification.diffSummary}
+                              />
+                            </div>
+                          )}
+
+                          {/* Grounding Sources */}
+                          {msg.groundingSources && msg.groundingSources.length > 0 && (
+                            <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800 space-y-1.5">
+                              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                <Globe className="h-3 w-3" strokeWidth={1.5} />
+                                <span>مصادر البحث ({msg.groundingSources.length}):</span>
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {msg.groundingSources.map((src, sIdx) => (
+                                  <a
+                                    key={sIdx}
+                                    href={src.uri}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800"
+                                  >
+                                    <span>{src.title || "مصدر خارجي"}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Executed Actions */}
+                          {msg.executedActions && msg.executedActions.length > 0 && (
+                            <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-1.5">
                               {msg.executedActions.map((act, actIdx) => (
                                 <span
                                   key={actIdx}
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold bg-secondary/80 text-foreground px-2.5 py-0.5 rounded-lg border border-border/60"
+                                  className="inline-flex items-center gap-1 text-[10px] font-medium bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700"
                                 >
                                   <span className="text-emerald-600">{act.field}:</span>
                                   <span>{act.label}</span>
                                 </span>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+
+                {/* Processing Indicator */}
+                {isProcessing && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 shadow-xs">
+                    <Sparkles className="h-4 w-4 animate-spin text-emerald-600" strokeWidth={1.5} />
+                    <span>جاري معالجة الطلب والتفاعل مع النظام...</span>
                   </div>
-                );
-              })}
-
-              {/* Processing Loader */}
-              {isProcessing && (
-                <div className="flex items-center gap-3 p-4 rounded-3xl bg-card/80 border border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-300 backdrop-blur-xl animate-pulse">
-                  <Sparkles className="h-5 w-5 animate-spin text-emerald-500" />
-                  <span>
-                    {aiAssistantName} يحلل طلبك، يقرأ بيانات Supabase، ويصيغ الكود والتعديلات...
-                  </span>
-                </div>
-              )}
-
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Quick Starter Prompts (Shown if single welcome message) */}
-            {chatHistory.length <= 1 && (
-              <div className="space-y-2.5 py-4">
-                <span className="text-xs font-bold text-muted-foreground block px-1">
-                  اقتراحات سريعة للبدء:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {STARTER_PROMPTS.map((starter, i) => {
-                    const Icon = starter.icon;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          if (starter.targetFile) {
-                            const found = PROJECT_FILES_REGISTRY.find(
-                              (f) => f.path === starter.targetFile,
-                            );
-                            if (found) setAttachedFile(found);
-                          }
-                          handleSendMessage(
-                            starter.prompt,
-                            starter.targetFile
-                              ? PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile)
-                              : null,
-                          );
-                        }}
-                        className="p-4 rounded-3xl border border-border/70 bg-card/60 hover:bg-card/90 hover:border-emerald-500/40 transition-all text-right cursor-pointer backdrop-blur-xl group flex items-start justify-between gap-2"
-                      >
-                        <div className="space-y-1 min-w-0">
-                          <span className="font-bold text-xs text-foreground flex items-center gap-1.5 group-hover:text-emerald-600 transition-colors">
-                            <Icon className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span className="truncate">{starter.title}</span>
-                          </span>
-                          <p className="text-[11px] text-muted-foreground line-clamp-2">
-                            {starter.desc}
-                          </p>
-                        </div>
-                        <Sparkles className="h-4 w-4 text-amber-500 shrink-0 opacity-70 group-hover:opacity-100" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── OTHER MODES: FILES STUDIO / STORE ENGINE / ADVISORY ─── */}
-        {activeMode === "files-studio" && <GeminiProjectFilesStudio />}
-        {activeMode === "store-engine" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-6 space-y-4">
-              <Card className="rounded-3xl border border-border/80 bg-card/80 backdrop-blur-xl p-5 space-y-4 shadow-elegant">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layout className="h-5 w-5 text-emerald-600" />
-                    <div>
-                      <h2 className="text-sm font-black font-display text-foreground">
-                        محرك واجهة المتجر الحي (Visual Store Engine)
-                      </h2>
-                      <p className="text-[11px] text-muted-foreground">
-                        غيّر الألوان، البانرات، وشبكات الإعلانات بالأوامر المباشرة
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => resetConfig()}
-                    className="h-8 rounded-xl text-xs gap-1"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    <span>استعادة</span>
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-foreground">نسق الألوان (Palette):</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: "emerald", label: "زمردي كلاسيكي", bg: "bg-emerald-600" },
-                      { id: "dark_green", label: "أخضر داكن فاخر", bg: "bg-emerald-900" },
-                      { id: "amber_warm", label: "ذهبي دافئ", bg: "bg-amber-600" },
-                      { id: "blue_modern", label: "أزرق عصري", bg: "bg-blue-600" },
-                      { id: "violet_luxury", label: "بنفسجي ملكي", bg: "bg-purple-600" },
-                      { id: "rose_delight", label: "وردي بهيج", bg: "bg-rose-600" },
-                    ].map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          setThemePalette(p.id as any);
-                          toast.success(`تم تغيير ثيم الألوان إلى: ${p.label}`);
-                        }}
-                        className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer flex items-center justify-between ${
-                          layoutConfig.theme?.palette === p.id
-                            ? "border-emerald-500 bg-emerald-500/10 font-bold text-emerald-700 dark:text-emerald-300"
-                            : "border-border/70 bg-card hover:bg-secondary"
-                        }`}
-                      >
-                        <span className="text-xs">{p.label}</span>
-                        <span className={`h-3.5 w-3.5 rounded-full ${p.bg}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            </div>
-            <div className="lg:col-span-6 h-[650px]">
-              <ShopLivePreview layout={layoutConfig} />
-            </div>
-          </div>
-        )}
-        {activeMode === "advisory" && <ExecutiveSummaryWidget kpis={kpis} />}
-      </div>
-
-      {/* ─── 3. CENTERED FLOATING INPUT BAR (GEMINI OFFICIAL STYLE) ─── */}
-      {activeMode === "chat" && (
-        <div className="sticky bottom-2 z-20 max-w-3xl mx-auto w-full px-2 pt-2">
-          {/* ── AVAILABLE AI TOOLS PANEL (10-Tool Engine) ── */}
-          <div className="mb-2 rounded-3xl border border-border/70 bg-card/85 backdrop-blur-2xl shadow-lg overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setToolsPanelOpen((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 cursor-pointer hover:bg-secondary/40 transition-colors"
-            >
-              <span className="flex items-center gap-2 text-xs font-black text-foreground">
-                <Wrench className="h-4 w-4 text-emerald-600" />
-                <span>أدوات الذكاء الاصطناعي المتاحة</span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                  {AI_TOOL_SUITE.length} أدوات تنفيذية
-                </span>
-                {activeToolName && (
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                    جاري التنفيذ: {activeToolName}
-                  </span>
                 )}
-              </span>
-              {toolsPanelOpen ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
 
-            <AnimatePresence initial={false}>
-              {toolsPanelOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="border-t border-border/50"
-                >
-                  <div className="p-3 space-y-3 max-h-[46vh] overflow-y-auto">
-                    {(Object.keys(AI_TOOL_GROUP_LABELS) as AiToolGroup[]).map((group) => {
-                      const tools = AI_TOOL_SUITE.filter((t) => t.group === group);
-                      if (!tools.length) return null;
-                      return (
-                        <div key={group} className="space-y-1.5">
-                          <div className="text-[10px] font-black text-muted-foreground flex items-center gap-1.5">
-                            <Layers className="h-3 w-3 text-emerald-600" />
-                            <span>{AI_TOOL_GROUP_LABELS[group]}</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {tools.map((tool) => {
-                              const isRunning = activeToolName === tool.name;
-                              return (
-                                <div
-                                  key={tool.name}
-                                  className={`rounded-2xl border p-2.5 transition-all ${
-                                    isRunning
-                                      ? "border-amber-500/60 bg-amber-500/10"
-                                      : "border-border/60 bg-secondary/35"
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[11px] font-black text-foreground">
-                                      {tool.labelAr}
-                                    </span>
-                                    <span
-                                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                        isRunning
-                                          ? "bg-amber-500 animate-pulse"
-                                          : "bg-emerald-500"
-                                      }`}
-                                    />
-                                  </div>
-                                  <div className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 truncate">
-                                    {tool.name}()
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground font-medium leading-relaxed mt-0.5">
-                                    {tool.descriptionAr}
-                                  </p>
-                                </div>
+                {/* Starter Prompts */}
+                {chatHistory.length <= 1 && (
+                  <div className="pt-2 space-y-2">
+                    <span className="text-[11px] font-medium text-zinc-400 block px-1">
+                      إجراءات سريعة مقترحة:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {STARTER_PROMPTS.map((starter, i) => {
+                        const Icon = starter.icon;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              if (starter.targetFile) {
+                                const found = PROJECT_FILES_REGISTRY.find(
+                                  (f) => f.path === starter.targetFile,
+                                );
+                                if (found) setAttachedFile(found);
+                              }
+                              handleSendMessage(
+                                starter.prompt,
+                                starter.targetFile
+                                  ? PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile)
+                                  : null,
                               );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 flex items-start gap-2">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-200 leading-relaxed">
-                        نظام الأمان مفعّل: يتم إنشاء نقطة استرجاع تلقائياً (createRollbackPoint) قبل
-                        تنفيذ أي أداة تمس الواجهة أو قاعدة البيانات.
-                      </p>
+                            }}
+                            className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors text-right cursor-pointer shadow-xs group flex items-start justify-between gap-2"
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                                <Icon className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.5} />
+                                <span className="truncate">{starter.title}</span>
+                              </span>
+                              <p className="text-[11px] text-zinc-500 truncate">
+                                {starter.desc}
+                              </p>
+                            </div>
+                            <ChevronLeft className="h-3.5 w-3.5 text-zinc-400 shrink-0 mt-0.5" strokeWidth={1.5} />
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {/* Attached File Chip if present */}
-          {attachedFile && (
-            <div className="mb-2 inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 px-3.5 py-1 rounded-2xl text-xs font-mono font-bold border border-emerald-500/40 backdrop-blur-xl shadow-sm">
-              <FileCode className="h-3.5 w-3.5" />
-              <span>الملف المرفق: {attachedFile.path}</span>
-              <button
-                type="button"
-                onClick={() => setAttachedFile(null)}
-                className="hover:text-rose-600 cursor-pointer ml-1"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+                )}
+
+                <div ref={chatEndRef} />
+              </div>
             </div>
-          )}
 
-          <div className="rounded-3xl border border-border/80 bg-card/90 backdrop-blur-2xl shadow-2xl p-2.5 transition-all focus-within:border-emerald-500/70 focus-within:ring-4 focus-within:ring-emerald-500/15">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="space-y-2"
-            >
-              <Textarea
-                ref={textareaRef}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder={`اسأل ${aiAssistantName} أو اطلب تعديل أي ملف في المشروع (مثال: عدل صفحة السلة cart.tsx لإضافة التوصيل السريع وإشعار صوتي)...`}
-                disabled={isProcessing}
-                rows={2}
-                className="w-full text-xs sm:text-sm font-semibold bg-transparent border-none focus-visible:ring-0 resize-none placeholder:text-muted-foreground/70 p-2 min-h-[52px]"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-              />
+            {/* ─── 3. FIXED FLOATING INPUT BAR ─── */}
+            <div className="absolute bottom-3 inset-x-0 z-30 px-4 pointer-events-none">
+              <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+                {/* Attached File Chip */}
+                {attachedFile && (
+                  <div className="mb-1.5 inline-flex items-center gap-1.5 bg-zinc-900 text-white dark:bg-zinc-800 px-3 py-1 rounded-lg text-xs font-mono shadow-xs">
+                    <FileCode className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    <span>{attachedFile.path}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachedFile(null)}
+                      className="hover:text-rose-400 cursor-pointer ml-1"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
 
-              {/* Bottom Actions Row inside Floating Bar */}
-              <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                {/* Left tools: Attach file & Google Search grounding */}
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsPickerOpen(true)}
-                    className="h-8 px-2.5 rounded-xl text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm p-2 transition-all focus-within:border-emerald-600 focus-within:ring-1 focus-within:ring-emerald-600">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
+                    className="space-y-1.5"
                   >
-                    <Paperclip className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="hidden sm:inline">إرفاق ملف</span>
-                  </Button>
+                    <Textarea
+                      ref={textareaRef}
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder={`اسأل ${aiAssistantName} أو اطلب تعديل ملف في المشروع...`}
+                      disabled={isProcessing}
+                      rows={1}
+                      className="w-full text-xs sm:text-sm font-normal bg-transparent border-none focus-visible:ring-0 resize-none placeholder:text-zinc-400 p-1.5 min-h-[42px]"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => setEnableGoogleSearch(!enableGoogleSearch)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                      enableGoogleSearch
-                        ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
-                        : "bg-secondary text-muted-foreground border-border hover:text-foreground"
-                    }`}
-                  >
-                    <Globe className="h-3 w-3" />
-                    <span>بحث جوجل</span>
-                  </button>
+                    <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                      {/* Helpers */}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsPickerOpen(true)}
+                          className="h-7 px-2 rounded-lg text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer gap-1"
+                        >
+                          <Paperclip className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          <span className="hidden sm:inline">إرفاق ملف</span>
+                        </Button>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setCopywriterModalOpen(true)}
-                    className="h-8 px-2.5 rounded-xl text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hidden md:flex cursor-pointer"
-                  >
-                    <Package className="h-3.5 w-3.5 text-amber-500" />
-                    <span>صانع العروض ✍️</span>
-                  </Button>
-                </div>
+                        <button
+                          type="button"
+                          onClick={() => setEnableGoogleSearch(!enableGoogleSearch)}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
+                            enableGoogleSearch
+                              ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700"
+                              : "bg-transparent text-zinc-400 border-transparent hover:text-zinc-600"
+                          }`}
+                        >
+                          <Globe className="h-3 w-3" strokeWidth={1.5} />
+                          <span>بحث جوجل</span>
+                        </button>
 
-                {/* Right: Undo + Submit */}
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleUndoLastAction}
-                    disabled={!lastRollback || isProcessing}
-                    title={lastRollback ? `تراجع عن: ${lastRollback.labelAr}` : "لا يوجد أمر للتراجع"}
-                    className="h-9 px-3 rounded-2xl text-[11px] font-black gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 cursor-pointer disabled:opacity-40"
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">تراجع عن آخر أمر</span>
-                  </Button>
-                <Button
-                  type="submit"
-                  disabled={isProcessing || (!chatInput.trim() && !attachedFile)}
-                  className="h-9 px-4 rounded-2xl hero-gradient text-white font-bold text-xs gap-1.5 shadow-md shrink-0 cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  <span>إرسال</span>
-                </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setCopywriterModalOpen(true)}
+                          className="h-7 px-2 rounded-lg text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 hidden md:flex cursor-pointer gap-1"
+                        >
+                          <Package className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          <span>صانع العروض</span>
+                        </Button>
+                      </div>
+
+                      {/* Right: Undo + Submit */}
+                      <div className="flex items-center gap-1.5">
+                        {lastRollback && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleUndoLastAction}
+                            disabled={isProcessing}
+                            className="h-7 px-2 rounded-lg text-xs font-medium text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 cursor-pointer gap-1"
+                          >
+                            <Undo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            <span className="hidden sm:inline">تراجع</span>
+                          </Button>
+                        )}
+                        <Button
+                          type="submit"
+                          disabled={isProcessing || (!chatInput.trim() && !attachedFile)}
+                          className="h-7 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          <Send className="h-3 w-3" strokeWidth={1.5} />
+                          <span>إرسال</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ─── OTHER MODES ─── */}
+        {activeMode === "files-studio" && (
+          <div className="h-full overflow-y-auto p-4">
+            <GeminiProjectFilesStudio />
+          </div>
+        )}
+
+        {activeMode === "store-engine" && (
+          <div className="h-full overflow-y-auto p-4 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-5 space-y-3">
+                <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
+                  <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <Layout className="h-4 w-4 text-emerald-600" strokeWidth={1.5} />
+                      <div>
+                        <h2 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                          محرك الواجهة
+                        </h2>
+                        <p className="text-[11px] text-zinc-500">
+                          التحكم في نسق الألوان والمظهر
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => resetConfig()}
+                      className="h-7 rounded-lg text-xs gap-1 text-zinc-500"
+                    >
+                      <RotateCcw className="h-3 w-3" strokeWidth={1.5} />
+                      <span>استعادة</span>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 pt-3">
+                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">نسق الألوان:</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "emerald", label: "زمردي كلاسيكي", bg: "bg-emerald-600" },
+                        { id: "dark_green", label: "أخضر داكن", bg: "bg-emerald-900" },
+                        { id: "amber_warm", label: "ذهبي دافئ", bg: "bg-amber-600" },
+                        { id: "blue_modern", label: "أزرق عصري", bg: "bg-blue-600" },
+                        { id: "violet_luxury", label: "بنفسجي", bg: "bg-purple-600" },
+                        { id: "slate_minimal", label: "رمادي هادئ", bg: "bg-zinc-600" },
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setThemePalette(p.id as any);
+                            toast.success(`تم تغيير نسق الألوان`);
+                          }}
+                          className={`p-2 rounded-lg border text-right transition-colors cursor-pointer flex items-center justify-between text-xs ${
+                            layoutConfig.theme?.palette === p.id
+                              ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 font-semibold text-emerald-700 dark:text-emerald-300"
+                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50"
+                          }`}
+                        >
+                          <span>{p.label}</span>
+                          <span className={`h-3 w-3 rounded-full ${p.bg}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              </div>
+              <div className="lg:col-span-7 h-[600px]">
+                <ShopLivePreview layout={layoutConfig} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeMode === "advisory" && (
+          <div className="h-full overflow-y-auto p-4 max-w-5xl mx-auto">
+            <ExecutiveSummaryWidget kpis={kpis} />
+          </div>
+        )}
+      </div>
 
       {/* ─── MODALS ─── */}
       <GeminiFileAttachmentPicker
@@ -991,7 +950,7 @@ function AdminCoPilotPage() {
         onClose={() => setIsPickerOpen(false)}
         onSelectFile={(file) => {
           setAttachedFile(file);
-          toast.success(`تم إرفاق ملف ${file.name} — اكتب طلبك لجيميناي!`);
+          toast.success(`تم إرفاق ملف ${file.name}`);
         }}
         selectedFilePath={attachedFile?.path}
       />
@@ -1000,7 +959,7 @@ function AdminCoPilotPage() {
         open={copywriterModalOpen}
         onOpenChange={setCopywriterModalOpen}
         onApplyCopywriting={(result) => {
-          toast.success(`تم توليد الوصف الإعلاني للمنتج بنجاح: ${result.name ?? ""}`);
+          toast.success(`تم توليد الوصف الإعلاني للمنتج: ${result.name ?? ""}`);
         }}
       />
     </div>

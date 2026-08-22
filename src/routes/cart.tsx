@@ -50,15 +50,15 @@ import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWi
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "سلة المشتريات — سمارت ستور" },
-      { name: "description", content: "أتمم طلبك من متجر سمارت ستور مع توصيل سريع لمنطقتك" },
-      { property: "og:title", content: "سلة المشتريات — سمارت ستور" },
+      { title: "سلة المشتريات — سوبرماركت الوادي الأخضر" },
+      { name: "description", content: "أتمم طلبك من متجر سوبرماركت الوادي الأخضر مع توصيل سريع لمنطقتك" },
+      { property: "og:title", content: "سلة المشتريات — سوبرماركت الوادي الأخضر" },
       {
         property: "og:description",
         content: "راجع منتجاتك وأكمل الطلب مع توصيل سريع لمنطقتك.",
       },
       { property: "og:url", content: `${SITE_URL}/cart` },
-      { name: "twitter:title", content: "سلة المشتريات — سمارت ستور" },
+      { name: "twitter:title", content: "سلة المشتريات — سوبرماركت الوادي الأخضر" },
       { name: "robots", content: "noindex,follow" },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/cart` }],
@@ -549,7 +549,7 @@ function CartPage() {
     setSubmitting(false);
     playSuccessSound();
     toast.success("تم استلام طلبك بنجاح ✨", {
-      description: `رقم الطلب #${createdOrderId} — سيتواصل معك فريق سمارت ستور لتأكيد التوصيل.`,
+      description: `رقم الطلب #${createdOrderId} — سيتواصل معك فريق سوبرماركت الوادي الأخضر لتأكيد التوصيل.`,
     });
     clear();
     navigate({ to: "/" });
@@ -570,7 +570,7 @@ function CartPage() {
             <div className="grid h-9 w-9 place-items-center rounded-xl hero-gradient text-primary-foreground">
               <Leaf className="h-4 w-4" />
             </div>
-            <span className="hidden font-display text-base font-bold sm:inline">سمارت ستور</span>
+            <span className="hidden font-display text-base font-bold sm:inline">سوبرماركت الوادي الأخضر</span>
           </Link>
           <h1 className="flex items-center gap-2 font-display text-base font-bold">
             <ShoppingBag className="h-4 w-4 text-primary" />
@@ -615,7 +615,7 @@ function CartPage() {
               <p
                 className={`relative z-10 font-display text-sm font-medium ${bg.empty ? "text-white/80" : "text-muted-foreground"}`}
               >
-                ابدأ رحلة تسوّقك من "سمارت ستور" — منتجات طازجة تصلك سريعاً 🌿
+                ابدأ رحلة تسوّقك من "سوبرماركت الوادي الأخضر" — منتجات طازجة تصلك سريعاً 🌿
               </p>
               <Link to="/" className="relative z-10">
                 <Button className="mt-2 rounded-full hero-gradient text-primary-foreground">
@@ -967,7 +967,7 @@ function CartPage() {
                           form.address ||
                           (zone?.name ? `${zone.name}، مصر` : pay.store_address || "القاهرة، مصر")
                         }
-                        storeName="موقع تسليم طلبك — سمارت ستور"
+                        storeName="موقع تسليم طلبك — سوبرماركت الوادي الأخضر"
                         isInteractivePicker={true}
                         showAiGrounding={true}
                         allowSaveAsDefault={true}

@@ -30,45 +30,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 
-// Mock seed abandoned carts if none in DB yet
-const DEFAULT_ABANDONED_CARTS: AbandonedCartData[] = [
-  {
-    id: "cart-101",
-    customerName: "أحمد مصطفى",
-    phone: "01012345678",
-    itemsCount: 3,
-    itemsList: ["لحم مفروم بلدي (1 كجم)", "جبن أبيض براميلي (500 جم)", "لبن طبيعي طازج"],
-    totalPrice: 485.0,
-    lastUpdated: "منذ ساعتين",
-    couponSuggested: "RECOVER5",
-  },
-  {
-    id: "cart-102",
-    customerName: "سارة محمود",
-    phone: "01198765432",
-    itemsCount: 2,
-    itemsList: ["تفاح لبناني أحمر (1 كجم)", "زيت زيتون بكر ممتاز (750 مل)"],
-    totalPrice: 290.0,
-    lastUpdated: "منذ 4 ساعات",
-    couponSuggested: "FREESHIP",
-  },
-  {
-    id: "cart-103",
-    customerName: "محمود عبد الرحمن",
-    phone: "01234567890",
-    itemsCount: 4,
-    itemsList: ["أرز مصري فاخر (5 كجم)", "مكرونة فرن", "صلصة طماطم بيوريه", "شاي أسود كيني"],
-    totalPrice: 340.0,
-    lastUpdated: "منذ 6 ساعات",
-    couponSuggested: "SMART10",
-  },
-];
-
 export function AbandonedCartAgent() {
-  const [carts, setCarts] = useState<AbandonedCartData[]>(DEFAULT_ABANDONED_CARTS);
-  const [selectedCart, setSelectedCart] = useState<AbandonedCartData | null>(
-    DEFAULT_ABANDONED_CARTS[0],
-  );
+  const [carts, setCarts] = useState<AbandonedCartData[]>([]);
+  const [selectedCart, setSelectedCart] = useState<AbandonedCartData | null>(null);
   const [draftResult, setDraftResult] = useState<AbandonedCartDraftResult | null>(null);
   const [customDraft, setCustomDraft] = useState("");
   const [couponCode, setCouponCode] = useState("WELCOME5");
@@ -76,11 +40,7 @@ export function AbandonedCartAgent() {
   const [copied, setCopied] = useState(false);
   const [cartStatuses, setCartStatuses] = useState<
     Record<string, "pending" | "contacted" | "recovered">
-  >({
-    "cart-101": "pending",
-    "cart-102": "contacted",
-    "cart-103": "pending",
-  });
+  >({});
 
   // Fetch or scan abandoned carts from Supabase orders with pending/unpaid status
   const scanAbandonedCarts = async () => {
@@ -95,13 +55,13 @@ export function AbandonedCartAgent() {
       if (data && data.length > 0) {
         const mapped: AbandonedCartData[] = data.map((o: any) => ({
           id: o.id,
-          customerName: o.customer_name || "عميل سمارت ستور",
+          customerName: o.customer_name || "عميل المتجر",
           phone: o.phone || "01000000000",
-          itemsCount: Array.isArray(o.items) ? o.items.length : 2,
+          itemsCount: Array.isArray(o.items) ? o.items.length : 1,
           itemsList: Array.isArray(o.items)
-            ? o.items.map((i: any) => i.name || i.title || "صنف بقالة")
-            : ["منتجات البقالة واللحوم"],
-          totalPrice: Number(o.total_price) || 250,
+            ? o.items.map((i: any) => i.name || i.title || "صنف")
+            : ["أصناف المشتريات"],
+          totalPrice: Number(o.total_price) || 0,
           lastUpdated: new Date(o.created_at).toLocaleTimeString("ar-EG", {
             hour: "2-digit",
             minute: "2-digit",
@@ -109,10 +69,14 @@ export function AbandonedCartAgent() {
           couponSuggested: "RECOVER10",
         }));
         setCarts(mapped);
-        if (mapped.length > 0) setSelectedCart(mapped[0]);
+        setSelectedCart(mapped[0] || null);
+      } else {
+        setCarts([]);
+        setSelectedCart(null);
       }
     } catch (e) {
-      console.warn("Using default carts fallback");
+      setCarts([]);
+      setSelectedCart(null);
     }
   };
 
@@ -210,63 +174,73 @@ export function AbandonedCartAgent() {
           </div>
 
           <div className="space-y-2 max-h-[460px] overflow-y-auto pe-1">
-            {carts.map((cart) => {
-              const isSelected = selectedCart?.id === cart.id;
-              const status = cartStatuses[cart.id] || "pending";
+            {carts.length === 0 ? (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-border/80 text-muted-foreground">
+                <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-xs font-bold text-foreground">لا توجد سلات متروكة حالياً</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  جميع الطلبات مكتملة أو لا توجد سلات معلقة في قاعدة البيانات
+                </p>
+              </div>
+            ) : (
+              carts.map((cart) => {
+                const isSelected = selectedCart?.id === cart.id;
+                const status = cartStatuses[cart.id] || "pending";
 
-              return (
-                <div
-                  key={cart.id}
-                  onClick={() => setSelectedCart(cart)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-right ${
-                    isSelected
-                      ? "border-emerald-600 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-600/30"
-                      : "border-border/70 bg-card hover:border-emerald-500/40 hover:bg-secondary/30"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-secondary grid place-items-center text-xs font-black text-foreground">
-                        <User className="h-3.5 w-3.5" />
+                return (
+                  <div
+                    key={cart.id}
+                    onClick={() => setSelectedCart(cart)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-right ${
+                      isSelected
+                        ? "border-emerald-600 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-600/30"
+                        : "border-border/70 bg-card hover:border-emerald-500/40 hover:bg-secondary/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-secondary grid place-items-center text-xs font-black text-foreground">
+                          <User className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-xs font-black text-foreground">
+                          {cart.customerName}
+                        </span>
                       </div>
-                      <span className="text-xs font-black text-foreground">
-                        {cart.customerName}
+
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                          status === "recovered"
+                            ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+                            : status === "contacted"
+                              ? "bg-blue-500/15 text-blue-700 border-blue-500/30"
+                              : "bg-amber-500/15 text-amber-700 border-amber-500/30"
+                        }`}
+                      >
+                        {status === "recovered"
+                          ? "تم الاسترداد ✅"
+                          : status === "contacted"
+                            ? "تم التواصل 💬"
+                            : "بانتظار الإرسال ⏳"}
                       </span>
                     </div>
 
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                        status === "recovered"
-                          ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
-                          : status === "contacted"
-                            ? "bg-blue-500/15 text-blue-700 border-blue-500/30"
-                            : "bg-amber-500/15 text-amber-700 border-amber-500/30"
-                      }`}
-                    >
-                      {status === "recovered"
-                        ? "تم الاسترداد ✅"
-                        : status === "contacted"
-                          ? "تم التواصل 💬"
-                          : "بانتظار الإرسال ⏳"}
-                    </span>
-                  </div>
+                    <div className="mt-2 text-[11px] text-muted-foreground line-clamp-1">
+                      🛒 {cart.itemsList?.join("، ") || "أصناف مشتريات"}
+                    </div>
 
-                  <div className="mt-2 text-[11px] text-muted-foreground line-clamp-1">
-                    🛒 {cart.itemsList?.join("، ") || "أصناف مشتريات"}
+                    <div className="mt-2.5 flex items-center justify-between text-xs pt-2 border-t border-border/40">
+                      <span className="font-extrabold text-foreground">
+                        {cart.totalPrice.toFixed(2)} ج.م
+                      </span>
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium">
+                        <Clock className="h-3 w-3" />
+                        <span>{cart.lastUpdated}</span>
+                      </span>
+                    </div>
                   </div>
-
-                  <div className="mt-2.5 flex items-center justify-between text-xs pt-2 border-t border-border/40">
-                    <span className="font-extrabold text-foreground">
-                      {cart.totalPrice.toFixed(2)} ج.م
-                    </span>
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium">
-                      <Clock className="h-3 w-3" />
-                      <span>{cart.lastUpdated}</span>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 

@@ -32,8 +32,8 @@ export function SaveShoppingListDialog({ open, onOpenChange }: SaveShoppingListD
   };
 
   const defaultSuggestedNames = [
-    "مشتريات البقالة الشهرية 🛒",
-    "نواقص وخضار الأسبوع 🥦",
+    "مشتريات التموين والبقالة الشهرية 🛒",
+    "نواقص ومستلزمات البيت 🥫",
     "مستلزمات الفطور والألبان 🥪",
     "عروض اللحوم والدواجن 🥩",
   ];

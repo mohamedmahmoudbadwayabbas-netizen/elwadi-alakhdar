@@ -756,7 +756,7 @@ export async function toolSendAbandonedCartRecovery(
   const total = Number(args.totalPrice ?? 0);
   const coupon = "COMEBACK10";
 
-  const message = `أهلاً بك يا ${name} 👋 من سمارت ستور 🌿\nلاحظنا أنك تركت سلة التسوق بقيمة ${total.toFixed(2)} ج.م دون إتمام.\nصممنا لك كود خصم خاص 🎁 *${coupon}* يمنحك خصماً 10%!\nأكمل طلبك الآن في ثوانٍ: ${typeof window !== "undefined" ? window.location.origin : "https://smartstore.eg"}/cart`;
+  const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿\nلاحظنا أنك تركت سلة التسوق بقيمة ${total.toFixed(2)} ج.م دون إتمام.\nصممنا لك كود خصم خاص 🎁 *${coupon}* يمنحك خصماً 10%!\nأكمل طلبك الآن في ثوانٍ: ${typeof window !== "undefined" ? window.location.origin : "https://alwadi-alakhdar.eg"}/cart`;
 
   const cleanPhone = phone.replace(/[^0-9]/g, "");
   const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;

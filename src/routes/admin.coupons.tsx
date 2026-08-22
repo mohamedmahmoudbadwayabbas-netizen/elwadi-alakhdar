@@ -49,48 +49,6 @@ type Coupon = {
   created_at?: string;
 };
 
-const DEFAULT_COUPONS: Coupon[] = [
-  {
-    id: "coupon-welcome10",
-    code: "WELCOME10",
-    discount_type: "percent",
-    discount_value: 10,
-    min_order_amount: 100,
-    max_uses: 500,
-    uses_count: 34,
-    expires_at: null,
-    is_active: true,
-    first_order_only: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "coupon-save20",
-    code: "SAVE20",
-    discount_type: "percent",
-    discount_value: 20,
-    min_order_amount: 250,
-    max_uses: 200,
-    uses_count: 89,
-    expires_at: null,
-    is_active: true,
-    first_order_only: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "coupon-friday50",
-    code: "FRIDAY50",
-    discount_type: "fixed",
-    discount_value: 50,
-    min_order_amount: 300,
-    max_uses: 100,
-    uses_count: 42,
-    expires_at: null,
-    is_active: true,
-    first_order_only: false,
-    created_at: new Date().toISOString(),
-  },
-];
-
 export const Route = createFileRoute("/admin/coupons")({
   head: () => ({
     meta: [
@@ -110,34 +68,24 @@ function CouponsPage() {
 
   const loadData = async () => {
     setLoading(true);
-    let localList: Coupon[] = [];
-    try {
-      const cached = localStorage.getItem("alwadi_coupons");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) localList = parsed;
-      }
-    } catch {}
-
     try {
       const { data, error } = await supabase
         .from("coupons")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (data && data.length > 0) {
-        setRows(data as Coupon[]);
-        try {
-          localStorage.setItem("alwadi_coupons", JSON.stringify(data));
-        } catch {}
-        setLoading(false);
-        return;
+      if (error) {
+        console.warn("[Coupons] Supabase error:", error.message);
       }
-    } catch {}
 
-    const finalList = localList.length > 0 ? localList : DEFAULT_COUPONS;
-    setRows(finalList);
-    setLoading(false);
+      const result = (data as Coupon[]) || [];
+      setRows(result);
+    } catch (err) {
+      console.error("[Coupons] Error loading coupons:", err);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

@@ -84,7 +84,7 @@ export async function modifyProjectFileWithGemini(
   const ai = getGenAI();
   if (ai) {
     try {
-      const systemInstruction = `You are the Lead Staff Software Architect and Full-Stack TypeScript/React Engineer for "Smart Store" (سمارت ستور).
+      const systemInstruction = `You are the Lead Staff Software Architect and Full-Stack TypeScript/React Engineer for "Al-Wadi Al-Akhdar Supermarket" (سوبرماركت الوادي الأخضر).
 The user wants to modify or enhance a specific project file: "${filePath}".
 You must write clean, production-ready TypeScript / TSX code that fulfills the user's request.
 Always preserve existing working logic, imports, and exports unless specifically asked to change them.

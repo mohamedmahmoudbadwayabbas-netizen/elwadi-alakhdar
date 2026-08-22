@@ -251,7 +251,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
 
                 <div className="min-w-0">
                   <span className="font-extrabold text-xs sm:text-sm truncate block leading-tight">
-                    {s.site_name || "سمارت ستور — هايبر ماركت"}
+                    {s.site_name || "سوبرماركت الوادي الأخضر"}
                   </span>
                   <span className="text-[9px] text-muted-foreground flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -303,7 +303,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
                       </span>
 
                       <h2 className="font-black text-sm sm:text-base leading-tight">
-                        {s.hero_title || "سمارت ستور — هايبر ماركت أونلاين"}
+                        {s.hero_title || "سوبرماركت الوادي الأخضر — هايبر ماركت أونلاين"}
                       </h2>
 
                       <p className="text-[10px] sm:text-[11px] opacity-90 line-clamp-2 leading-relaxed font-bold">

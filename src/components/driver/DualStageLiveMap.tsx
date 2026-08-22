@@ -57,7 +57,7 @@ export function DualStageLiveMap({
   storeCoords = {
     lat: 30.0444,
     lng: 31.2357,
-    name: "المركز الرئيسي — سمارت ستور",
+    name: "المركز الرئيسي — سوبرماركت الوادي الأخضر",
     address: "القاهرة، وسط البلد",
   },
   customerCoords = {

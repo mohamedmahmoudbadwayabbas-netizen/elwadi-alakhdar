@@ -2,15 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
   TrendingUp,
-  TrendingDown,
   AlertTriangle,
-  ShoppingBag,
   Zap,
-  ArrowRight,
   RefreshCw,
   CheckCircle2,
-  Package,
-  Layers,
   ChevronLeft,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,27 +44,24 @@ export function ExecutiveSummaryWidget({ kpis, onExecuteCommand }: ExecutiveSumm
   }, [fetchSummary]);
 
   return (
-    <Card className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card to-emerald-500/5 shadow-md">
-      {/* Decorative top accent line */}
-      <div className="absolute inset-x-0 top-0 h-1 hero-gradient" />
-
-      <CardHeader className="p-4 sm:p-6 pb-2">
+    <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs overflow-hidden">
+      <CardHeader className="p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
-              <Sparkles className="h-5 w-5 animate-pulse text-amber-500" />
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+              <Sparkles className="h-4 w-4 text-emerald-600" strokeWidth={1.5} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <CardTitle className="text-base sm:text-lg font-black font-display text-foreground">
-                  الموجز التنفيذي والاستشاري الذكي (AI Executive Advisory)
+                <CardTitle className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  التقرير الاستشاري والتحليلي
                 </CardTitle>
-                <span className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 border border-emerald-500/20">
+                <span className="rounded px-1.5 py-0.2 text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   Gemini 3.6 Flash
                 </span>
               </div>
-              <CardDescription className="text-xs font-medium text-muted-foreground mt-0.5">
-                تحليل فوري لمؤشرات أداء المبيعات والمخزون مع نصائح تجارية موجهة لزيادة الأرباح
+              <CardDescription className="text-xs text-zinc-500 mt-0.5">
+                تحليل فوري لمؤشرات أداء المبيعات والمخزون
               </CardDescription>
             </div>
           </div>
@@ -79,142 +71,132 @@ export function ExecutiveSummaryWidget({ kpis, onExecuteCommand }: ExecutiveSumm
             size="sm"
             disabled={loading}
             onClick={fetchSummary}
-            className="h-8 rounded-xl text-xs font-bold gap-1.5 border-border hover:bg-secondary self-start sm:self-auto cursor-pointer"
+            className="h-7 rounded-lg text-xs font-medium gap-1.5 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
           >
             <RefreshCw
-              className={`h-3.5 w-3.5 ${loading ? "animate-spin text-emerald-600" : ""}`}
+              className={`h-3 w-3 ${loading ? "animate-spin text-emerald-600" : "text-zinc-400"}`}
+              strokeWidth={1.5}
             />
             <span>تحديث التحليل</span>
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-6 pt-3 space-y-4">
+      <CardContent className="p-4 sm:p-5 pt-4 space-y-4">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-6 animate-pulse">
-            <div className="h-24 rounded-2xl bg-secondary/60 col-span-full" />
-            <div className="h-32 rounded-2xl bg-secondary/60 md:col-span-2" />
-            <div className="h-32 rounded-2xl bg-secondary/60" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-4 animate-pulse">
+            <div className="h-16 rounded-lg bg-zinc-100 dark:bg-zinc-800 col-span-full" />
+            <div className="h-20 rounded-lg bg-zinc-100 dark:bg-zinc-800 md:col-span-2" />
+            <div className="h-20 rounded-lg bg-zinc-100 dark:bg-zinc-800" />
           </div>
         ) : summary ? (
           <AnimatePresence mode="wait">
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-4"
+              exit={{ opacity: 0, y: -6 }}
+              className="space-y-3.5"
             >
-              {/* Executive Headline Banner */}
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="text-sm font-black text-emerald-950 dark:text-emerald-200 font-display">
+              {/* Executive Headline */}
+              <div className="rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/40 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0" />
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                     {summary.headline}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto">
-                  <span className="text-xs text-muted-foreground font-bold">
-                    مؤشر كفاءة المتجر:
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-500">
+                    مؤشر الكفاءة:
                   </span>
-                  <span className="rounded-xl bg-card px-2.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">
-                    %{summary.overallHealthScore} ممتاز
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800">
+                    %{summary.overallHealthScore}
                   </span>
                 </div>
               </div>
 
-              {/* Insights List */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {/* Insights */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {summary.insights.map((insight, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-2xl border border-border/70 bg-card/60 text-xs font-bold text-foreground leading-relaxed flex items-start gap-2 shadow-2xs"
+                    className="p-3 rounded-lg border border-zinc-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-700 dark:text-zinc-300 flex items-start gap-2"
                   >
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" strokeWidth={1.5} />
                     <span>{insight}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Actionable Strategic Tips Section */}
-              <div className="space-y-2.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-foreground flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                    <span>
-                      توصيات الذكاء الاصطناعي التشغيلية ذات الأولوية القصوى (2 Actionable Tips):
-                    </span>
+              {/* Actionable Tips */}
+              {summary.actionableTips && summary.actionableTips.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">
+                    توصيات تشغيلية:
                   </span>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {summary.actionableTips.map((tip, idx) => {
-                    const isUrgent = tip.impact === "Urgent";
-                    return (
-                      <div
-                        key={idx}
-                        className={`rounded-2xl border p-4 transition-all duration-200 flex flex-col justify-between ${
-                          isUrgent
-                            ? "border-rose-500/30 bg-rose-500/5 hover:border-rose-500/50"
-                            : "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50"
-                        }`}
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={`text-xs font-black px-2 py-0.5 rounded-full border ${
-                                isUrgent
-                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
-                                  : "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                              }`}
-                            >
-                              {tip.impact === "Urgent" ? "عاجل جداً 🚨" : "تأثير مرتفع ⚡"}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground font-extrabold">
-                              {tip.category === "Inventory"
-                                ? "إدارة المخزون 📦"
-                                : tip.category === "Marketing"
-                                  ? "التسويق والمبيعات 🛍️"
-                                  : "التسعير والعمليات 💰"}
-                            </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {summary.actionableTips.map((tip, idx) => {
+                      const isUrgent = tip.impact === "Urgent";
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-zinc-200/80 dark:border-zinc-800 p-3 bg-white dark:bg-zinc-900 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span
+                                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                  isUrgent
+                                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                                    : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                }`}
+                              >
+                                {tip.impact === "Urgent" ? "عاجل" : "أولوية"}
+                              </span>
+                              <span className="text-[10px] text-zinc-400">
+                                {tip.category === "Inventory"
+                                  ? "المخزون"
+                                  : tip.category === "Marketing"
+                                    ? "التسويق"
+                                    : "التسعير"}
+                              </span>
+                            </div>
+
+                            <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                              {tip.title}
+                            </h4>
+                            <p className="text-xs text-zinc-500 leading-normal">
+                              {tip.description}
+                            </p>
                           </div>
 
-                          <h4 className="text-sm font-black text-foreground font-display">
-                            {tip.title}
-                          </h4>
-                          <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                            {tip.description}
-                          </p>
+                          {tip.quickActionLabel && (
+                            <div className="pt-2 mt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (tip.quickActionCommand && onExecuteCommand) {
+                                    onExecuteCommand(tip.quickActionCommand);
+                                  } else {
+                                    toast.info(`تم تفعيل: ${tip.title}`);
+                                  }
+                                }}
+                                className="h-6 px-2 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 cursor-pointer gap-1"
+                              >
+                                <span>{tip.quickActionLabel}</span>
+                                <ChevronLeft className="h-3 w-3" strokeWidth={1.5} />
+                              </Button>
+                            </div>
+                          )}
                         </div>
-
-                        {tip.quickActionLabel && (
-                          <div className="pt-3 mt-2 border-t border-border/40 flex items-center justify-between">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (tip.quickActionCommand && onExecuteCommand) {
-                                  onExecuteCommand(tip.quickActionCommand);
-                                } else {
-                                  toast.info(`تم تفعيل التوصية: ${tip.title}`);
-                                }
-                              }}
-                              className={`h-7 px-2.5 rounded-xl text-[11px] font-black gap-1 cursor-pointer ${
-                                isUrgent
-                                  ? "text-rose-600 hover:bg-rose-500/10"
-                                  : "text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
-                              }`}
-                            >
-                              <span>{tip.quickActionLabel}</span>
-                              <ChevronLeft className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           </AnimatePresence>
         ) : null}

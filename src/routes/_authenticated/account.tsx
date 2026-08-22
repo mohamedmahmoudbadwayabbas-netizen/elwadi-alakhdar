@@ -46,7 +46,7 @@ import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWi
 export const Route = createFileRoute("/_authenticated/account")({
   ssr: false,
   head: () => ({
-    meta: [{ title: "حسابي — سمارت ستور" }, { name: "robots", content: "noindex,nofollow" }],
+    meta: [{ title: "حسابي — سوبرماركت الوادي الأخضر" }, { name: "robots", content: "noindex,nofollow" }],
   }),
   component: AccountPage,
 });
@@ -76,7 +76,7 @@ function AccountPage() {
               <Leaf className="h-4 w-4" />
             </div>
             <span className="hidden font-display text-base font-extrabold sm:inline">
-              سمارت ستور
+              سوبرماركت الوادي الأخضر
             </span>
           </Link>
           <div className="flex items-center gap-3">

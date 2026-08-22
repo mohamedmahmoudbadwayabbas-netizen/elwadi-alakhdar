@@ -42,7 +42,7 @@ export function StoreGoogleMapsWidget({
   initialLat = 30.0444,
   initialLng = 31.2357,
   storeAddress = "القاهرة، مصر",
-  storeName = "سمارت ستور — المركز الرئيسي",
+  storeName = "سوبرماركت الوادي الأخضر — المركز الرئيسي",
   isInteractivePicker = false,
   onLocationSelect,
   title = "موقع المتجر وخرائط Google الذكية",

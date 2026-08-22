@@ -147,17 +147,6 @@ export function lineSubtotal(product: Product, quantity: number) {
   return +(product.price_per_unit * quantity).toFixed(2);
 }
 
-const DEFAULT_SAVED_LISTS: SavedShoppingList[] = [
-  {
-    id: "list-monthly-essentials",
-    name: "مشتريات البقالة الشهرية 🛒",
-    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    total_estimated_price: 345.5,
-    total_items_count: 4,
-    items: [],
-  },
-];
-
 /** Merges guest cart items with user's existing cart items (sums duplicate product quantities) */
 function mergeCartItems(userItems: CartItem[], guestItems: CartItem[]): CartItem[] {
   const map = new Map<string, CartItem>();

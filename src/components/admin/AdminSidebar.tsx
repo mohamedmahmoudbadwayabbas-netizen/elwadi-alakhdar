@@ -61,7 +61,7 @@ const navSections: NavSection[] = [
         title: "المساعد الذكي",
         url: "/admin/copilot",
         icon: Sparkles,
-        badge: "AI 3.1",
+        badge: "AI",
         badgeVariant: "emerald",
       },
     ],
