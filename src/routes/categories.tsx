@@ -68,7 +68,7 @@ export function CategoriesPage() {
     badge: c.badge,
     description: c.description,
   }));
-  const loading = isLoading && (!cachedCats || cachedCats.length === 0);
+  const loading = isLoading && (!cachedCats || (cachedCats as Category[]).length === 0);
 
   const [searchFilter, setSearchFilter] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");

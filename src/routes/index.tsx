@@ -81,7 +81,7 @@ export function HomePage() {
   const products = useMemo(() => productsData ?? [], [productsData]);
   const categories = useMemo(() => categoriesData ?? [], [categoriesData]);
   const heroBanners = useMemo(() => bannersData ?? [], [bannersData]);
-  const loading = isProductsLoading && (!productsData || productsData.length === 0);
+  const loading = isProductsLoading && (!productsData || (productsData as Product[]).length === 0);
 
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);

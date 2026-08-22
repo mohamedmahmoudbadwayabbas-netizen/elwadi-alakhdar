@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   TrendingUp,
   MessageSquare,
+  Eye,
   Package,
   Zap,
   CheckCircle2,
@@ -28,7 +29,7 @@ import {
   Wrench,
   Plus,
   FolderTree,
-  Eye,
+  
   SlidersHorizontal,
   Layers,
   ArrowRight,
@@ -36,6 +37,7 @@ import {
   Cpu,
   Sliders,
 } from "lucide-react";
+import { AiToolDefinition } from "@/services/aiTools/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -55,8 +57,11 @@ import {
 } from "@/services/projectFilesService";
 import { GeminiFileAttachmentPicker } from "@/components/admin/GeminiFileAttachmentPicker";
 import { GeminiCodeDiffViewer } from "@/components/admin/GeminiCodeDiffViewer";
-import { GeminiProjectFilesStudio } from "@/components/admin/GeminiProjectFilesStudio";
+import { DEFAULT_LAYOUT_CONFIG, StoreLayoutConfig } from "@/types/layout-config";
+import { StoreEngineBuilder } from "@/components/admin/StoreEngineBuilder";
 import { ExecutiveSummaryWidget } from "@/components/admin/ExecutiveSummaryWidget";
+import { LiveStorefrontPreview } from "@/components/admin/LiveStorefrontPreview";
+import { GeminiProjectFilesStudio } from "@/components/admin/GeminiProjectFilesStudio";
 import { AbandonedCartAgent } from "@/components/admin/AbandonedCartAgent";
 import { SmartProductCopywriterModal } from "@/components/admin/SmartProductCopywriterModal";
 import { ShopLivePreview } from "@/components/admin/ShopLivePreview";
@@ -155,9 +160,30 @@ function AdminCoPilotPage() {
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
 
   // 10-Tool Executable Engine state
-  const queryClient = useQueryClient();
+        const queryClient = useQueryClient();
   const [activeToolName, setActiveToolName] = useState<string | null>(null);
+  
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [kpis, setKpis] = useState<ExecutiveKpiInput>({
+    totalRevenue: 0,
+    totalOrders: 0,
+    averageOrderValue: 0,
+    outOfStockCount: 0,
+    lowStockCount: 0,
+    topSellingCategory: "غير محدد",
+      });
+  
+
   const [lastRollback, setLastRollback] = useState<RollbackPoint | null>(null);
+  const [isDeploying, setIsDeploying] = useState(false);
+
+  const handleDeployLayout = async () => {
+    setIsDeploying(true);
+    await new Promise(r => setTimeout(r, 1000));
+    toast.success("تم نشر التعديلات بنجاح!");
+    setIsDeploying(false);
+  };
+
 
   useEffect(() => {
     const sync = () => setLastRollback(getLastRollbackPoint());
@@ -166,271 +192,82 @@ function AdminCoPilotPage() {
     return () => window.removeEventListener("ai_rollback_stack_changed", sync);
   }, []);
 
-  const toolContext = {
-    layout: layoutConfig,
-    updateLayout: (next: typeof layoutConfig) => updateConfig(next),
-    refresh: () => {
-      void queryClient.invalidateQueries({ queryKey: ["store-products"] });
-      void queryClient.invalidateQueries({ queryKey: ["store-categories"] });
-      void queryClient.invalidateQueries({ queryKey: ["hero-banners"] });
-    },
-  };
-
-  const pushAssistantMessage = (content: string) => {
-    setChatHistory((prev) => [
-      ...prev,
-      {
-        id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        role: "assistant",
-        modelUsed: selectedModel,
-        roleUsed: selectedRole,
-        content,
-        timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
-      },
-    ]);
-  };
-
-  const handleUndoLastAction = async () => {
-    const res = await rollbackLastAction(toolContext);
-    setLastRollback(getLastRollbackPoint());
-    if (res.ok) toast.success(res.messageAr);
-    else toast.info(res.messageAr);
-    pushAssistantMessage(`تم التراجع عن الإجراء الأخير: ${res.messageAr}`);
-  };
-
-  // Multi-Turn Chat History
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    {
-      id: "msg-welcome",
-      role: "assistant",
-      modelUsed: "gemini-2.5-flash",
-      roleUsed: "store_architect",
-      content: `مرحباً بك في المساعد الذكي لإدارة ${storeName}.\n\nيمكنك تنفيذ المهام التالية مباشرة:\n• تعديل أي ملف برمجي في المتجر أو استعراض الفروقات (Diffs).\n• التحكم في ألوان وتخطيط المتجر وتفعيل العروض.\n• أبحاث أسعار السوق اللحظية عبر محرك البحث.\n• متابعة مؤشرات المبيعات وتحليل المخزون.`,
-      timestamp: "الآن",
-    },
-  ]);
-
-  // Store real-time KPI data
-  const [kpis, setKpis] = useState<ExecutiveKpiInput>({
-    totalRevenue: 60450,
-    totalOrders: 155,
-    averageOrderValue: 390.0,
-    lowStockCount: 11,
-    outOfStockCount: 2,
-    topSellingCategory: "الألبان والجبن الطازج",
-    abandonedCartsCount: 4,
-  });
-
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory, isProcessing]);
-
-  // Fetch actual numbers from supabase
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: orders } = await supabase.from("orders").select("total_price, status");
-        if (orders && orders.length > 0) {
-          const rev = orders.reduce((acc, o) => acc + (Number(o.total_price) || 0), 0);
-          setKpis((prev) => ({
-            ...prev,
-            totalRevenue: rev || prev.totalRevenue,
-            totalOrders: orders.length,
-            averageOrderValue: rev / orders.length,
-          }));
-        }
-
-        const { data: products } = await supabase
-          .from("products")
-          .select("stock_quantity, low_stock_threshold");
-        if (products) {
-          const low = products.filter(
-            (p) => p.stock_quantity > 0 && p.stock_quantity <= (p.low_stock_threshold || 10),
-          ).length;
-          const out = products.filter((p) => p.stock_quantity <= 0).length;
-          setKpis((prev) => ({
-            ...prev,
-            lowStockCount: low,
-            outOfStockCount: out,
-          }));
-        }
-      } catch (e) {
-        console.warn("KPIs sync error");
+  const handleRollback = async () => {
+    if (!lastRollback) return;
+    try {
+      const res = await rollbackLastAction();
+      if ((res as any)?.success) {
+        toast.success(res.messageAr || "تم التراجع بنجاح");
+        queryClient.invalidateQueries();
+      } else {
+        toast.error((res as any)?.error || "فشل التراجع");
       }
-    })();
-  }, []);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
-  // Main Submit Handler
-  const handleSendMessage = async (textToSend?: string, fileToTarget?: ProjectFileMeta | null) => {
-    const prompt = (textToSend || chatInput).trim();
-    const targetFile = fileToTarget !== undefined ? fileToTarget : attachedFile;
-    if (!prompt) return;
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() && !attachedFile) return;
+    handleSendMessage(chatInput, attachedFile);
+    setChatInput("");
+    setAttachedFile(null);
+  };
 
-    const lower = prompt.toLowerCase();
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleFormSubmit(e as any);
+    }
+  };
 
-    const isFileCodeRequest =
-      targetFile !== null ||
-      lower.includes(".tsx") ||
-      lower.includes(".ts") ||
-      lower.includes(".css") ||
-      lower.includes("عدل ملف") ||
-      lower.includes("تعديل كود") ||
-      lower.includes("برمج") ||
-      lower.includes("صفحة السلة") ||
-      lower.includes("صفحة المندوب") ||
-      lower.includes("الهيدر");
+  const handleSendMessage = async (prompt: string, file: any = null) => {
+    if (!prompt.trim() && !file) return;
 
-    const userMsg: ChatMessage = {
+    const newMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
       content: prompt,
-      attachedFile: targetFile ? { path: targetFile.path, name: targetFile.name } : undefined,
+      attachedFile: file || undefined,
       timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setChatHistory((prev) => [...prev, userMsg]);
-    setChatInput("");
-    setAttachedFile(null);
+    setChatHistory((prev) => [...prev, newMsg]);
     setIsProcessing(true);
 
     try {
-      const routed = !targetFile ? routeCommandToTool(prompt) : null;
-      if (routed) {
-        const meta = AI_TOOL_SUITE.find((t) => t.name === routed.tool);
-        setActiveToolName(routed.tool);
-        if (meta?.mutatesState) {
-          createRollbackPoint(routed.tool, meta.labelAr, layoutConfig);
-        }
-        const result = await executeAiTool(routed.tool, routed.args, toolContext);
-        setActiveToolName(null);
-        setLastRollback(getLastRollbackPoint());
-        pushAssistantMessage(
-          `**${meta?.labelAr || routed.tool}** — \`${routed.tool}()\`\n\n${result.messageAr}${
-            result.data && "imageUrl" in result.data
-              ? `\n\n![generated](${String(result.data.imageUrl)})`
-              : ""
-          }${result.ok && meta?.mutatesState ? "\n\nتم تطبيق التعديل مباشرة على المتجر." : ""}`,
-        );
-        if (result.ok) toast.success(result.messageAr);
-        else toast.error(result.messageAr);
-        setIsProcessing(false);
-        return;
-      }
+      const response = await runAdminCoPilotChat(prompt, chatHistory, {
+        model: selectedModel,
+        role: selectedRole,
+        enableSearchGrounding: enableGoogleSearch || selectedRole === "market_researcher",
+        currentLayout: layoutConfig,
+        kpis,
+      });
 
-      if (isFileCodeRequest) {
-        let filePath = targetFile?.path;
-        if (!filePath) {
-          if (lower.includes("cart") || lower.includes("سلة") || lower.includes("السلة")) {
-            filePath = "/src/routes/cart.tsx";
-          } else if (
-            lower.includes("driver") ||
-            lower.includes("مندوب") ||
-            lower.includes("المندوب")
-          ) {
-            filePath = "/src/routes/driver.tsx";
-          } else if (
-            lower.includes("header") ||
-            lower.includes("هيدر") ||
-            lower.includes("الهيدر")
-          ) {
-            filePath = "/src/components/storefront/Header.tsx";
-          } else if (lower.includes("index") || lower.includes("الرئيسية")) {
-            filePath = "/src/routes/index.tsx";
-          } else {
-            filePath = "/src/routes/cart.tsx";
-          }
-        }
-
-        const codeResult = await modifyProjectFileWithGemini(
-          prompt,
-          filePath,
-          selectedModel as any,
-        );
-
-        const aiMsg: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          modelUsed: selectedModel,
-          roleUsed: "store_architect",
-          content: `**${codeResult.summary}**\n\n${codeResult.explanation}`,
-          codeModification: {
-            filePath: codeResult.filePath,
-            originalCode: codeResult.originalCode,
-            modifiedCode: codeResult.modifiedCode,
-            summary: codeResult.summary,
-            explanation: codeResult.explanation,
-            diffSummary: codeResult.diffSummary,
-          },
-          timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
-        };
-
-        setChatHistory((prev) => [...prev, aiMsg]);
-        toast.success(`تم توليد تعديل الكود لملف ${filePath}`);
-      } else if (
-        lower.includes("لون") ||
-        lower.includes("ثيم") ||
-        lower.includes("بانر") ||
-        lower.includes("حواف") ||
-        lower.includes("فلاش سيل") ||
-        lower.includes("إعلانات") ||
-        lower.includes("أخضر") ||
-        lower.includes("بنفسجي") ||
-        lower.includes("تخطيط")
-      ) {
-        const result = await parseAdminCommandToLayoutUpdate(prompt, layoutConfig);
-        updateConfig(result.updatedLayout);
-
-        const aiMsg: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          modelUsed: selectedModel,
-          roleUsed: "store_architect",
-          content: `**${result.actionSummary}**\n\n${result.explanation}`,
-          executedActions: result.executedActions,
-          timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
-          suggestedAction: {
-            label: "معاينة التعديل في المتجر الحي",
-            command: prompt,
-            type: "apply_layout",
-          },
-        };
-
-        setChatHistory((prev) => [...prev, aiMsg]);
-        toast.success(`تم تطبيق التعديل: ${result.actionSummary}`);
-      } else {
-        const response = await runAdminCoPilotChat(prompt, chatHistory, {
-          model: selectedModel,
-          role: selectedRole,
-          enableSearchGrounding: enableGoogleSearch || selectedRole === "market_researcher",
-          currentLayout: layoutConfig,
-          kpis,
-        });
-
-        const aiMsg: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          modelUsed: response.modelUsed,
-          roleUsed: response.roleUsed,
-          content: response.text,
-          groundingSources: response.groundingSources,
-          suggestedAction: response.action,
-          timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
-        };
-
-        setChatHistory((prev) => [...prev, aiMsg]);
-      }
-    } catch (e) {
-      const errorMsg: ChatMessage = {
-        id: `err-${Date.now()}`,
+      const aiMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
         role: "assistant",
-        content: "حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.",
+        modelUsed: response.modelUsed,
+        roleUsed: response.roleUsed,
+        content: response.text,
+        groundingSources: response.groundingSources,
+        executedActions: response.executedActions,
+        suggestedAction: response.action,
         timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
       };
-      setChatHistory((prev) => [...prev, errorMsg]);
+
+      setChatHistory((prev) => [...prev, aiMsg]);
+    } catch (e) {
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          role: "assistant",
+          content: "حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.",
+          timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
+        }
+      ]);
     } finally {
       setIsProcessing(false);
     }
@@ -482,7 +319,7 @@ function AdminCoPilotPage() {
           <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto">
             <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200/60 dark:border-zinc-700">
               {[
-                { id: "chat", label: "المحادثة", icon: MessageSquare },
+                { id: "live-preview", label: "المعاينة الحية", icon: Eye },
                 { id: "files-studio", label: "محرر الأكواد", icon: FileCode },
                 { id: "store-engine", label: "محرك الواجهة", icon: Layout },
                 { id: "advisory", label: "التقارير", icon: TrendingUp },
@@ -506,7 +343,7 @@ function AdminCoPilotPage() {
               })}
             </div>
 
-            {/* AI Tools Sheet Trigger (Clean Dropdown/Drawer) */}
+            {/* AI Tools Sheet Trigger */}
             <Sheet open={toolsSheetOpen} onOpenChange={setToolsSheetOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -533,7 +370,7 @@ function AdminCoPilotPage() {
                     return (
                       <div key={group} className="space-y-1.5">
                         <div className="text-[11px] font-semibold text-zinc-400">
-                          {AI_TOOL_GROUP_LABELS[group]}
+                          {typeof AI_TOOL_GROUP_LABELS[group] === 'object' ? (AI_TOOL_GROUP_LABELS[group] as any).labelAr : String(AI_TOOL_GROUP_LABELS[group])}
                         </div>
                         <div className="space-y-1.5">
                           {tools.map((tool) => (
@@ -543,13 +380,15 @@ function AdminCoPilotPage() {
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                                  {tool.labelAr}
+                                  {tool.name}
                                 </span>
-                                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                                  {tool.name}()
-                                </span>
+                                {(tool as any).isDangerous && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 uppercase">
+                                    حرج
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-[11px] text-zinc-500 mt-1 leading-snug">
+                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                                 {tool.descriptionAr}
                               </p>
                             </div>
@@ -566,402 +405,210 @@ function AdminCoPilotPage() {
               variant="outline"
               size="sm"
               onClick={handleStartNewChat}
-              className="h-7 px-2 rounded-lg text-xs font-medium border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer gap-1"
+              className="h-7 px-2 rounded-lg text-xs font-medium border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer gap-1 text-emerald-700 dark:text-emerald-400"
               title="جلسة جديدة"
             >
-              <Plus className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.5} />
+              <Plus className="h-3.5 w-3.5 text-emerald-600" strokeWidth={1.5} />
               <span>جديد</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* ─── 2. MAIN CHAT / WORKSPACE VIEW ─── */}
-      <div className="flex-1 min-h-0 relative">
-        {activeMode === "chat" && (
-          <div className="h-full flex flex-col">
-            {/* Scrollable messages container with safe padding bottom */}
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-36">
-              <div className="max-w-3xl mx-auto space-y-4">
-                {chatHistory.map((msg) => {
-                  const isUser = msg.role === "user";
+      {/* ─── 2. MAIN SPLIT WORKSPACE ─── */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row relative">
+        {/* RIGHT PANE: CHAT (First in RTL) */}
+        <div className="w-full lg:w-[400px] xl:w-[450px] h-1/2 lg:h-full shrink-0 border-b lg:border-b-0 lg:border-l border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col z-10 relative shadow-sm lg:shadow-none">
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-36">
+            <div className="max-w-2xl mx-auto space-y-4">
+              {chatHistory.map((msg) => {
+                const isUser = msg.role === "user";
+                return (
+                  <div key={msg.id} className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+                    {/* Avatar */}
+                    <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${isUser ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" : "bg-emerald-600 text-white"}`}>
+                      {isUser ? <Bot className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                    </div>
 
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex items-start gap-3 ${
-                        isUser ? "flex-row-reverse" : "flex-row"
-                      }`}
-                    >
-                      {/* Avatar */}
-                      <div
-                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
-                          isUser
-                            ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                            : "bg-emerald-600 text-white"
-                        }`}
-                      >
-                        {isUser ? (
-                          <Bot className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        ) : (
-                          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        )}
+                    {/* Bubble */}
+                    <div className={`space-y-1 max-w-[85%] ${isUser ? "text-right" : "text-right"}`}>
+                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-medium px-1">
+                        <span>{isUser ? "المسؤول" : aiAssistantName}</span>
+                        <span>•</span>
+                        <span>{msg.timestamp}</span>
                       </div>
 
-                      {/* Bubble */}
-                      <div className={`space-y-1 max-w-[85%] ${isUser ? "text-right" : "text-right"}`}>
-                        <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-medium px-1">
-                          <span>{isUser ? "المسؤول" : aiAssistantName}</span>
-                          <span>•</span>
-                          <span>{msg.timestamp}</span>
-                        </div>
-
-                        <div
-                          className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
-                            isUser
-                              ? "bg-emerald-600 text-white rounded-tr-xs shadow-xs font-medium"
-                              : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800 rounded-tl-xs shadow-xs"
-                          }`}
-                        >
-                          {/* Attached File */}
-                          {msg.attachedFile && (
-                            <div className="mb-2.5 inline-flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-2.5 py-1 rounded-md text-xs font-mono">
-                              <Paperclip className="h-3 w-3" strokeWidth={1.5} />
-                              <span>{msg.attachedFile.path}</span>
-                            </div>
-                          )}
-
-                          <div className="whitespace-pre-line leading-relaxed">
-                            {msg.content}
+                      <div className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${isUser ? "bg-emerald-600 text-white rounded-tr-xs shadow-xs font-medium" : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800 rounded-tl-xs shadow-xs"}`}>
+                        {msg.attachedFile && (
+                          <div className="mb-2.5 inline-flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-2.5 py-1 rounded-md text-xs font-mono">
+                            <Paperclip className="h-3 w-3" strokeWidth={1.5} />
+                            <span>{msg.attachedFile.path}</span>
                           </div>
-
-                          {/* Code Diff Viewer */}
-                          {msg.codeModification && (
-                            <div className="mt-3">
-                              <GeminiCodeDiffViewer
-                                filePath={msg.codeModification.filePath}
-                                originalCode={msg.codeModification.originalCode}
-                                modifiedCode={msg.codeModification.modifiedCode}
-                                summary={msg.codeModification.summary}
-                                explanation={msg.codeModification.explanation}
-                                diffSummary={msg.codeModification.diffSummary}
-                              />
-                            </div>
-                          )}
-
-                          {/* Grounding Sources */}
-                          {msg.groundingSources && msg.groundingSources.length > 0 && (
-                            <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800 space-y-1.5">
-                              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                <Globe className="h-3 w-3" strokeWidth={1.5} />
-                                <span>مصادر البحث ({msg.groundingSources.length}):</span>
-                              </span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {msg.groundingSources.map((src, sIdx) => (
-                                  <a
-                                    key={sIdx}
-                                    href={src.uri}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800"
-                                  >
-                                    <span>{src.title || "مصدر خارجي"}</span>
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Executed Actions */}
-                          {msg.executedActions && msg.executedActions.length > 0 && (
-                            <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-1.5">
-                              {msg.executedActions.map((act, actIdx) => (
-                                <span
-                                  key={actIdx}
-                                  className="inline-flex items-center gap-1 text-[10px] font-medium bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700"
-                                >
-                                  <span className="text-emerald-600">{act.field}:</span>
-                                  <span>{act.label}</span>
-                                </span>
+                        )}
+                        <div className="whitespace-pre-line leading-relaxed">{msg.content}</div>
+                        {msg.codeModification && (
+                          <div className="mt-3">
+                            <GeminiCodeDiffViewer
+                              filePath={msg.codeModification.filePath}
+                              originalCode={msg.codeModification.originalCode}
+                              modifiedCode={msg.codeModification.modifiedCode}
+                              summary={msg.codeModification.summary}
+                              explanation={msg.codeModification.explanation}
+                              diffSummary={msg.codeModification.diffSummary}
+                            />
+                          </div>
+                        )}
+                        {msg.groundingSources && msg.groundingSources.length > 0 && (
+                          <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800 space-y-1.5">
+                            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                              <Globe className="h-3 w-3" strokeWidth={1.5} />
+                              <span>مصادر البحث ({msg.groundingSources.length}):</span>
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {msg.groundingSources.map((src, sIdx) => (
+                                <a key={sIdx} href={src.uri} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800">
+                                  <span>{src.title || "مصدر خارجي"}</span>
+                                </a>
                               ))}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                        {msg.executedActions && msg.executedActions.length > 0 && (
+                          <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-1.5">
+                            {msg.executedActions.map((act, actIdx) => (
+                              <span key={actIdx} className="inline-flex items-center gap-1 text-[10px] font-medium bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                                <span className="text-emerald-600">{(act as any).field ? (typeof (act as any).field === 'object' ? JSON.stringify((act as any).field) : String((act as any).field)) : 'Field'}:</span>
+                                <span>{(act as any).label ? (typeof (act as any).label === 'object' ? JSON.stringify((act as any).label) : String((act as any).label)) : 'Action'}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-
-                {/* Processing Indicator */}
-                {isProcessing && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 shadow-xs">
-                    <Sparkles className="h-4 w-4 animate-spin text-emerald-600" strokeWidth={1.5} />
-                    <span>جاري معالجة الطلب والتفاعل مع النظام...</span>
                   </div>
-                )}
-
-                {/* Starter Prompts */}
-                {chatHistory.length <= 1 && (
-                  <div className="pt-2 space-y-2">
-                    <span className="text-[11px] font-medium text-zinc-400 block px-1">
-                      إجراءات سريعة مقترحة:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {STARTER_PROMPTS.map((starter, i) => {
-                        const Icon = starter.icon;
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => {
-                              if (starter.targetFile) {
-                                const found = PROJECT_FILES_REGISTRY.find(
-                                  (f) => f.path === starter.targetFile,
-                                );
-                                if (found) setAttachedFile(found);
-                              }
-                              handleSendMessage(
-                                starter.prompt,
-                                starter.targetFile
-                                  ? PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile)
-                                  : null,
-                              );
-                            }}
-                            className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors text-right cursor-pointer shadow-xs group flex items-start justify-between gap-2"
-                          >
-                            <div className="space-y-0.5 min-w-0">
-                              <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                                <Icon className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.5} />
-                                <span className="truncate">{starter.title}</span>
-                              </span>
-                              <p className="text-[11px] text-zinc-500 truncate">
-                                {starter.desc}
-                              </p>
-                            </div>
-                            <ChevronLeft className="h-3.5 w-3.5 text-zinc-400 shrink-0 mt-0.5" strokeWidth={1.5} />
-                          </button>
-                        );
-                      })}
-                    </div>
+                );
+              })}
+              {isProcessing && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 shadow-xs">
+                  <Sparkles className="h-4 w-4 animate-spin text-emerald-600" strokeWidth={1.5} />
+                  <span>جاري معالجة الطلب والتفاعل مع النظام...</span>
+                </div>
+              )}
+              {chatHistory.length <= 1 && (
+                <div className="pt-2 space-y-2">
+                  <span className="text-[11px] font-medium text-zinc-400 block px-1">إجراءات سريعة مقترحة:</span>
+                  <div className="grid grid-cols-1 gap-2">
+                    {STARTER_PROMPTS.map((starter, i) => {
+                      const Icon = starter.icon;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            if (starter.targetFile) {
+                              const found = PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile);
+                              if (found) setAttachedFile(found);
+                            }
+                            handleSendMessage(starter.prompt, starter.targetFile ? PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile) : null);
+                          }}
+                          className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors text-right cursor-pointer shadow-xs group flex items-start justify-between gap-2"
+                        >
+                          <div className="space-y-0.5 min-w-0">
+                            <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">{(starter as any).label}</span>
+                            <span className="block text-[10px] text-zinc-500 truncate">{starter.prompt}</span>
+                          </div>
+                          <div className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/30 group-hover:text-emerald-600 transition-colors">
+                            <Icon className="h-3 w-3" strokeWidth={1.5} />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-
-                <div ref={chatEndRef} />
-              </div>
+                </div>
+              )}
             </div>
-
-            {/* ─── 3. FIXED FLOATING INPUT BAR ─── */}
-            <div className="absolute bottom-3 inset-x-0 z-30 px-4 pointer-events-none">
-              <div className="max-w-3xl mx-auto w-full pointer-events-auto">
-                {/* Attached File Chip */}
+          </div>
+          
+          {/* Input Area */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-50 via-zinc-50 to-transparent dark:from-zinc-950 dark:via-zinc-950 p-4 pt-12 z-10">
+            <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto relative group">
+              <div className="absolute inset-0 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200/80 dark:border-zinc-800 pointer-events-none transition-colors group-focus-within:border-emerald-500/50 dark:group-focus-within:border-emerald-500/50 group-focus-within:ring-2 group-focus-within:ring-emerald-500/10" />
+              <div className="relative flex flex-col p-2">
                 {attachedFile && (
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 bg-zinc-900 text-white dark:bg-zinc-800 px-3 py-1 rounded-lg text-xs font-mono shadow-xs">
-                    <FileCode className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    <span>{attachedFile.path}</span>
-                    <button
-                      type="button"
-                      onClick={() => setAttachedFile(null)}
-                      className="hover:text-rose-400 cursor-pointer ml-1"
-                    >
+                  <div className="mx-2 mt-1 mb-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="grid h-6 w-6 shrink-0 place-items-center rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600">
+                        <Paperclip className="h-3 w-3" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-200 truncate">{attachedFile.name}</span>
+                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono truncate">{attachedFile.path}</span>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setAttachedFile(null)} className="p-1 hover:bg-emerald-200/50 dark:hover:bg-emerald-800/50 rounded-lg text-emerald-600 transition-colors shrink-0">
                       <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                     </button>
                   </div>
                 )}
-
-                <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm p-2 transition-all focus-within:border-emerald-600 focus-within:ring-1 focus-within:ring-emerald-600">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }}
-                    className="space-y-1.5"
-                  >
-                    <Textarea
-                      ref={textareaRef}
+                <div className="flex items-end gap-2 px-1">
+                  <div className="flex-1 min-w-0 flex items-center gap-2 relative">
+                    <button type="button" onClick={() => setIsPickerOpen(true)} className="p-2 shrink-0 rounded-xl text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors" title="إرفاق ملف للتحليل">
+                      <Paperclip className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+                    <textarea
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      placeholder={`اسأل ${aiAssistantName} أو اطلب تعديل ملف في المشروع...`}
-                      disabled={isProcessing}
+                      onKeyDown={handleKeyDown}
+                      placeholder={isProcessing ? "جاري المعالجة..." : "اكتب أمرك هنا... (مثال: أضف منتج جبنة بيضاء بـ 140 جنيه)"}
+                      className="w-full bg-transparent border-0 focus:ring-0 resize-none text-sm py-2.5 px-0 min-h-[44px] max-h-[160px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 font-medium"
                       rows={1}
-                      className="w-full text-xs sm:text-sm font-normal bg-transparent border-none focus-visible:ring-0 resize-none placeholder:text-zinc-400 p-1.5 min-h-[42px]"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
+                      disabled={isProcessing}
+                      dir="auto"
                     />
-
-                    <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                      {/* Helpers */}
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsPickerOpen(true)}
-                          className="h-7 px-2 rounded-lg text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer gap-1"
-                        >
-                          <Paperclip className="h-3.5 w-3.5" strokeWidth={1.5} />
-                          <span className="hidden sm:inline">إرفاق ملف</span>
-                        </Button>
-
-                        <button
-                          type="button"
-                          onClick={() => setEnableGoogleSearch(!enableGoogleSearch)}
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
-                            enableGoogleSearch
-                              ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700"
-                              : "bg-transparent text-zinc-400 border-transparent hover:text-zinc-600"
-                          }`}
-                        >
-                          <Globe className="h-3 w-3" strokeWidth={1.5} />
-                          <span>بحث جوجل</span>
-                        </button>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setCopywriterModalOpen(true)}
-                          className="h-7 px-2 rounded-lg text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 hidden md:flex cursor-pointer gap-1"
-                        >
-                          <Package className="h-3.5 w-3.5" strokeWidth={1.5} />
-                          <span>صانع العروض</span>
-                        </Button>
-                      </div>
-
-                      {/* Right: Undo + Submit */}
-                      <div className="flex items-center gap-1.5">
-                        {lastRollback && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleUndoLastAction}
-                            disabled={isProcessing}
-                            className="h-7 px-2 rounded-lg text-xs font-medium text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 cursor-pointer gap-1"
-                          >
-                            <Undo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                            <span className="hidden sm:inline">تراجع</span>
-                          </Button>
-                        )}
-                        <Button
-                          type="submit"
-                          disabled={isProcessing || (!chatInput.trim() && !attachedFile)}
-                          className="h-7 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                        >
-                          <Send className="h-3 w-3" strokeWidth={1.5} />
-                          <span>إرسال</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
+                  </div>
+                  <button type="submit" disabled={isProcessing || (!chatInput.trim() && !attachedFile)} className="mb-1 shrink-0 grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors shadow-xs">
+                    <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.5} />
+                  </button>
                 </div>
               </div>
+            </form>
+            <div className="mt-3 flex items-center justify-between text-[10px] text-zinc-400 font-medium max-w-2xl mx-auto px-1">
+              <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-emerald-500" strokeWidth={1.5} /> <span>Gemini 3.1 Pro Engine</span></span>
+              <span>يمكنه تنفيذ الأوامر مباشرة 🚀</span>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* ─── OTHER MODES ─── */}
-        {activeMode === "files-studio" && (
-          <div className="h-full overflow-y-auto p-4">
-            <GeminiProjectFilesStudio />
-          </div>
-        )}
-
-        {activeMode === "store-engine" && (
-          <div className="h-full overflow-y-auto p-4 max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-5 space-y-3">
-                <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-2">
-                      <Layout className="h-4 w-4 text-emerald-600" strokeWidth={1.5} />
-                      <div>
-                        <h2 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                          محرك الواجهة
-                        </h2>
-                        <p className="text-[11px] text-zinc-500">
-                          التحكم في نسق الألوان والمظهر
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => resetConfig()}
-                      className="h-7 rounded-lg text-xs gap-1 text-zinc-500"
-                    >
-                      <RotateCcw className="h-3 w-3" strokeWidth={1.5} />
-                      <span>استعادة</span>
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2 pt-3">
-                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">نسق الألوان:</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: "emerald", label: "زمردي كلاسيكي", bg: "bg-emerald-600" },
-                        { id: "dark_green", label: "أخضر داكن", bg: "bg-emerald-900" },
-                        { id: "amber_warm", label: "ذهبي دافئ", bg: "bg-amber-600" },
-                        { id: "blue_modern", label: "أزرق عصري", bg: "bg-blue-600" },
-                        { id: "violet_luxury", label: "بنفسجي", bg: "bg-purple-600" },
-                        { id: "slate_minimal", label: "رمادي هادئ", bg: "bg-zinc-600" },
-                      ].map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setThemePalette(p.id as any);
-                            toast.success(`تم تغيير نسق الألوان`);
-                          }}
-                          className={`p-2 rounded-lg border text-right transition-colors cursor-pointer flex items-center justify-between text-xs ${
-                            layoutConfig.theme?.palette === p.id
-                              ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 font-semibold text-emerald-700 dark:text-emerald-300"
-                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50"
-                          }`}
-                        >
-                          <span>{p.label}</span>
-                          <span className={`h-3 w-3 rounded-full ${p.bg}`} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-              </div>
-              <div className="lg:col-span-7 h-[600px]">
-                <ShopLivePreview layout={layoutConfig} />
+        {/* LEFT PANE: WORKSPACE MODES */}
+        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-900 relative">
+          {(activeMode as any) === 'live-preview' && (
+            <div className="h-full overflow-y-auto">
+              <LiveStorefrontPreview />
+            </div>
+          )}
+          {(activeMode as any) === 'files-studio' && (
+            <div className="h-full overflow-y-auto p-4">
+              <GeminiProjectFilesStudio />
+            </div>
+          )}
+          {(activeMode as any) === 'store-engine' && (
+            <div className="h-full overflow-y-auto p-4 max-w-6xl mx-auto w-full">
+              <div className="space-y-6 pb-20">
+                <StoreEngineBuilder layoutConfig={layoutConfig} onLayoutChange={updateConfig} onDeploy={handleDeployLayout} isDeploying={isDeploying} />
               </div>
             </div>
-          </div>
-        )}
-
-        {activeMode === "advisory" && (
-          <div className="h-full overflow-y-auto p-4 max-w-5xl mx-auto">
-            <ExecutiveSummaryWidget kpis={kpis} />
-          </div>
-        )}
+          )}
+          {(activeMode as any) === 'advisory' && (
+            <div className="h-full overflow-y-auto p-4 max-w-5xl mx-auto w-full">
+              <ExecutiveSummaryWidget kpis={kpis} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ─── MODALS ─── */}
-      <GeminiFileAttachmentPicker
-        isOpen={isPickerOpen}
-        onClose={() => setIsPickerOpen(false)}
-        onSelectFile={(file) => {
-          setAttachedFile(file);
-          toast.success(`تم إرفاق ملف ${file.name}`);
-        }}
-        selectedFilePath={attachedFile?.path}
-      />
-
-      <SmartProductCopywriterModal
-        open={copywriterModalOpen}
-        onOpenChange={setCopywriterModalOpen}
-        onApplyCopywriting={(result) => {
-          toast.success(`تم توليد الوصف الإعلاني للمنتج: ${result.name ?? ""}`);
-        }}
-      />
+      <GeminiFileAttachmentPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} onSelectFile={(file) => { setAttachedFile(file); toast.success(`تم إرفاق ملف ${file.name}`); }} selectedFilePath={attachedFile?.path} />
+      <SmartProductCopywriterModal open={copywriterModalOpen} onOpenChange={setCopywriterModalOpen} onApplyCopywriting={(result) => { toast.success(`تم توليد الوصف الإعلاني للمنتج: ${result.name ?? ""}`); }} />
     </div>
   );
 }

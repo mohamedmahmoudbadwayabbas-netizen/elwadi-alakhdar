@@ -344,18 +344,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
 
           // Upsert profile record
-          await supabase
-            .from("profiles")
-            .upsert(
-              {
-                id: resolvedId,
-                full_name: cleanName,
-                phone: cleanPhone,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "id" }
-            )
-            .catch(() => {});
+          try {
+            await supabase
+              .from("profiles")
+              .upsert(
+                {
+                  id: resolvedId,
+                  full_name: cleanName,
+                  phone: cleanPhone,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "id" }
+              );
+          } catch (err) {}
 
           if (typeof window !== "undefined") {
             localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(userObj));

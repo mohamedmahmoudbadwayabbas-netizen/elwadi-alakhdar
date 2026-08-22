@@ -170,18 +170,19 @@ export async function signUpWithEmail(
 
     // Also attempt profile record upsert if session exists
     if (data.user) {
-      await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: data.user.id,
-            full_name: cleanName,
-            phone: cleanPhone,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        )
-        .catch(() => {});
+      try {
+        await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: data.user.id,
+              full_name: cleanName,
+              phone: cleanPhone,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+      } catch (err) {}
     }
 
     return {
@@ -265,7 +266,7 @@ export async function verifyPhoneOtp(
       return { error: getArabicAuthErrorMessage(error), errorCode: error.code };
     }
 
-    return { data: data.session };
+    return { data: data.session || undefined };
   } catch (err: any) {
     return { error: getArabicAuthErrorMessage(err) };
   }

@@ -19,6 +19,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { ColorModeProvider } from "@/lib/color-mode-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { SearchProvider } from "@/lib/search-context";
+import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
 import { BottomNav } from "@/components/storefront/BottomNav";
 import { Header } from "@/components/storefront/Header";
@@ -167,6 +168,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  
+  useEffect(() => {
+    // Attempt auto-seed ONLY IF Supabase products are empty (as requested)
+    autoSeedDatabaseIfNeeded().catch(console.error);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
