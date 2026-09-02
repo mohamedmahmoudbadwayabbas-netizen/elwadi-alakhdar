@@ -1,0 +1,36 @@
+استكمل مشروع Elwadi Al Akhdar من آخر Session Handoff:
+
+SESSION_HANDOFF_2026-09-02_SCHEMA-CLEANUP-v4.md
+
+النسخة المعتمدة هي النسخة الموجودة في ZIP المرفق بهذه الجلسة.
+
+اقرأ الـSession Handoff أولًا ولا تعيد أي عمل تم إنجازه. الشوت اللي فات (v4) كان audit-only فعلاً — ماحدش عدّل أي كود في src/، بس تم التحقق الحقيقي من الـlive schema عبر Supabase MCP (read-only) وتأكيد إن types.ts مطابق تمامًا لقاعدة البيانات الحية.
+
+الحالة الحالية:
+- live Supabase schema (project gpoqacclpjadzbhevgal) هو المصدر الوحيد للحقيقة.
+- Firebase لا يعود (الفولدر src/integrations/firebase محذوف فعلاً؛ باقي فقط سطور metadata قديمة في PROJECT_FILES_REGISTRY — راجع finding #2).
+- لا تعيد migrations القديمة.
+- لا تنشئ Supabase branch مدفوعة.
+- لا تنشئ ELWADI_ENGINEERING_RULES.md الآن.
+- لا تضف first_order_only أو أي عمود غير موجود في live schema (تم التأكد مباشرة من الـlive schema إنه مش موجود، لا في orders ولا coupons ولا store_settings).
+- first-order promotion UI ما زال معطلاً.
+- LocalStorage لم يعد مصدراً لحسابات أو cart أو orders أو pricing/stock أو coupon truth — تم التأكد مرة تانية على مستوى الكود.
+- `driver_offline_queue` هو مجرد queue مؤقت لتحديثات offline، وSupabase orders هو المصدر authoritative — تم التحقق من الكود نفسه (src/routes/driver.tsx) وليس بس من الوصف.
+
+اكتشافات جديدة من شوت v4 (لسه محتاجة تتعالج):
+1. باگ حقيقي في src/services/aiTools/operationalTools.ts — دالة updateRawJsonMetadata() بترجع ok:true ورسالة نجاح حتى لو الـkey المطلوب مش موجود في الـwhitelist الداخلي بتاعها (site_name, hero_title, hero_subtitle, whatsapp_number, announcement_text)، وفي الحالة دي مفيش أي حاجة بتتكتب فعليًا في store_settings. كمان الـtool description بتاعتها في toolDefinitions.ts بتقول إن first_order_coupon_code مثال لـkey صالح، لكنه مش موجود فعليًا في الـwhitelist.
+2. src/services/projectFilesService.ts فيه PROJECT_FILES_REGISTRY لسه بيسرد 4 ملفات Firebase (config.ts, firestore.ts, auth.ts, types.ts) كأنها موجودة، مع إن الفولدر الحقيقي src/integrations/firebase محذوف فعلاً. مجرد metadata قديمة، مش كود شغال، بس محتاجة تتشال.
+3. ملاحظة عن الـlive DB (مش مشكلة كود): جداول products وcategories وorders وcart_items وdelivery_zones وcoupons كلها 0 صفوف دلوقتي في gpoqacclpjadzbhevgal. اتأكد من المستخدم إن ده متوقع قبل أي عرض للعميل.
+
+NEXT STEP:
+1. انقل المشروع لبيئة فيها network/package registry access حقيقي (زي Codespaces اللي كان بيتم الشغل عليها قبل كده) — الـsandbox الحالي والي فات (v3) ولا واحد فيهم عنده وصول لـregistry.npmjs.org.
+2. ثبّت dependencies بنجاح.
+3. شغّل `tsc --noEmit` فعليًا. بما إن مطابقة types.ts مع الـlive schema اتأكدت فعليًا الشوت اللي فات، الأخطاء الحقيقية المتوقعة (لو فيه) غالبًا هتكون في أماكن الاستخدام مش في تعريفات الأنواع.
+4. أصلح كل TypeScript errors الحقيقية.
+5. شغّل `npm run build` فعليًا وأصلح أخطاء build الفعلية.
+6. أعد audit نهائي لـLocalStorage، خصوصاً driver offline queue.
+7. مع نفس الشوت اللي فيه tsc/build شغالين، ينفع تصلّح finding #1 وfinding #2 فوق (تغييرات بسيطة ومنخفضة الخطورة، بس محتاجة tsc/build حقيقيين يتأكدوا منها).
+8. بعد نجاح 3-4 فعليًا وبس، راجع first-order coupon. إن كان مطلوباً، صمّم server-side/RPC enforcement باستخدام schema الحالي فقط (first_order_coupon_enabled, first_order_coupon_code, first_order_discount_percent) — لا تضف أي عمود جديد.
+9. لا تقل إن TypeScript أو Build ناجح إلا بعد تشغيلهما فعلياً ونجاحهما.
+
+في نهاية الشوت: أنشئ ZIP جديد + Session Handoff جديد + Prompt للجلسة التالية.

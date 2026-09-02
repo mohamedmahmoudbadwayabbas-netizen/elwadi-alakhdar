@@ -1,0 +1,40 @@
+استكمل مشروع Elwadi Al Akhdar من آخر Session Handoff:
+
+SESSION_HANDOFF_2026-09-02_SCHEMA-CLEANUP-v5.md
+
+النسخة المعتمدة هي النسخة الموجودة في الـZIP المرفق بهذه الجلسة.
+
+اقرأ الـSession Handoff أولًا ولا تعيد أي عمل تم إنجازه. الشوت اللي فات (v5) كان في بيئة (sandbox) تالتة مختلفة عن v3 وv4، وبرضه ملهاش وصول لـregistry.npmjs.org (نفس نتيجة v4: x-deny-reason: host_not_allowed). ده تلات بيئات مختلفة بنفس النتيجة — اعتبر إن الـsandbox من النوع ده مايقدرش يوصل لـnpm registry حاجة مؤكدة، مش حاجة تتفحصها تاني من غير بيئة مختلفة فعلاً.
+
+الحالة الحالية:
+- live Supabase schema (project gpoqacclpjadzbhevgal) هو المصدر الوحيد للحقيقة — اتأكد منه مباشرة تاني شوت v5 (مش بس نقلًا عن v4).
+- store_settings فيها بالظبط first_order_coupon_enabled, first_order_coupon_code, first_order_discount_percent — لا first_order_only ولا أي عمود تاني غير موثق.
+- الجداول الفاضية (products, categories, orders, order_items, cart_items, store_settings, delivery_zones, coupons = 0 صفوف؛ profiles=2, user_roles=1) لسه زي ما هي، اتأكد منها تاني شوت v5.
+- Firebase لا يعود (الفولدر src/integrations/firebase محذوف من قبل؛ وشوت v5 شال آخر أثر ليه، وهو الـ4 سطور metadata القديمة في PROJECT_FILES_REGISTRY).
+- تم إصلاح باگ updateRawJsonMetadata (finding #1 من v4): دلوقتي الدالة بترجع ok:false فعليًا لو الـkey مش في الـwhitelist، أو Supabase مش متصل، أو مفيش صف إعدادات، أو حصل خطأ فعلي في الكتابة — بدل ما كانت بترجع ok:true دايمًا. الـwhitelist نفسها ماتوسّعتش (اتعمد عدم توسيعها) — بس الوصف في toolDefinitions.ts اتصلح عشان يطابق الـwhitelist الحقيقية.
+- لا تعيد migrations القديمة.
+- لا تنشئ Supabase branch مدفوعة.
+- لا تنشئ ELWADI_ENGINEERING_RULES.md الآن.
+- لا تضف first_order_only أو أي عمود غير موجود في live schema.
+- first-order promotion UI ما زال معطلاً عمدًا — لا توسّع whitelist الأداة كطريقة مختصرة لتفعيله؛ لازم RPC/server-side enforcement حقيقي لما ييجي وقته (خطوة 6 تحت).
+- LocalStorage لم يعد مصدراً لحسابات أو cart أو orders أو pricing/stock أو coupon truth.
+- `driver_offline_queue` هو مجرد queue مؤقت لتحديثات offline، وSupabase orders هو المصدر authoritative.
+
+اللي اتعمل فعليًا في شوت v5 (كود حقيقي، مش بس تحقق):
+1. إصلاح باگ updateRawJsonMetadata في src/services/aiTools/operationalTools.ts (تفاصيل فوق).
+2. تصحيح وصف الأداة في src/services/aiTools/toolDefinitions.ts ليطابق الـwhitelist الحقيقية.
+3. حذف الـ4 سطور Firebase القديمة (بما فيها السطر اللي كان بيسمي إيميل الأدمن) من PROJECT_FILES_REGISTRY في src/services/projectFilesService.ts.
+كل التعديلات دي اتحققت بالـsyntax-only TypeScript parser (182 ملف، 0 diagnostics) — مش بـtsc حقيقي، لأن الـsandbox لسه مالوش وصول للـregistry.
+
+NEXT STEP:
+1. انقل المشروع لبيئة فيها network/package registry access حقيقي (Codespaces أو أي بيئة تانية عندها إنترنت حقيقي). دي تالت مرة (v3, v4, v5) بتلاقي نفس المشكلة في sandboxes مختلفة — متضيّعش وقت في تجربة sandbox جديد من نفس النوع.
+2. ثبّت dependencies بنجاح.
+3. شغّل `tsc --noEmit` فعليًا. ركّز خصوصًا على الـ3 ملفات اللي اتعدلت في شوت v5 (operationalTools.ts, toolDefinitions.ts, projectFilesService.ts) — دول اتحققوا بالـsyntax parser بس، مش بفحص أنواع حقيقي.
+4. أصلح كل TypeScript errors الحقيقية.
+5. شغّل `npm run build` فعليًا وأصلح أخطاء build الفعلية.
+6. أعد audit نهائي لـLocalStorage، خصوصاً driver offline queue.
+7. بعد نجاح 3-4 فعليًا وبس، راجع first-order coupon. إن كان مطلوباً، صمّم server-side/RPC enforcement باستخدام schema الحالي فقط (first_order_coupon_enabled, first_order_coupon_code, first_order_discount_percent) — لا تضف أي عمود جديد، ولا توسّع whitelist الأداة كبديل عن RPC حقيقي.
+8. اتأكد من المستخدم إن الجداول الفاضية (products, categories, orders...) متوقعة قبل أي عرض للعميل.
+9. لا تقل إن TypeScript أو Build ناجح إلا بعد تشغيلهما فعلياً ونجاحهما.
+
+في نهاية الشوت: أنشئ ZIP جديد + Session Handoff جديد + Prompt للجلسة التالية.

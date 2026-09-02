@@ -1,0 +1,303 @@
+2026-09-02 schema-cleanup-v3 verification
+
+Command: tsc --noEmit --pretty false
+Status: FAILED (exit 2)
+
+Output:
+error TS2688: Cannot find type definition file for 'vite/client'.
+  The file is in the program because:
+  Entry point of type library 'vite/client' specified in compilerOptions
+
+Cause: project dependencies/node_modules are not installed in this environment.
+
+Dependency install attempts:
+- npm install --no-audit --no-fund -> timed out after 120s
+- npm install --no-audit --no-fund -> timed out after 300s
+- npm install --offline --no-audit --no-fund -> ENOTCACHED (@eslint/js)
+- Network check to registry.npmjs.org -> DNS unavailable in this environment
+
+Additional syntax-only verification using the globally available TypeScript parser:
+- 182 .ts/.tsx source files parsed
+- 0 parse diagnostics
+
+────────────────────────────────────────────────────────────────
+2026-09-02 schema-cleanup-v4 verification (new session, new sandbox)
+
+Command: npm install --no-audit --no-fund
+Status: FAILED
+Output (representative):
+  npm error code E403
+  npm error 403 403 Forbidden - GET https://registry.npmjs.org/@eslint%2fjs
+  npm error 403 In most cases, you or one of your dependencies are requesting
+  npm error 403 a package version that is forbidden by your security policy, or
+  npm error 403 on a server you do not have access to.
+
+Direct registry check:
+  curl https://registry.npmjs.org/vite -> HTTP 403
+  x-deny-reason: host_not_allowed
+  body: "Host not in allowlist: registry.npmjs.org. Add this host to your network egress settings to allow access."
+
+Conclusion: this sandbox also has no package-registry egress (different failure
+signature than v3's DNS failure -- here it's an explicit egress allowlist --
+but the practical result is identical: npm install cannot complete, so a real
+`tsc --noEmit` and a real `npm run build` were NOT attempted this shot, to avoid
+reproducing an already-known, non-actionable failure. No claim of TypeScript or
+build success is made.
+
+Additional verification performed instead (does not replace tsc/build):
+1. Live-schema cross-check via the connected Supabase MCP tools (read-only):
+   pulled a fresh `generate_typescript_types` output for project gpoqacclpjadzbhevgal
+   and compared it field-by-field against src/integrations/supabase/types.ts.
+   Result: structural match on all 10 tables, 1 view, and 5 RPC signatures.
+   The committed generated types file is confirmed in sync with the live DB.
+2. Syntax-only TypeScript parser check re-run over all 182 .ts/.tsx files: 0
+   diagnostics (unchanged from v3). This run was sanity-checked against a
+   deliberately malformed .tsx file, which correctly produced 4 diagnostics,
+   confirming the checker itself is functioning and not silently passing.
+
+────────────────────────────────────────────────────────────────
+2026-09-02 schema-cleanup-v5 verification (new session, third distinct sandbox)
+
+Command: npm install --no-audit --no-fund
+Status: NOT re-attempted (redundant) after direct registry probe below.
+
+Direct registry check:
+  curl -sv --max-time 5 https://registry.npmjs.org/vite
+  -> HTTP 403
+  x-deny-reason: host_not_allowed
+  body: "Host not in allowlist: registry.npmjs.org. Add this host to your
+         network egress settings to allow access."
+
+Conclusion: this third sandbox (used for v5) also has no package-registry
+egress -- same signature as v4 (explicit egress allowlist denial, not a DNS
+failure). Three separate sandboxes across v3/v4/v5 have now all failed to
+reach registry.npmjs.org. `tsc --noEmit` and `npm run build` were NOT
+attempted for real this shot either. No claim of TypeScript or build success
+is made.
+
+Verification performed instead (does not replace tsc/build):
+1. Live Supabase MCP re-check (read-only, this session, independent of v4's
+   claim): list_tables (verbose) + generate_typescript_types against project
+   gpoqacclpjadzbhevgal. Field-by-field comparison against the committed
+   src/integrations/supabase/types.ts confirms an exact structural match on
+   all 10 tables, the store_settings_public view, and all 5 RPC signatures.
+   store_settings confirmed to contain exactly first_order_coupon_enabled,
+   first_order_coupon_code, first_order_discount_percent -- no
+   first_order_only or any other undocumented column anywhere in the schema.
+   Live row counts re-confirmed: profiles=2, user_roles=1, all other 8
+   tables=0 rows (products, categories, orders, order_items, cart_items,
+   store_settings, delivery_zones, coupons).
+2. Supabase security + performance advisors re-pulled fresh (read-only, not
+   acted on): identical categories to v4 -- 3 SECURITY DEFINER RPCs
+   (create_order, get_payment_config, validate_coupon) callable by
+   anon/authenticated (expected, guest checkout), anon RLS read policies by
+   design, leaked password protection still disabled (Pro-plan gated), 6
+   unused indexes, RLS policies re-evaluating auth.<fn>() per row instead of
+   via (select auth.<fn>()) on 6 tables, duplicate permissive policies on
+   cart_items/categories/order_items/orders/products. No drift from v4's
+   snapshot -- nothing new, nothing resolved, nothing acted on.
+3. Applied low-risk fix #1 (src/services/aiTools/operationalTools.ts,
+   updateRawJsonMetadata): rewrote so `ok` reflects whether store_settings
+   was actually patched. Key/type validated before any write is attempted
+   (unsupported key or non-string value now returns ok:false immediately);
+   Supabase-not-configured, missing settings row, and any update() error now
+   all return ok:false with a descriptive Arabic message instead of a
+   swallowed console.warn + hardcoded ok:true. Rollback point is now created
+   only once a write is actually about to be attempted, not on every call.
+   Aligned the tool's declaration in toolDefinitions.ts (removed the
+   first_order_coupon_code example, which was never in the real whitelist).
+4. Applied low-risk fix #2 (src/services/projectFilesService.ts): removed
+   the 4 stale Firebase entries (config.ts, firestore.ts, auth.ts, types.ts)
+   from PROJECT_FILES_REGISTRY, including the one that still named the admin
+   email. Confirmed no other reference to these entries exists in src/.
+5. Syntax-only TypeScript parser check re-run over all 182 .ts/.tsx files
+   (same file count as v3/v4, confirming no files were added/removed):
+   0 diagnostics, including on both files just edited. Checker re-sanity-
+   tested against a deliberately malformed .tsx file this shot too (5
+   diagnostics correctly produced), confirming it is still functioning.
+
+────────────────────────────────────────────────────────────────
+2026-09-02 schema-cleanup-v6 verification (new session, fourth distinct sandbox)
+
+Command: curl -sv --max-time 10 https://registry.npmjs.org/vite
+Status: HTTP 403
+Output:
+  x-deny-reason: host_not_allowed
+  body: "Host not in allowlist: registry.npmjs.org. Add this host to your
+         network egress settings to allow access."
+
+Conclusion: this fourth sandbox (used for v6) also has no package-registry
+egress -- identical signature to v4/v5 (explicit egress allowlist denial).
+`npm install` was not attempted (node_modules is not bundled in the project
+zip, and the direct probe already gives the answer). Four separate sandboxes
+across v3/v4/v5/v6 have now all failed to reach registry.npmjs.org. A real
+`tsc --noEmit` and a real `npm run build` were NOT attempted this shot, for
+the same reason as v4/v5: without installed dependencies the run would only
+report "cannot find module" noise, not genuine type diagnostics, so it would
+not be meaningful and is not worth presenting as if it were. No claim of
+TypeScript or build success is made. No code changes were made this shot;
+this session was verification-only.
+
+Verification performed instead (does not replace tsc/build, independently
+re-implemented this shot rather than re-using v3/v4/v5's tooling):
+1. Live Supabase MCP re-check (read-only, fresh this session):
+   list_tables (verbose) against project gpoqacclpjadzbhevgal. Row counts
+   re-confirmed unchanged: profiles=2, user_roles=1, all other 8 tables=0
+   rows (products, categories, orders, order_items, cart_items,
+   store_settings, delivery_zones, coupons). store_settings confirmed to
+   contain exactly first_order_coupon_enabled, first_order_coupon_code,
+   first_order_discount_percent -- no first_order_only or any other
+   undocumented column.
+2. Supabase security advisors re-pulled fresh (read-only, not acted on):
+   same 3 SECURITY DEFINER RPCs callable by anon/authenticated
+   (create_order, get_payment_config, validate_coupon) plus get_my_role/
+   is_admin callable by authenticated -- expected for guest checkout/RBAC.
+   Anon RLS read policies present by design on cart_items, categories,
+   coupons, delivery_zones, order_items, orders, products, profiles,
+   store_settings, user_roles. Leaked password protection still disabled
+   (Pro-plan gated). No drift from v5's snapshot.
+3. Fresh `generate_typescript_types` pulled and diffed programmatically
+   (a small Python script written this shot, not the eyeballing done in
+   prior shots) against the committed src/integrations/supabase/types.ts:
+   exact column-set match confirmed on all 10 tables, the
+   store_settings_public view, and all 5 RPC signatures. Zero mismatches.
+4. Independent syntax-only TypeScript parser check (own script this shot,
+   using the globally available TypeScript 6.0.3 via ts.transpileModule,
+   not a copy of any prior shot's checker): 182 .ts/.tsx files scanned,
+   0 diagnostics -- same file count as v3/v4/v5, confirming no files were
+   silently added or removed. Checker sanity-tested against a deliberately
+   malformed .tsx file, which correctly produced 7 diagnostics, confirming
+   it is not silently passing.
+5. Manual code review (not a substitute for tsc) of the three files edited
+   in v5 (operationalTools.ts, toolDefinitions.ts, projectFilesService.ts):
+   logic reads as described -- updateRawJsonMetadata validates key/type
+   before creating a rollback point, and every failure path (unconfigured
+   Supabase, missing settings row, update() error) returns ok:false with a
+   descriptive Arabic message instead of a swallowed warning. Confirmed via
+   grep that no "firebase" reference remains anywhere under src/.
+
+────────────────────────────────────────────────────────────────
+2026-09-02 schema-cleanup-v6 continued: phantom-success audit + fixes
+(same shot, after user directed "الأهم فالمهم")
+
+Audited every "ok: true" return site across src/services/aiTools/*.ts
+(coreCatalogTools.ts, devopsTools.ts, operationalTools.ts) for the same
+class of bug fixed in updateRawJsonMetadata in v5: writes whose errors are
+caught and only console.warn'd, or not checked at all, while the function
+unconditionally returns ok:true / a success message.
+
+FOUND AND FIXED (same shot, in operationalTools.ts):
+- manageUsersAndRoles: user_roles.upsert() error was only console.warn'd;
+  profiles.update() error wasn't checked at all (no `error` destructured).
+  Function always returned ok:true even if the role grant/update silently
+  failed. This is an RBAC/permissions tool, so this was a real-consequence
+  bug. Fixed: role upsert failure now throws and returns ok:false with the
+  real error; profile-field failure is now caught and reported in the
+  success message without masking the (successful) role change.
+- sendPushNotification: store_settings update result was discarded
+  entirely (no destructured error), wrapped in try/catch that only
+  console.warn'd. Always claimed "تم بث الإشعار الفوري ... بنجاح" even if
+  the DB write failed and even though the tool doesn't send any real push
+  notification (no FCM/OneSignal/etc. — it only edits the on-site
+  announcement bar). Fixed: now tracks whether the in-memory layout update
+  and/or the DB persist actually succeeded, returns ok:false only if
+  neither happened, and the success message now says plainly when the
+  change is DB-persisted vs. session-only. Left a code comment flagging
+  the "push notification" naming mismatch for a product-level decision
+  (not fixed here, since renaming affects the AI-facing tool schema).
+- manageDeliveryZones: none of the three write paths (update by id, update
+  by matched name, insert new zone) checked the returned `error` at all —
+  only `data` was destructured. Always returned ok:true regardless of
+  whether the write succeeded. Fixed: all three paths now check `error`
+  and throw on failure; the whole function is wrapped in try/catch
+  returning ok:false with the real Supabase error message.
+- exportReportsAndAnalytics: a failed orders/order_items/products query
+  was caught and swallowed, then reported as a "successful" report showing
+  0 revenue / 0 orders — indistinguishable from a genuinely empty store.
+  Fixed: query failures now short-circuit to ok:false with the real error
+  instead of being presented as real (zero) data.
+
+All four fixes follow the pre-existing pattern already used correctly in
+coreCatalogTools.ts's toolManageProduct (throw on Supabase `error`, wrap in
+try/catch, return ok:false with (e as Error).message on failure).
+
+Re-ran the independent syntax-only TS parser (same script as the earlier
+check this shot) after applying all four fixes: 182 files scanned, 0
+diagnostics. No regressions introduced. This is a syntax check only, not a
+substitute for real tsc --noEmit / npm run build, which remain blocked in
+this sandbox for the reasons logged above.
+
+MAJOR FINDING, NOT FIXED THIS SHOT (flagged for a product decision):
+src/services/aiTools/devopsTools.ts ("Phase 3: Codebase, Infrastructure &
+Git Tools") and the projectFilesService.ts layer it depends on are
+NOT connected to the real codebase or a real git repository at all:
+- getFileContent() in projectFilesService.ts: its own code comment says
+  "Provide realistic source template or modified content for any file" —
+  for any file not previously "modified" via this same fake layer, it
+  returns a hand-written, fabricated template string, NOT the real file
+  content. getFileContentTool / searchCodebase / getDirectoryTree all read
+  from this same fabricated PROJECT_FILES_REGISTRY, not a real filesystem
+  scan.
+- writeNewFile / updateFileAST / deleteFileTool only write to
+  localStorage's MODIFIED_FILES_STORAGE_KEY. Nothing is ever written to
+  the actual project files. If the admin asks the AI to "edit
+  homepage.tsx," the tool reports success but the live deployed site is
+  completely unaffected.
+- gitCommitAndPush: generates a random string via Math.random() as a fake
+  "commit hash," writes only to a localStorage-based fake commit log, and
+  unconditionally claims "تم تسجيل الكوميت ... بنجاح ... ومزامنته مع
+  السحابة" (successfully committed and synced to the cloud). No git
+  command, API call, or network request of any kind is made. This is the
+  single most consequential instance of the phantom-success pattern in the
+  codebase: it could lead the store owner to believe recent AI-driven code
+  changes are safely committed/backed up in git when nothing has happened
+  to any real repository.
+- gitRollbackCommit: same issue in reverse — claims to revert a commit and
+  "restore the previous branch state," but only pops an entry from the
+  same fake localStorage log. No real branch state changes at all.
+- getAppErrors: always returns the same 2 hardcoded fake log entries and
+  unconditionally reports "النظام يعمل بحالة صحية ممتازة (100%
+  Operational)" regardless of actual system state.
+
+This was NOT fixed this shot because it is not a small, mechanical,
+low-risk fix like the four above — it's an architectural question (should
+these tools do real git/filesystem operations via a backend/edge function,
+should they be disabled/relabeled as "simulation only" until they're real,
+or something else?) that needs a product decision, not a unilateral
+rewrite. Flagged in the handoff for the user's direction.
+
+=== 2026-09-02 — REAL PROJECT ENGINE FOUNDATION v1 ===
+Source used: Sources ZIP (elwadi-schema-cleanup-v6.zip). GitHub was not inspected or used as a source.
+
+Changes implemented:
+- Added supabase/functions/project-engine/index.ts as the server-side Project Engine boundary.
+- Added src/services/aiTools/projectEngineService.ts as the React client gateway.
+- Replaced DevOps fake registry/localStorage/file/git success paths with Project Engine calls and explicit NOT_CONFIGURED / APPROVAL_REQUIRED / FAILED states.
+- Removed fabricated source templates from projectFilesService.ts; registry is metadata/navigation only.
+- Removed the fake Gemini Code Studio fallback and localStorage apply path. Gemini code changes are drafts until real Project Engine approval/apply.
+- Added PROJECT_ENGINE_CONTEXT to the AI system context.
+- Updated DevOps tool descriptions and admin-only routing.
+- Updated Project Files Studio / Diff Viewer UI to require explicit admin approval before real apply.
+- Updated Supabase function config for the live project ref without changing the live database.
+
+Validation:
+- npm install: NOT COMPLETED — timed out in this sandbox; node_modules remained unavailable.
+- npm run build: FAIL / NOT VALID — vite executable unavailable because dependencies were not installed.
+- real tsc --noEmit: NOT RUN — dependencies unavailable; global syntax parser is not a substitute for project type-checking.
+- syntax parser: PASS — 184 .ts/.tsx files across src and supabase/functions, 0 diagnostics, TypeScript 5.8.3 transpile parser.
+- package.json/config parse: PASS.
+- legacy fake Project Engine identifiers: PASS — none found.
+- live Supabase DB: NOT MODIFIED.
+
+Security:
+- project-engine verifies Supabase JWT with auth.getUser(token).
+- project-engine checks live user_roles and requires admin/super_admin.
+- provider token and approval secret are server-only environment variables.
+- write operations are approval-gated; AI tools cannot self-issue approval tokens.
+- missing provider/credentials fail closed.
+- no fake commit hash, fake rollback, fake file write, or fabricated diagnostics remain in the DevOps layer.
+
+Known limitation:
+The Edge Function cannot access the Sources ZIP directly at runtime. A real server-side project provider must be configured and deliberately synchronized to the exact Sources snapshot before real file operations can be enabled. Until then Project Engine returns NOT_CONFIGURED rather than pretending.
+
+Durable one-time approval/audit persistence is intentionally not claimed in this foundation; it is a separate next phase because it requires a dedicated persistence design.

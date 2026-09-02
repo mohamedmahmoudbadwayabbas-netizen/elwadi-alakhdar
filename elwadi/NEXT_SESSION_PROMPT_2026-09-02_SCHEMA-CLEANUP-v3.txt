@@ -1,0 +1,30 @@
+استكمل مشروع Elwadi Al Akhdar من آخر Session Handoff:
+
+SESSION_HANDOFF_2026-09-02_SCHEMA-CLEANUP-v3.md
+
+النسخة المعتمدة هي النسخة الموجودة في ZIP المرفق بهذه الجلسة.
+
+اقرأ الـSession Handoff أولًا ولا تعيد أي عمل تم إنجازه.
+
+الحالة الحالية:
+- live Supabase schema هو المصدر الوحيد للحقيقة.
+- Firebase لا يعود.
+- لا تعيد migrations القديمة.
+- لا تنشئ Supabase branch مدفوعة.
+- لا تنشئ ELWADI_ENGINEERING_RULES.md الآن.
+- لا تضف first_order_only أو أي عمود غير موجود في live schema.
+- first-order promotion UI ما زال معطلاً.
+- LocalStorage لم يعد مصدراً لحسابات أو cart أو orders أو pricing/stock أو coupon truth.
+- `driver_offline_queue` هو مجرد queue مؤقت لتحديثات offline، وSupabase orders هو المصدر authoritative.
+
+NEXT STEP:
+1. في بيئة فيها network/package cache، ثبّت dependencies بنجاح.
+2. شغّل `tsc --noEmit` فعلياً.
+3. أصلح كل TypeScript errors الحقيقية الناتجة عن live Supabase types.
+4. شغّل `npm run build` فعلياً.
+5. أصلح أخطاء build الفعلية.
+6. أعد audit نهائي لـLocalStorage، خصوصاً driver offline queue، وتأكد أنه ليس مصدراً للحقيقة التجارية.
+7. بعد نجاح الأساس فقط راجع first-order coupon. إن كان مطلوباً، صمّم server-side/RPC enforcement باستخدام schema الحالي فقط.
+8. لا تقل إن TypeScript أو Build ناجح إلا بعد تشغيلهما فعلياً ونجاحهما.
+
+في نهاية الشوت: أنشئ ZIP جديد + Session Handoff جديد + Prompt للجلسة التالية.

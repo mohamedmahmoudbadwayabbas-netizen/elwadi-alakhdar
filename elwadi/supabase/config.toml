@@ -1,0 +1,4 @@
+project_id = "gpoqacclpjadzbhevgal"
+
+[functions.project-engine]
+verify_jwt = true

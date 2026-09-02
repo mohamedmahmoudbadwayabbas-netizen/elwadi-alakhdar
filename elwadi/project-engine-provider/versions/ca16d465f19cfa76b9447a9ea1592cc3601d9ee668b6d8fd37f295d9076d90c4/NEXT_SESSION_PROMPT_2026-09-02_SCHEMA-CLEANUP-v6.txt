@@ -1,0 +1,48 @@
+استكمل مشروع Elwadi Al Akhdar من آخر Session Handoff:
+
+SESSION_HANDOFF_2026-09-02_SCHEMA-CLEANUP-v6.md
+
+النسخة المعتمدة هي النسخة الموجودة في الـZIP المرفق بهذه الجلسة.
+
+اقرأ الـSession Handoff أولًا ولا تعيد أي عمل تم إنجازه.
+
+⚠️ قرار منتج مطلوب قبل أي حاجة تانية:
+شوت v6 لقى إن src/services/aiTools/devopsTools.ts بالكامل ("Phase 3: Codebase, Infrastructure & Git Tools") — وطبقة projectFilesService.ts اللي تحته — مش متصلين فعليًا بالكود الحقيقي ولا بـgit حقيقي:
+- getFileContentTool / searchCodebase / getDirectoryTree بتقرأ من registry ثابت (PROJECT_FILES_REGISTRY) ومحتوى بعض الملفات fabricated (تعليق في الكود نفسه بيقول "Provide realistic source template" — يعني مش الملف الحقيقي).
+- writeNewFile / updateFileAST / deleteFileTool بتكتب بس في localStorage، مش في الملفات الحقيقية.
+- gitCommitAndPush بيولّد hash عشوائي بـMath.random() ويحفظه في localStorage بس، ويدّعي إنه "تم بنجاح ومزامنته مع السحابة" — من غير أي عملية git أو أي network call فعليًا. ده أخطر حاجة اتلاقت في المشروع لحد دلوقتي لأنها ممكن توهم صاحب المتجر إن الكود بتاعه محفوظ فعلاً في git وهو مش محفوظ خالص.
+- gitRollbackCommit نفس الموضوع بالعكس.
+- getAppErrors بيرجّع دايمًا نفس الـ2 سجلات وهمية ويدّعي دايمًا "100% Operational".
+
+ده معملتش فيه أي تعديل في شوت v6 عمدًا لأنه قرار معماري مش fix ميكانيكي بسيط. لازم تسأل صاحب المشروع: هل نوصل الأدوات دي بـbackend حقيقي (edge function يقدر يعمل عمليات git/filesystem فعلية)، ولا نسيبها simulation واضحة وموصوفة كده في وصف الأداة ورسائل النجاح، ولا نعطّل gitCommitAndPush/gitRollbackCommit تحديدًا لحد ما تتحل بشكل حقيقي؟ القرار ده هيأثر على toolDefinitions.ts وschemaContext.ts كمان مش بس devopsTools.ts.
+
+الحالة الحالية:
+- الجداول الفاضية (products, categories, orders...) اتأكد من المستخدم إنها متوقعة (المتجر لسه في مرحلة تطوير) — مبقاش سؤال مفتوح، متسألش عنه تاني.
+- live Supabase schema (project gpoqacclpjadzbhevgal) هو المصدر الوحيد للحقيقة — اتأكد منه fresh في شوت v6.
+- committed src/integrations/supabase/types.ts اتطابق برمجيًا مع live schema — تطابق تام.
+- driver_offline_queue مش جدول Supabase — queue محلي بس، وSupabase orders هو authoritative.
+
+اللي اتعمل فعليًا في شوت v6 (جزء verification + جزء fixes حقيقية):
+1. تأكيد سريع (مرة واحدة) إن نفس block الشبكة موجود في sandbox رابعة مختلفة (v3, v4, v5, v6 كلهم نفس النتيجة: registry.npmjs.org مرفوض).
+2. إعادة تأكيد live schema وrow counts وstore_settings columns من الصفر عبر Supabase MCP.
+3. ديف برمجي (سكريبت Python) بين generate_typescript_types الحي وtypes.ts المحفوظ — تطابق تام.
+4. syntax-only TypeScript parser مستقل (سكريبت جديد، TypeScript 6.0.3) على الـ182 ملف — صفر أخطاء، مع اختبار sanity بملف مكسور عمدًا.
+5. **تدقيق استباقي (بطلب من المستخدم) على كل نقاط "ok: true" في src/services/aiTools/*.ts بحثًا عن نفس نمط الباگ اللي اتصلح في updateRawJsonMetadata في v5.** لقيت واتصلح 4 حالات إضافية في operationalTools.ts:
+   - manageUsersAndRoles: خطأ user_roles.upsert() كان بس بيتسجل console.warn، وخطأ profiles.update() ماكانش بيتفحص خالص. الدالة كانت دايمًا بترجع ok:true حتى لو تغيير الصلاحية فشل فعليًا (أداة RBAC — ده باگ خطير). اتصلح.
+   - sendPushNotification: خطأ store_settings.update() كان بيتجاهل تمامًا، والأداة كانت بتدّعي نجاح دايمًا. كمان الأداة دي مفيهاش أي push notification حقيقي (مفيش FCM/OneSignal) — هي بس بتعدّل شريط الإعلانات. سبت تعليق في الكود يوثّق التسمية المضللة دي لقرار مستقبلي. اتصلح منطق النجاح/الفشل.
+   - manageDeliveryZones: التلات مسارات كتابة (update by id, update by name, insert) ماكانوش بيفحصوا الـerror خالص. اتصلح.
+   - exportReportsAndAnalytics: فشل query كان بيترجم لتقرير "ناجح" بـ0 إيرادات/0 طلبات، نفس شكل متجر فاضي فعليًا. اتصلح عشان يرجع ok:false بدل بيانات وهمية.
+   كل الإصلاحات اتبنت على نفس النمط المستخدم صح في coreCatalogTools.ts's toolManageProduct (throw عند error + try/catch + ok:false برسالة الخطأ الحقيقية). اتعاد تشغيل syntax parser بعد التعديلات — صفر أخطاء، مفيش regressions.
+
+NEXT STEP:
+0. خد قرار المنتج بخصوص devopsTools.ts (فوق) قبل أي حاجة تانية في المنطقة دي.
+1. انقل المشروع لبيئة فيها network/package registry access حقيقي (Codespaces أو أي بيئة تانية عندها إنترنت حقيقي). دي رابع مرة (v3, v4, v5, v6) بتلاقي نفس المشكلة — متضيّعش وقت في تجربة sandbox جديد من نفس النوع.
+2. ثبّت dependencies بنجاح.
+3. شغّل `tsc --noEmit` فعليًا. الملف الوحيد اللي اتعدل من v5 لحد دلوقتي هو operationalTools.ts (4 إصلاحات في الشوت ده، كلها اتفحصت syntax-only) — راجعه عادي مع أي diagnostics حقيقية يطلعها tsc.
+4. شغّل `npm run build` فعليًا وأصلح أخطاء build الفعلية.
+5. أعد audit نهائي لـLocalStorage، خصوصاً driver offline queue.
+6. بعد نجاح 3-4 فعليًا وبس، راجع first-order coupon. صمّم server-side/RPC enforcement باستخدام schema الحالي فقط — لا تضف أي عمود جديد، ولا توسّع whitelist الأداة كبديل عن RPC حقيقي.
+7. الجداول الفاضية مؤكدة متوقعة من المستخدم — مبقاش سؤال مفتوح.
+8. لا تقل إن TypeScript أو Build ناجح إلا بعد تشغيلهما فعليًا ونجاحهما.
+
+في نهاية الشوت: أنشئ ZIP جديد + Session Handoff جديد + Prompt للجلسة التالية.
