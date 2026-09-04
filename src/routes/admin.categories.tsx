@@ -80,14 +80,16 @@ function CategoriesPage() {
   };
 
   const saveCategory = async () => {
-    const name = editing?.name?.trim();
+    const current = editing;
+    if (!current) return toast.error("اختر قسمًا أو أنشئ قسمًا جديدًا");
+    const name = current.name?.trim() ?? "";
     if (!name) return toast.error("اسم القسم مطلوب");
-    const slug = (editing.slug || name).toLowerCase().replace(/[^\w\u0621-\u064A]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || `cat-${Date.now()}`;
-    const payload = { name, name_ar: editing.name_ar?.trim() || null, slug, image_url: editing.image_url || null };
+    const slug = (current.slug || name).toLowerCase().replace(/[^\w\u0621-\u064A]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || `cat-${Date.now()}`;
+    const payload = { name, name_ar: current.name_ar?.trim() || null, slug, image_url: current.image_url || null };
     try {
-      const result = editing.id ? await supabase.from("categories").update(payload).eq("id", editing.id) : await supabase.from("categories").insert(payload);
+      const result = current.id ? await supabase.from("categories").update(payload).eq("id", current.id) : await supabase.from("categories").insert(payload);
       if (result.error) throw result.error;
-      toast.success(editing.id ? "تم تحديث القسم" : "تم إضافة القسم");
+      toast.success(current.id ? "تم تحديث القسم" : "تم إضافة القسم");
       setEditing(null);
       await loadData();
     } catch (error: any) { toast.error(`تعذر حفظ القسم: ${error.message}`); }

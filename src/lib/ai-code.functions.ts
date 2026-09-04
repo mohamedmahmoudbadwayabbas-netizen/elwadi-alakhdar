@@ -40,7 +40,7 @@ export const generateFileModification = createServerFn({ method: "POST" })
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === "admin");
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
     if (!isAdmin) {
       return {
         ok: false,

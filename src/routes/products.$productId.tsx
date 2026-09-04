@@ -22,6 +22,7 @@ import {
   Award,
   Package,
   ChevronLeft,
+  Heart,
   Share2,
   Truck,
   ShieldCheck,
@@ -227,6 +228,47 @@ function ProductPage() {
   const [images, setImages] = useState<string[]>(() =>
     initialProd?.image_url ? [initialProd.image_url] : [],
   );
+  const [selectedZone, setSelectedZone] = useState("near");
+  const [deliveryMethod, setDeliveryMethod] = useState<"manual" | "gps">("manual");
+  const [calculatedDistanceKM, setCalculatedDistanceKM] = useState<number | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [wished, setWished] = useState(false);
+  const [activeImg, setActiveImg] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
+  const [activeTab, setActiveTab] = useState<"desc" | "specs" | "nutrition">("desc");
+  const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 0 });
+  const addBtnRef = useRef<HTMLDivElement>(null);
+  const mainImgRef = useRef<HTMLImageElement>(null);
+  const [showSticky, setShowSticky] = useState(false);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) await navigator.share({ title: product?.name, url });
+    else {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("تم نسخ رابط المنتج إلى الحافظة");
+      window.setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const toggleWishlist = () => {
+    setWished((value) => !value);
+    toast.success(wished ? "تمت الإزالة من المفضلة" : "تمت الإضافة للمفضلة");
+  };
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setTimeLeft((previous) => {
+        if (previous.seconds > 0) return { ...previous, seconds: previous.seconds - 1 };
+        if (previous.minutes > 0) return { ...previous, minutes: previous.minutes - 1, seconds: 59 };
+        if (previous.hours > 0) return { hours: previous.hours - 1, minutes: 59, seconds: 59 };
+        return { hours: 2, minutes: 45, seconds: 0 };
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Sync cached product instantly
   useEffect(() => {

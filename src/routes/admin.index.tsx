@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchOrdersWithItems } from "@/services/orderDataService";
-import { fetchOrdersWithItems } from "@/services/orderDataService";
 import {
   Receipt,
   DollarSign,
@@ -150,7 +149,7 @@ function OverviewPage() {
 
   const loadData = async () => {
     try {
-      const [{ data: ords }, { data: prods }, liveBranches] = await Promise.all([
+      const [ords, { data: prods }, liveBranches] = await Promise.all([
         fetchOrdersWithItems({ limit: 500 }),
         supabase.from("products").select("id,name,stock"),
         fetchLiveBranches(),

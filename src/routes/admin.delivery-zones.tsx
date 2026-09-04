@@ -132,7 +132,7 @@ function ZonesPage() {
       return;
     }
     const displayName = [governorate, city, area].filter(Boolean).join(" — ");
-    const payload: Zone = {
+    const payload = {
       id: editing ? editing.id : `zone-${Date.now()}`,
       name: displayName || governorate,
       country,
@@ -143,7 +143,7 @@ function ZonesPage() {
       min_order_amount: form.min_order_amount,
       estimated_minutes: form.estimated_minutes,
       is_active: form.is_active,
-      sort_order: form.sort_order ?? 0,
+      sort_order: form.sort_order,
     };
 
     setSaving(true);

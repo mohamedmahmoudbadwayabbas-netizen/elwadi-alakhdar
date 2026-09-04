@@ -393,7 +393,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
                               borderColor: `hsl(${primary} / 0.3)`,
                             }}
                           >
-                            <span>{c.icon || "🌿"}</span>
+                            <span>🌿</span>
                             <span>{c.name}</span>
                           </button>
                         ))}
@@ -448,7 +448,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
                               />
                             ) : (
                               <div className="h-full w-full bg-secondary flex items-center justify-center text-2xl">
-                                {c.icon || "🌿"}
+                                🌿
                               </div>
                             )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-end p-2 text-white">
@@ -476,7 +476,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
                               className="h-10 w-10 rounded-full flex items-center justify-center text-base mb-1 shadow-xs"
                               style={{ background: `hsl(${primary} / 0.1)` }}
                             >
-                              {c.icon || "🌿"}
+                              🌿
                             </div>
                             <span className="text-[9px] font-extrabold truncate w-full">
                               {c.name}
@@ -595,7 +595,7 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
                           className="h-8 w-8 rounded-full flex items-center justify-center text-sm"
                           style={{ background: `hsl(${primary} / 0.1)` }}
                         >
-                          {cat.icon || "🌿"}
+                          🌿
                         </div>
                         <span className="font-bold text-[11px]">{cat.name}</span>
                       </div>

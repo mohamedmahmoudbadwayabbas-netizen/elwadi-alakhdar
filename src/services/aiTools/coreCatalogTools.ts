@@ -727,7 +727,7 @@ export async function toolCreateDiscountBundle(
     next.flashSaleTimer.enabled = true;
     next.flashSaleTimer.title = args.title || `عروض الساعات الذهبية — استخدم كود ${code}`;
     next.flashSaleTimer.couponCode = code;
-    next.flashSaleTimer.discountTag = type === "percent" ? `خصم ${value}%` : `خصم ${value} ج.م`;
+    next.flashSaleTimer.discountTag = type === "percentage" ? `خصم ${value}%` : `خصم ${value} ج.م`;
     next.flashSaleTimer.endTime = expiresAt;
     ctx.updateLayout(next);
   }
@@ -736,7 +736,7 @@ export async function toolCreateDiscountBundle(
     tool: "createDiscountBundle",
     ok: true,
     rollbackPointId: pointId,
-    messageAr: `تم إنشاء باقة الخصم وتفعيل كود «${code}» (${type === "percent" ? `${value}%` : `${value} ج.م`}) لمدة ${hours} ساعات.`,
+    messageAr: `تم إنشاء باقة الخصم وتفعيل كود «${code}» (${type === "percentage" ? `${value}%` : `${value} ج.م`}) لمدة ${hours} ساعات.`,
     data: { code, discountValue: value, discountType: type, expiresAt },
   };
 }

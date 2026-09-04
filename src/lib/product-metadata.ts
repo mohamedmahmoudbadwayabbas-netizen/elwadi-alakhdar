@@ -46,7 +46,7 @@ export function extractProductDetails(product?: Product | null): ParsedProductDe
   const characteristics: string[] = [];
   let storageInstructions = product.storage_instructions || product.storageInstructions || "";
   let originSource = product.origin_source || product.originSource || "";
-  let cookingTip = product.cooking_tip || product.cookingTip || "";
+  let cookingTip = product.cooking_tip || "";
 
   let nutrition = { ...defaultNutrition };
 

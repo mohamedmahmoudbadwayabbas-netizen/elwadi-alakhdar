@@ -33,6 +33,12 @@ export type OrderView = {
   items: OrderItemView[];
 };
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 const ORDER_COLUMNS =
   "id,user_id,status,total_amount,shipping_address,created_at,customer_name,phone,address,notes,delivery_zone_id,delivery_method,payment_method,payment_reference,coupon_code,ref_source,delivery_fee,discount_amount";
 
@@ -57,7 +63,13 @@ export async function fetchOrdersWithItems(options?: {
     .in("order_id", orderIds);
   if (itemsError) throw itemsError;
 
-  const productIds = [...new Set((rows ?? []).map((r) => r.product_id).filter(Boolean))];
+  const productIds = [
+    ...new Set(
+      (rows ?? [])
+        .map((r) => r.product_id)
+        .filter((productId): productId is string => Boolean(productId)),
+    ),
+  ];
   const productMap = new Map<string, { name: string; name_ar: string | null }>();
   if (productIds.length) {
     const { data: products, error: productsError } = await supabase
@@ -87,6 +99,9 @@ export async function fetchOrdersWithItems(options?: {
 
   return orders.map((o) => ({
     ...o,
+    status: o.status ?? "pending",
+    created_at: o.created_at ?? "",
+    shipping_address: asRecord(o.shipping_address),
     total_amount: Number(o.total_amount),
     delivery_fee: Number(o.delivery_fee ?? 0),
     discount_amount: Number(o.discount_amount ?? 0),

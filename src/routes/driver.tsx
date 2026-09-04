@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useTransition, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchOrdersWithItems } from "@/services/orderDataService";
-import { fetchOrdersWithItems } from "@/services/orderDataService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -138,18 +137,23 @@ export function DriverPortalPage() {
       });
       const parsedOrders = data.map((o) => ({
         ...o,
+        customer_name: o.customer_name ?? "عميل",
+        phone: o.phone ?? "",
+        address: o.address ?? "",
+        payment_method: o.payment_method ?? undefined,
         items: o.items.map((item) => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
           unit_label: item.unit_label,
         })),
-        delivery_step:
+        delivery_step: (
           o.status === "shipped"
             ? "on_the_way"
             : o.status === "delivered"
               ? "delivered"
-              : "assigned",
+              : "assigned"
+        ) as OrderDeliveryStep,
       }));
 
       setOrders(parsedOrders);

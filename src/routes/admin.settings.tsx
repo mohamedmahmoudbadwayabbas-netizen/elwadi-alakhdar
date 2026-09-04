@@ -215,12 +215,24 @@ function SettingsPage() {
 
     window.dispatchEvent(new CustomEvent("store_settings_updated", { detail: s }));
     const { error: dbError } = await supabase.from("store_settings").upsert({
-      site_name: s.site_name, hero_title: s.hero_title, hero_subtitle: s.hero_subtitle, hero_cta_text: s.hero_cta_text,
-      hero_image_url: s.hero_image_url, announcement_text: s.announcement_text, announcement_enabled: s.announcement_enabled,
-      announcement_bg_color: s.announcement_bg_color, primary_color: s.primary_color, accent_color: s.accent_color,
-      background_color: s.background_color, foreground_color: s.foreground_color, store_address: s.store_address,
-      whatsapp_number: s.whatsapp_number, min_order_amount: s.min_order_amount, default_delivery_fee: s.default_delivery_fee,
-      free_shipping_threshold: s.free_shipping_threshold, updated_at: new Date().toISOString(),
+      site_name: s.site_name ?? "الوادي الأخضر",
+      hero_title: s.hero_title,
+      hero_subtitle: s.hero_subtitle,
+      hero_cta_text: s.hero_cta_text,
+      hero_image_url: s.hero_image_url,
+      announcement_text: s.announcement_text ?? "",
+      announcement_enabled: s.announcement_enabled ?? false,
+      announcement_bg_color: s.announcement_bg_color ?? "",
+      primary_color: s.primary_color ?? "",
+      accent_color: s.accent_color ?? "",
+      background_color: s.background_color ?? "",
+      foreground_color: s.foreground_color ?? "",
+      store_address: s.store_address,
+      whatsapp_number: s.whatsapp_number,
+      min_order_amount: s.min_order_amount ?? 0,
+      default_delivery_fee: s.default_delivery_fee ?? 0,
+      free_shipping_threshold: s.free_shipping_threshold ?? undefined,
+      updated_at: new Date().toISOString(),
     });
     if (dbError) {
       clearTimeout(timer1); clearTimeout(timer2); setSaving(false); setProgress(null);

@@ -393,8 +393,7 @@ export async function fetchUserProfile(userId: string): Promise<AuthResponse<Use
         full_name: data.full_name,
         phone: data.phone,
         role: "customer",
-        created_at: data.created_at,
-        updated_at: data.updated_at,
+        updated_at: data.updated_at ?? undefined,
       },
     };
   } catch (err: unknown) {

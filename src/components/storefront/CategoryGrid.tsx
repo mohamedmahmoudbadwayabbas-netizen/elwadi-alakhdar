@@ -158,11 +158,6 @@ export function CategoryGrid({
               )}
             >
               {/* شارة التمييز الأخضر */}
-              {false && (
-                <span className="absolute start-2 top-2 z-10 rounded-full bg-[#036233] text-white px-2.5 py-1 text-[10px] font-black shadow-md border border-white/20">
-                  {c.badge}
-                </span>
-              )}
               {/* الصورة الفوتوغرافية البارزة للقسم */}
               <div className="relative h-24 sm:h-28 w-full overflow-hidden bg-secondary">
                 {c.image_url ? (

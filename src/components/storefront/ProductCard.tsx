@@ -41,7 +41,7 @@ export function ProductCard({
   );
 
   const isTopSellerActive = Boolean(
-    isTopSeller ?? product.isTopSeller ?? product.is_top_seller ?? product.is_popular,
+    isTopSeller ?? product.is_top_seller ?? product.is_popular,
   );
 
   const discount =

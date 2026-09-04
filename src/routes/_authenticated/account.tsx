@@ -41,6 +41,7 @@ import {
 import { formatWeightLabel } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
+import { EmptyState } from "@/components/storefront/EmptyState";
 
 export const Route = createFileRoute("/_authenticated/account")({
   ssr: false,
@@ -627,13 +628,12 @@ function ProfileTab({ userId }: { userId: string }) {
     },
   });
 
-  const [form, setForm] = useState({ full_name: "", phone: "", birth_date: "" });
+  const [form, setForm] = useState({ full_name: "", phone: "" });
   useEffect(() => {
     if (data)
       setForm({
         full_name: data.full_name ?? "",
         phone: data.phone ?? "",
-        birth_date: data.birth_date ?? "",
       });
   }, [data]);
 
@@ -643,7 +643,6 @@ function ProfileTab({ userId }: { userId: string }) {
       .update({
         full_name: form.full_name,
         phone: form.phone,
-        birth_date: form.birth_date || null,
       })
       .eq("id", userId);
     if (error) return toast.error(error.message);
@@ -667,17 +666,6 @@ function ProfileTab({ userId }: { userId: string }) {
           value={form.phone}
           onChange={(v) => setForm({ ...form, phone: v })}
         />
-        <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-xs font-bold text-foreground">
-            تاريخ الميلاد (اختياري)
-          </span>
-          <Input
-            type="date"
-            value={form.birth_date}
-            onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-            className="h-10 rounded-xl"
-          />
-        </label>
       </div>
       <Button
         onClick={save}
@@ -688,6 +676,49 @@ function ProfileTab({ userId }: { userId: string }) {
 
       <PasswordSection />
     </Card>
+  );
+}
+
+function Loader() {
+  return (
+    <div className="grid min-h-48 place-items-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+function Empty({
+  icon: Icon,
+  text,
+  cta,
+}: {
+  icon: typeof Package;
+  text: string;
+  cta: { label: string; to: string };
+}) {
+  return (
+    <EmptyState
+      icon={<Icon className="h-9 w-9" />}
+      title={text}
+      action={<Link to={cta.to}>{cta.label}</Link>}
+    />
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold text-foreground">{label}</span>
+      <Input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-xl" />
+    </label>
   );
 }
 
