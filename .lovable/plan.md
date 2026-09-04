@@ -1,4 +1,3 @@
-
 # 🏪 Blueprint متجر "الوادي الأخضر" — تقرير نقل شامل
 
 هذا المستند جاهز للنسخ إلى برومبت المشروع الأصلي. يحتوي على قاعدة البيانات، الواجهة، المنطق، والهوية البصرية بحيث يمكن للـ AI في المشروع الأصلي تطبيقه بدقة.
@@ -58,6 +57,7 @@ END; $$;
 ```
 
 **user_roles** — أدوار (لا تُخزَّن على profiles أبداً).
+
 ```sql
 CREATE TABLE public.user_roles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -73,6 +73,7 @@ CREATE POLICY "own roles readable" ON public.user_roles FOR SELECT TO authentica
 ```
 
 **profiles**
+
 ```sql
 CREATE TABLE public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -96,6 +97,7 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
 **categories**
+
 ```sql
 CREATE TABLE public.categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -115,6 +117,7 @@ CREATE POLICY categories_admin_delete ON public.categories FOR DELETE TO authent
 ```
 
 **products**
+
 ```sql
 CREATE TABLE public.products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -147,6 +150,7 @@ CREATE TRIGGER trg_products_updated BEFORE UPDATE ON public.products FOR EACH RO
 ```
 
 **cart_items**
+
 ```sql
 CREATE TABLE public.cart_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -165,6 +169,7 @@ CREATE POLICY "users manage own cart" ON public.cart_items FOR ALL TO authentica
 ```
 
 **wishlists / recently_viewed**
+
 ```sql
 CREATE TABLE public.wishlists (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,6 +196,7 @@ CREATE POLICY "own recently" ON public.recently_viewed FOR ALL TO authenticated 
 ```
 
 **addresses**
+
 ```sql
 CREATE TABLE public.addresses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -209,6 +215,7 @@ CREATE POLICY "admins view addresses" ON public.addresses FOR SELECT TO authenti
 ```
 
 **delivery_zones / delivery_slots**
+
 ```sql
 CREATE TABLE public.delivery_zones (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -235,6 +242,7 @@ CREATE POLICY "admins manage slots" ON public.delivery_slots FOR ALL TO authenti
 ```
 
 **coupons / coupon_redemptions**
+
 ```sql
 CREATE TABLE public.coupons (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -269,6 +277,7 @@ CREATE POLICY "admins view redemptions" ON public.coupon_redemptions FOR SELECT 
 ```
 
 **orders**
+
 ```sql
 CREATE TABLE public.orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -325,6 +334,7 @@ CREATE TRIGGER trg_orders_updated BEFORE UPDATE ON public.orders FOR EACH ROW EX
 ```
 
 **reviews / returns / notifications / abandoned_carts / flash_offers / product_bundles**
+
 ```sql
 CREATE TABLE public.reviews (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -417,6 +427,7 @@ CREATE POLICY "admins manage bundles" ON public.product_bundles FOR ALL TO authe
 ```
 
 **store_settings** (صف واحد يحكم كل الهوية البصرية)
+
 ```sql
 CREATE TABLE public.store_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -458,6 +469,7 @@ INSERT INTO public.store_settings DEFAULT VALUES;
 ```
 
 **theme_settings** (توكنز طور تجريبي — hero grid وصور رخام)
+
 ```sql
 CREATE TABLE public.theme_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -485,9 +497,11 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 ```
 
 ### 2.3 Storage
+
 - Bucket **`product-images`** (private). يُقرأ عبر signed URLs أو يُحوَّل public لو رغبت.
 
 ### 2.4 Auth
+
 - تفعيل Email/Password و Google OAuth (عبر Lovable broker: `lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin })`).
 - تريجر `handle_new_user` مُفعَّل على `auth.users`.
 
@@ -496,28 +510,30 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 ## 3) 🎨 الواجهة الأمامية — Routes & Components
 
 ### 3.1 Routes (كلها تحت `src/routes/`)
-| ملف | مسار | وصف |
-|---|---|---|
-| `__root.tsx` | / | الجذر: Providers (Auth, Settings, Theme, Cart, i18n, QueryClient) + `<Toaster/>` + `<Header/> <AnnouncementBar/> <Outlet/> <BottomNav/> <WhatsAppFloat/>` + `head()` SEO |
-| `index.tsx` | `/` | الصفحة الرئيسية: Hero + CategoryGrid + شبكة المنتجات + فلاتر + شارات عروض |
-| `products.$productId.tsx` | `/products/$productId` | صفحة تفاصيل المنتج + reviews + related |
-| `cart.tsx` | `/cart` | السلة + الكوبون + zone + slot + الدفع (COD/InstaPay/Bank) + إنشاء الطلب |
-| `auth.tsx` | `/auth` | تسجيل/دخول + Google OAuth |
-| `_authenticated/route.tsx` | (gate) | `ssr:false` + `supabase.auth.getUser()` |
-| `_authenticated/account.tsx` | `/account` | الملف الشخصي + العناوين + الطلبات + المفضلة |
-| `admin.tsx` | `/admin` | Layout + AdminSidebar |
-| `admin.index.tsx` | `/admin` | لوحة KPIs (طلبات، إيرادات، متوسط، مخزون منخفض) + recharts |
-| `admin.login.tsx` | `/admin/login` | دخول خاص بالأدمن |
-| `admin.products.tsx` | `/admin/products` | CRUD منتجات (رفع صور، badges، مخزون) + استيراد/تصدير xlsx |
-| `admin.categories.tsx` | `/admin/categories` | CRUD أقسام (اسم/slug/icon/ترتيب) |
-| `admin.orders.tsx` | `/admin/orders` | إدارة الطلبات + تغيير الحالة + تصدير |
-| `admin.coupons.tsx` | `/admin/coupons` | CRUD كوبونات + first-order-only |
-| `admin.reviews.tsx` | `/admin/reviews` | مراجعة/حذف تقييمات |
-| `admin.profile.tsx` | `/admin/profile` | حساب الأدمن |
-| `admin.settings.tsx` | `/admin/settings` | كل إعدادات المتجر + **LivePreview** فوري + StoreMapPicker |
-| `sitemap[.]xml.ts` | `/sitemap.xml` | server route ينتج XML |
+
+| ملف                          | مسار                   | وصف                                                                                                                                                                      |
+| ---------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `__root.tsx`                 | /                      | الجذر: Providers (Auth, Settings, Theme, Cart, i18n, QueryClient) + `<Toaster/>` + `<Header/> <AnnouncementBar/> <Outlet/> <BottomNav/> <WhatsAppFloat/>` + `head()` SEO |
+| `index.tsx`                  | `/`                    | الصفحة الرئيسية: Hero + CategoryGrid + شبكة المنتجات + فلاتر + شارات عروض                                                                                                |
+| `products.$productId.tsx`    | `/products/$productId` | صفحة تفاصيل المنتج + reviews + related                                                                                                                                   |
+| `cart.tsx`                   | `/cart`                | السلة + الكوبون + zone + slot + الدفع (COD/InstaPay/Bank) + إنشاء الطلب                                                                                                  |
+| `auth.tsx`                   | `/auth`                | تسجيل/دخول + Google OAuth                                                                                                                                                |
+| `_authenticated/route.tsx`   | (gate)                 | `ssr:false` + `supabase.auth.getUser()`                                                                                                                                  |
+| `_authenticated/account.tsx` | `/account`             | الملف الشخصي + العناوين + الطلبات + المفضلة                                                                                                                              |
+| `admin.tsx`                  | `/admin`               | Layout + AdminSidebar                                                                                                                                                    |
+| `admin.index.tsx`            | `/admin`               | لوحة KPIs (طلبات، إيرادات، متوسط، مخزون منخفض) + recharts                                                                                                                |
+| `admin.login.tsx`            | `/admin/login`         | دخول خاص بالأدمن                                                                                                                                                         |
+| `admin.products.tsx`         | `/admin/products`      | CRUD منتجات (رفع صور، badges، مخزون) + استيراد/تصدير xlsx                                                                                                                |
+| `admin.categories.tsx`       | `/admin/categories`    | CRUD أقسام (اسم/slug/icon/ترتيب)                                                                                                                                         |
+| `admin.orders.tsx`           | `/admin/orders`        | إدارة الطلبات + تغيير الحالة + تصدير                                                                                                                                     |
+| `admin.coupons.tsx`          | `/admin/coupons`       | CRUD كوبونات + first-order-only                                                                                                                                          |
+| `admin.reviews.tsx`          | `/admin/reviews`       | مراجعة/حذف تقييمات                                                                                                                                                       |
+| `admin.profile.tsx`          | `/admin/profile`       | حساب الأدمن                                                                                                                                                              |
+| `admin.settings.tsx`         | `/admin/settings`      | كل إعدادات المتجر + **LivePreview** فوري + StoreMapPicker                                                                                                                |
+| `sitemap[.]xml.ts`           | `/sitemap.xml`         | server route ينتج XML                                                                                                                                                    |
 
 ### 3.2 Storefront components (`src/components/storefront/`)
+
 - **Header.tsx**: يقرأ `useSettings()` → لوجو (`logo_url`) + `site_name` + Search + UserMenu + Cart badge.
 - **AnnouncementBar.tsx**: يعرض `announcement_text` بلون `announcement_bg_color` عند التفعيل.
 - **HeroCarousel.tsx**: يستخدم embla-carousel + `hero_bg_image`/`hero_grid_images`.
@@ -529,10 +545,12 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 - **UserMenu.tsx**: dropdown حساب/طلبات/تسجيل خروج.
 
 ### 3.3 Admin components (`src/components/admin/`)
+
 - **AdminSidebar.tsx**: تنقّل الأدمن (Dashboard/Products/Categories/Orders/Coupons/Reviews/Settings/Profile).
 - **StoreMapPicker.tsx**: اختيار `store_lat/store_lng` من الخريطة.
 
 ### 3.4 UI base
+
 - shadcn/ui كاملة (`src/components/ui/*`) + مكوّن مخصّص `number-input.tsx` لعدّاد الكمية.
 
 ---
@@ -540,31 +558,38 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 ## 4) 🧠 المنطق البرمجي (Contexts / Hooks)
 
 ### 4.1 `src/lib/settings-context.tsx`
+
 - يجلب صف `store_settings` مرة واحدة عند التركيب (`useEffect` بـ deps فارغة + `mounted` guard).
 - يحقن CSS vars: `--primary/--accent/--background/--foreground` عبر `hexToHsl`.
 - يوفّر `useSettings()` لكل المكوّنات.
 
 ### 4.2 `src/lib/theme-context.tsx`
+
 - يجلب `theme_settings` مرة واحدة + `applyTokens()` (radius/marble bg).
 - يوفّر `useTheme()`.
 
 ### 4.3 `src/lib/auth-context.tsx`
+
 - يستمع لـ `supabase.auth.onAuthStateChange` مع فلترة SIGNED_IN/OUT/USER_UPDATED فقط.
 - يعرّض `user, session, isAdmin, signOut()`.
 
 ### 4.4 `src/lib/cart-context.tsx`
+
 - Guest cart في `localStorage`؛ عند تسجيل الدخول يُدمج مع `cart_items`.
 - API: `addItem, removeItem, updateQty, clear, subtotal, count`.
 - كميات وزنية بخطوة 0.25 والقطعية بخطوة 1.
 
 ### 4.5 `src/lib/i18n-context.tsx`
+
 - عربي فقط (`ar`) افتراضياً + مفاتيح ترجمة قابلة للتوسّع.
 
 ### 4.6 Data fetching
+
 - الافتراضي: TanStack Query. المنتجات/الأقسام/الكوبونات/الطلبات تُقرأ عبر `supabase.from(...).select(...)` داخل `useQuery` أو داخل route loader + `queryClient.ensureQueryData`.
 - إنشاء الطلب في `cart.tsx`: `supabase.from('orders').insert({...})` (Guest عبر anon insert policy).
 
 ### 4.7 Routing/SSR
+
 - `src/router.tsx` ينشئ QueryClient + Router.
 - `_authenticated/route.tsx` مُدار (`ssr:false`) — لا تعدّله.
 - `src/start.ts` يُلحق `attachSupabaseAuth` كـ `functionMiddleware`.
@@ -574,6 +599,7 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 ## 5) 🎨 الهوية البصرية (Theming)
 
 ### 5.1 الألوان الأساسية
+
 - **Primary (أخضر الوادي):** `#166534` (وأحياناً `#036233` كتوكن ثيم بديل).
 - **Accent (برتقالي عروض):** `#ea580c` (بديل `#E85D2F`).
 - **Background:** `#fafaf7` — **Foreground:** `#1a1a1a`.
@@ -582,10 +608,12 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 - **Radius البطاقات:** `24px`.
 
 ### 5.2 الخطوط
+
 - `Tajawal` عبر Google Fonts (تحميل عبر `<link>` في `__root.tsx` head — ليس CSS `@import`).
 - الوزن الافتراضي 500/700.
 
 ### 5.3 الشارات (Badges) داخل `ProductCard`
+
 - **خصم %** — خلفية accent.
 - **الأكثر مبيعاً** — خلفية primary.
 - **جديد / طازج / عضوي** — badges من عمود `products.badges[]`.
@@ -593,12 +621,15 @@ INSERT INTO public.theme_settings DEFAULT VALUES;
 - **نفدت الكمية** — عند `stock_quantity = 0`.
 
 ### 5.4 اللوجو الحالي
+
 - `https://i.ibb.co/2YvczYTB/Screenshot-2026-07-01-00-39-41-09.jpg` (يمكن استبداله من `/admin/settings`).
 
 ### 5.5 نص الإعلان
+
 > شحن مجاني فوق ٣٠٠ ج.م | توصيل سريع خلال ٤٥ دقيقة ⚡ | الدفع عند الاستلام ✓
 
 ### 5.6 اتجاه الواجهة
+
 - كل شيء `dir="rtl"`، `lang="ar"` على `<html>` في `__root.tsx`.
 
 ---

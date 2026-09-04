@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchOrdersWithItems } from "@/services/orderDataService";
+import { fetchOrdersWithItems } from "@/services/orderDataService";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -33,6 +35,8 @@ import {
   Sparkles,
   ShoppingBag,
   Radio,
+  PhoneCall,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -53,7 +57,7 @@ type Order = {
   customer_name: string;
   phone: string;
   address: string;
-  total_price: number;
+  total_amount: number;
   delivery_fee?: number;
   payment_method?: string;
   status: string;
@@ -105,25 +109,25 @@ const DRIVERS_LIST: Driver[] = [
 
 const STATUSES = [
   {
-    key: "new",
+    key: "pending",
     label: "جديد 🔔",
-    next: "processing",
+    next: "confirmed",
     color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   },
   {
-    key: "processing",
+    key: "confirmed",
     label: "قيد الإعداد 👨‍🍳",
-    next: "delivering",
+    next: "shipped",
     color: "bg-amber-500/10 text-amber-500 border-amber-500/20",
   },
   {
-    key: "delivering",
+    key: "shipped",
     label: "جاري التوصيل 🚚",
-    next: "completed",
+    next: "delivered",
     color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
   },
   {
-    key: "completed",
+    key: "delivered",
     label: "مكتمل ✅",
     next: null,
     color: "bg-green-500/10 text-green-500 border-green-500/20",
@@ -173,7 +177,7 @@ export const Route = createFileRoute("/admin/orders")({
 function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<string>("new");
+  const [tab, setTab] = useState<string>("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [preview, setPreview] = useState<Order | null>(null);
 
@@ -187,13 +191,8 @@ function OrdersPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setOrders((data ?? []) as unknown as Order[]);
+      const combined = await fetchOrdersWithItems();
+      setOrders(combined as unknown as Order[]);
     } catch (err: any) {
       toast.error(`تعذر جلب الطلبات: ${err.message}`);
     } finally {
@@ -209,10 +208,11 @@ function OrdersPage() {
       .channel("admin-orders-realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
         const newOrder = payload.new as Order;
-        setOrders((prev) => [newOrder, ...prev]);
+        // Re-fetch so the new order includes its order_items/products; realtime payload only contains orders columns.
+        load();
         playNewOrderSound();
         toast.success(
-          `🎉 وصل طلب جديد الآن من ${newOrder.customer_name || "عميل"} بقيمة ${newOrder.total_price} ج.م!`,
+          `🎉 وصل طلب جديد الآن من ${newOrder.customer_name || "عميل"} بقيمة ${newOrder.total_amount} ج.م!`,
           {
             duration: 6000,
           },
@@ -263,7 +263,7 @@ function OrdersPage() {
 
   const confirmDeliveryAssignment = () => {
     if (!assigningOrder || !selectedDriver) return;
-    setStatus(assigningOrder.id, "delivering", {
+    setStatus(assigningOrder.id, "shipped", {
       driver_name: selectedDriver.name,
       driver_phone: selectedDriver.phone,
     });
@@ -317,7 +317,7 @@ function OrdersPage() {
             </tbody>
           </table>
           <div class="line"></div>
-          <p class="total">الإجمالي المستحق: ${o.total_price} ج.م</p>
+          <p class="total">الإجمالي المستحق: ${o.total_amount} ج.م</p>
           <div class="line"></div>
           <p style="text-align: center; font-size: 10px; margin-top: 15px;">شكراً لتسوقكم معنا!</p>
         </body>
@@ -336,7 +336,7 @@ function OrdersPage() {
       "اسم العميل": o.customer_name,
       الهاتف: o.phone,
       العنوان: o.address,
-      "إجمالي المبلغ (ج.م)": o.total_price,
+      "إجمالي المبلغ (ج.م)": o.total_amount,
       الحالة: STATUSES.find((s) => s.key === o.status)?.label ?? o.status,
       "عدد الأصناف": o.items?.length ?? 0,
     }));
@@ -435,7 +435,7 @@ function OrdersPage() {
           </span>
           <span className="text-emerald-500 font-black">
             إجمالي المبيعات:{" "}
-            {orders.reduce((sum, o) => sum + Number(o.total_price || 0), 0).toFixed(2)} ج.م
+            {orders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0).toFixed(2)} ج.م
           </span>
         </div>
       </div>
@@ -543,7 +543,7 @@ function OrdersPage() {
                           إجمالي الطلب
                         </div>
                         <div className="font-display text-lg font-black text-primary">
-                          {Number(o.total_price || 0).toFixed(2)} ج.م
+                          {Number(o.total_amount || 0).toFixed(2)} ج.م
                         </div>
                         <div className="text-[10px] text-muted-foreground font-extrabold">
                           {o.items?.length ?? 0} أصناف مختلفة
@@ -551,11 +551,53 @@ function OrdersPage() {
                       </div>
                     </div>
 
-                    {/* Order Notes / Driver Info */}
+                    {/* Order Notes / Substitution Policy / Driver Info */}
                     {o.notes && (
-                      <div className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl border border-amber-500/20 font-bold flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 shrink-0" />
-                        <span>ملاحظات: {o.notes}</span>
+                      <div className="space-y-1.5">
+                        {o.notes.includes("الاتصال هاتفياً") ? (
+                          <div className="text-xs bg-amber-500/15 text-amber-900 dark:text-amber-200 p-2.5 rounded-xl border border-amber-500/30 font-bold flex items-center gap-2">
+                            <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
+                            <span>
+                              <strong>تعليمات التجهيز:</strong> اتصل هاتفياً بالعميل ({o.phone}) عند
+                              نقص أي صنف لاعتماد البديل 📞
+                            </span>
+                          </div>
+                        ) : o.notes.includes("أفضل بديل") ? (
+                          <div className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 p-2.5 rounded-xl border border-emerald-500/30 font-bold flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span>
+                              <strong>تعليمات التجهيز:</strong> استبدل الأصناف الناقصة بأفضل بديل
+                              متاح بنفس السعر والجودة تلقائياً ⚡
+                            </span>
+                          </div>
+                        ) : o.notes.includes("عدم الاستبدال") ? (
+                          <div className="text-xs bg-rose-500/15 text-rose-900 dark:text-rose-200 p-2.5 rounded-xl border border-rose-500/30 font-bold flex items-center gap-2">
+                            <Ban className="h-4 w-4 text-rose-600 shrink-0" />
+                            <span>
+                              <strong>تعليمات التجهيز:</strong> لا تقم باستبدال أي صنف ناقص — احذف
+                              الصنف وعدل قيمة الفاتورة 🚫
+                            </span>
+                          </div>
+                        ) : null}
+
+                        {/* ملاحظات العميل الخاصة */}
+                        {o.notes
+                          .split("\n")
+                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                          .join("\n")
+                          .trim() && (
+                          <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span>
+                              <strong>ملاحظات العميل:</strong>{" "}
+                              {o.notes
+                                .split("\n")
+                                .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                                .join("\n")
+                                .trim()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -580,7 +622,7 @@ function OrdersPage() {
                           <Printer className="h-3.5 w-3.5 text-muted-foreground" /> طباعة الإيصال
                         </Button>
 
-                        {o.status === "delivering" && (
+                        {o.status === "shipped" && (
                           <Button
                             size="sm"
                             onClick={() => setTrackingOrder(o)}
@@ -592,7 +634,7 @@ function OrdersPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {s.key === "processing" && (
+                        {s.key === "confirmed" && (
                           <Button
                             size="sm"
                             onClick={() => handleStartDelivery(o)}
@@ -602,7 +644,7 @@ function OrdersPage() {
                           </Button>
                         )}
 
-                        {s.next && s.key !== "processing" && (
+                        {s.next && s.key !== "confirmed" && (
                           <Button
                             size="sm"
                             onClick={() => setStatus(o.id, s.next!)}
@@ -613,7 +655,7 @@ function OrdersPage() {
                           </Button>
                         )}
 
-                        {o.status !== "cancelled" && o.status !== "completed" && (
+                        {o.status !== "cancelled" && o.status !== "delivered" && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -662,6 +704,51 @@ function OrdersPage() {
                 </p>
               </div>
 
+              {preview.notes && (
+                <div className="space-y-1.5">
+                  {preview.notes.includes("الاتصال هاتفياً") ? (
+                    <div className="text-xs bg-amber-500/15 text-amber-900 dark:text-amber-200 p-2.5 rounded-xl border border-amber-500/30 font-bold flex items-center gap-2">
+                      <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>
+                        <strong>تعليمات التجهيز:</strong> الاتصال بالعميل قبل استبدال أي صنف
+                      </span>
+                    </div>
+                  ) : preview.notes.includes("أفضل بديل") ? (
+                    <div className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 p-2.5 rounded-xl border border-emerald-500/30 font-bold flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>
+                        <strong>تعليمات التجهيز:</strong> اختيار أفضل بديل متاح بنفس الجودة والسعر
+                      </span>
+                    </div>
+                  ) : preview.notes.includes("عدم الاستبدال") ? (
+                    <div className="text-xs bg-rose-500/15 text-rose-900 dark:text-rose-200 p-2.5 rounded-xl border border-rose-500/30 font-bold flex items-center gap-2">
+                      <Ban className="h-4 w-4 text-rose-600 shrink-0" />
+                      <span>
+                        <strong>تعليمات التجهيز:</strong> عدم استبدال أي صنف وحذف الناقص من الفاتورة
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {preview.notes
+                    .split("\n")
+                    .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                    .join("\n")
+                    .trim() && (
+                    <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>
+                        <strong>ملاحظات العميل:</strong>{" "}
+                        {preview.notes
+                          .split("\n")
+                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                          .join("\n")
+                          .trim()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <span className="text-xs font-black text-foreground block">
                   الأصناف المطلوبة ({preview.items?.length || 0}):
@@ -688,7 +775,7 @@ function OrdersPage() {
 
               <div className="border-t border-border/60 pt-3 flex justify-between items-center font-black">
                 <span>الإجمالي الكلي:</span>
-                <span className="text-xl text-primary font-mono">{preview.total_price} ج.م</span>
+                <span className="text-xl text-primary font-mono">{preview.total_amount} ج.م</span>
               </div>
             </div>
           )}
@@ -777,6 +864,9 @@ function OrdersPage() {
 }
 
 // مكون محاكي الخريطة التفاعلية اللحظية لتتبع الموصل
+const DEFAULT_STORE_POS: [number, number] = [30.0444, 31.2357];
+const DEFAULT_TARGET_POS: [number, number] = [30.052, 31.248];
+
 function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: () => void }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -786,13 +876,14 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
   const [speed, setSpeed] = useState(26); // km/h
   const [moving, setMoving] = useState(true);
 
-  // Store coordinates & customer destination coordinates (Cairo default)
-  const storePos = [30.0444, 31.2357];
-  const targetPos = [30.052, 31.248];
-
   const [currentPos, setCurrentPos] = useState<[number, number]>([
-    storePos[0] + 0.002,
-    storePos[1] + 0.003,
+    DEFAULT_STORE_POS[0] + 0.002,
+    DEFAULT_STORE_POS[1] + 0.003,
+  ]);
+
+  const initialPosRef = useRef<[number, number]>([
+    DEFAULT_STORE_POS[0] + 0.002,
+    DEFAULT_STORE_POS[1] + 0.003,
   ]);
 
   useEffect(() => {
@@ -821,7 +912,7 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
       const L = window.L;
 
       const map = L.map(mapContainerRef.current, {
-        center: currentPos,
+        center: initialPosRef.current,
         zoom: 15,
         zoomControl: false,
       });
@@ -838,7 +929,7 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
         html: `<div style="background-color: #10b981; color: white; border-radius: 50%; padding: 4px; font-size: 14px; text-align: center; border: 2px solid white; box-shadow: 0 0 10px rgba(16,185,129,0.8);">🏪</div>`,
         iconSize: [28, 28],
       });
-      L.marker(storePos, { icon: storeIcon }).addTo(map).bindPopup("المتجر الرئيسي");
+      L.marker(DEFAULT_STORE_POS, { icon: storeIcon }).addTo(map).bindPopup("المتجر الرئيسي");
 
       // Customer Marker (Red/Amber)
       const customerIcon = L.divIcon({
@@ -846,7 +937,7 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
         html: `<div style="background-color: #f59e0b; color: white; border-radius: 50%; padding: 4px; font-size: 14px; text-align: center; border: 2px solid white; box-shadow: 0 0 10px rgba(245,158,11,0.8);">🏠</div>`,
         iconSize: [28, 28],
       });
-      L.marker(targetPos, { icon: customerIcon }).addTo(map).bindPopup("عنوان العميل");
+      L.marker(DEFAULT_TARGET_POS, { icon: customerIcon }).addTo(map).bindPopup("عنوان العميل");
 
       // Driver Bike Marker (Moving)
       const driverIcon = L.divIcon({
@@ -854,10 +945,10 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
         html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; padding: 6px; font-size: 16px; text-align: center; border: 3px solid white; box-shadow: 0 0 15px rgba(59,130,246,0.9);">🛵</div>`,
         iconSize: [36, 36],
       });
-      const driverMarker = L.marker(currentPos, { icon: driverIcon }).addTo(map);
+      const driverMarker = L.marker(initialPosRef.current, { icon: driverIcon }).addTo(map);
 
       // Draw Polyline route
-      L.polyline([storePos, currentPos, targetPos], {
+      L.polyline([DEFAULT_STORE_POS, initialPosRef.current, DEFAULT_TARGET_POS], {
         color: "#3b82f6",
         weight: 4,
         dashArray: "8, 8",
@@ -885,8 +976,8 @@ function GPSTrackingSimulatorModal({ order, onClose }: { order: Order; onClose: 
 
     const interval = setInterval(() => {
       setCurrentPos((prev) => {
-        const nextLat = prev[0] + (targetPos[0] - prev[0]) * 0.08;
-        const nextLng = prev[1] + (targetPos[1] - prev[1]) * 0.08;
+        const nextLat = prev[0] + (DEFAULT_TARGET_POS[0] - prev[0]) * 0.08;
+        const nextLng = prev[1] + (DEFAULT_TARGET_POS[1] - prev[1]) * 0.08;
 
         if (driverMarkerRef.current) {
           driverMarkerRef.current.setLatLng([nextLat, nextLng]);

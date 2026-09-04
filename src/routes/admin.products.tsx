@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,12 +44,21 @@ import {
   Eye,
   CheckSquare,
   Layers,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { COMPREHENSIVE_CATEGORIES, MOCK_PRODUCTS } from "@/lib/categories-data";
-import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { normalizeDigits } from "@/lib/i18n-context";
+import {
+  extractProductDetails,
+  formatProductDescriptionWithMetadata,
+} from "@/lib/product-metadata";
+import {
+  generateProductCopywriting,
+  ProductNutritionalInfo,
+} from "@/services/gemini36Service";
+import { SmartProductCopywriterModal } from "@/components/admin/SmartProductCopywriterModal";
+import { AdminAiImageGeneratorModal } from "@/components/admin/AdminAiImageGeneratorModal";
 
 export const Route = createFileRoute("/admin/products")({
   head: () => ({
@@ -75,6 +85,18 @@ type Product = {
   is_featured: boolean;
   stock_quantity: number;
   low_stock_threshold: number;
+  cooking_tip?: string | null;
+  cookingTip?: string | null;
+  views_count?: number | null;
+  viewsCount?: number | null;
+  purchase_count?: number | null;
+  purchaseCount?: number | null;
+  avg_rating?: number | null;
+  avgRating?: number | null;
+  reviews_count?: number | null;
+  reviewsCount?: number | null;
+  is_top_seller?: boolean | null;
+  isTopSeller?: boolean | null;
 };
 
 type Category = { id: string; name: string };
@@ -99,6 +121,8 @@ const emptyProduct: Partial<Product> = {
   is_featured: false,
   stock_quantity: 100,
   low_stock_threshold: 10,
+  cooking_tip: "",
+  cookingTip: "",
 };
 
 function normalizeNumber(v: string | number): number {
@@ -107,7 +131,12 @@ function normalizeNumber(v: string | number): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function ProductsPage() {
+interface ProductsPageProps {
+  onGenerateCookingTip?: (productName?: string) => void;
+}
+
+function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
+  const queryClient = useQueryClient();
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +144,16 @@ function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isGeneratingTip, setIsGeneratingTip] = useState(false);
+  const [copywriterModalOpen, setCopywriterModalOpen] = useState(false);
+  const [aiImageModalOpen, setAiImageModalOpen] = useState(false);
+
+  const syncStorefrontPreview = (prodId?: string) => {
+    queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    if (prodId) {
+      queryClient.invalidateQueries({ queryKey: ["store-product", prodId] });
+    }
+  };
 
   // الفلاتر والبحث
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,54 +169,87 @@ function ProductsPage() {
   const [tagsInput, setTagsInput] = useState("");
   const [tagsList, setTagsList] = useState<string[]>([]);
 
+  // حقول المعرفة والذكاء الاصطناعي للمنتج (الوصف، نصيحة الشيف، الخصائص، التخزين، المنشأ، القيمة الغذائية)
+  const [cleanDesc, setCleanDesc] = useState("");
+  const [characteristicsText, setCharacteristicsText] = useState("");
+  const [storageText, setStorageText] = useState("");
+  const [originText, setOriginText] = useState("");
+  const [nutritionCalories, setNutritionCalories] = useState("55 kcal");
+  const [nutritionProtein, setNutritionProtein] = useState("1.5 جم");
+  const [nutritionCarbs, setNutritionCarbs] = useState("11 جم");
+  const [nutritionFiber, setNutritionFiber] = useState("2.2 جم");
+  const [nutritionFats, setNutritionFats] = useState("0.4 جم");
+
   // جلب البيانات من Supabase
   const load = async () => {
     setLoading(true);
-    let [{ data: p }, { data: c }] = await Promise.all([
-      supabase.from("products").select("*").order("created_at", { ascending: false }),
-      supabase.from("categories").select("id,name").order("sort_order"),
+    const [{ data: p, error: pError }, { data: c, error: cError }] = await Promise.all([
+      supabase.from("products").select("id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at").order("created_at", { ascending: false }),
+      supabase.from("categories").select("id,name,name_ar").order("created_at"),
     ]);
-
-    if (!p || p.length === 0 || !c || c.length === 0) {
-      await autoSeedDatabaseIfNeeded();
-      const [pRes, cRes] = await Promise.all([
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
-        supabase.from("categories").select("id,name").order("sort_order"),
-      ]);
-      p = pRes.data || [];
-      c = cRes.data || [];
-    }
-
-    setProducts((p ?? []) as Product[]);
-    const dbCats = (c ?? []) as Category[];
-    if (dbCats.length > 0) {
-      setCats(dbCats);
-    } else {
-      setCats(COMPREHENSIVE_CATEGORIES.map((cat) => ({ id: cat.id, name: cat.name })));
-    }
+    if (pError) toast.error(`تعذر تحميل المنتجات: ${pError.message}`);
+    if (cError) toast.error(`تعذر تحميل الأقسام: ${cError.message}`);
+    setProducts((p ?? []).map((row: any) => ({
+      ...row,
+      price_per_unit: Number(row.price ?? 0),
+      old_price: row.original_price == null ? null : Number(row.original_price),
+      stock_quantity: Number(row.stock ?? 0),
+      low_stock_threshold: 5,
+      unit_label: "قطعة",
+      is_by_weight: false,
+      is_popular: Boolean(row.is_featured),
+      is_on_sale: Number(row.original_price ?? 0) > Number(row.price ?? 0),
+      is_top_seller: false,
+    })) as Product[]);
+    setCats((c ?? []) as Category[]);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
+
+    const channel = supabase
+      .channel("admin-products-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // المزامنة عند فتح نافذة تعديل أو إضافة منتج
   useEffect(() => {
     if (editing) {
-      if (editing.description && editing.description.includes("#وسوم:")) {
-        const parts = editing.description.split("#وسوم:");
-        const tags =
-          parts[1]
-            ?.split(",")
-            .map((t) => t.trim())
-            .filter(Boolean) || [];
-        setTagsList(tags);
-      } else {
-        setTagsList([]);
-      }
+      const details = extractProductDetails(editing as any);
+      setCleanDesc(details.cleanDescription);
+      setCharacteristicsText(details.characteristics.join("\n"));
+      setStorageText(details.storageInstructions);
+      setOriginText(details.originSource);
+      setNutritionCalories(details.nutritionalInfo.calories);
+      setNutritionProtein(details.nutritionalInfo.protein);
+      setNutritionCarbs(details.nutritionalInfo.carbs);
+      setNutritionFiber(details.nutritionalInfo.fiber);
+      setNutritionFats(details.nutritionalInfo.fats);
+      setTagsList(details.tags);
+    } else {
+      setCleanDesc("");
+      setCharacteristicsText("");
+      setStorageText("");
+      setOriginText("");
+      setNutritionCalories("55 kcal");
+      setNutritionProtein("1.5 جم");
+      setNutritionCarbs("11 جم");
+      setNutritionFiber("2.2 جم");
+      setNutritionFats("0.4 جم");
+      setTagsList([]);
     }
-  }, [editing?.id]);
+  }, [editing]);
 
   // إضافة وسم جديد
   const handleAddTag = () => {
@@ -245,7 +317,7 @@ function ProductsPage() {
 
     setSavingCellId(id);
 
-    const updatePayload: any = { [field]: numValue };
+    const updatePayload = field === "price_per_unit" ? { price: numValue } : { stock: numValue };
     const { error } = await supabase.from("products").update(updatePayload).eq("id", id);
 
     setSavingCellId(null);
@@ -259,6 +331,7 @@ function ProductsPage() {
         prev.map((item) => (item.id === id ? { ...item, [field]: numValue } : item)),
       );
       setRecentlySavedId(id);
+      syncStorefrontPreview(id);
       toast.success(
         field === "price_per_unit" ? "تم تحديث السعر بنجاح ✨" : "تم تحديث كمية المخزون ✨",
       );
@@ -266,38 +339,79 @@ function ProductsPage() {
     }
   };
 
-  // تبديل سريع لخاصية الأكثر مبيعاً (is_featured)
-  const toggleFeatured = async (p: Product) => {
-    const newVal = !p.is_featured;
-    setProducts((prev) =>
-      prev.map((item) => (item.id === p.id ? { ...item, is_featured: newVal } : item)),
-    );
 
-    const { error } = await supabase
-      .from("products")
-      .update({ is_featured: newVal })
-      .eq("id", p.id);
-    if (error) {
-      toast.error(error.message);
-      load(); // إعادة الجلب في حال الخلل
-    } else {
-      toast.success(newVal ? "تم تثبيت المنتج كأكثر مبيعاً ⭐" : "تم إلغاء التثبيت");
+  // توليد كافة بيانات وتفاصيل المنتج بالذكاء الاصطناعي
+  const handleGenerateAllAI = async () => {
+    if (!editing?.name?.trim()) {
+      toast.error("يرجى كتابة اسم المنتج أولاً لتوليد البيانات بالذكاء الاصطناعي");
+      return;
+    }
+    setIsGeneratingTip(true);
+    try {
+      const catObj = cats.find((c) => c.id === editing.category_id);
+      const res = await generateProductCopywriting({
+        productName: editing.name,
+        categoryName: catObj?.name,
+        isByWeight: !!editing.is_by_weight,
+      });
+
+      setCleanDesc(res.seoDescription);
+      setEditing((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: res.enhancedTitle || prev.name,
+              cooking_tip: res.cookingTip,
+              cookingTip: res.cookingTip,
+            }
+          : null,
+      );
+      setCharacteristicsText(res.characteristics.join("\n"));
+      setStorageText(res.storageInstructions);
+      setOriginText(res.originSource);
+      if (res.nutritionalInfo) {
+        setNutritionCalories(res.nutritionalInfo.calories);
+        setNutritionProtein(res.nutritionalInfo.protein);
+        setNutritionCarbs(res.nutritionalInfo.carbs);
+        setNutritionFiber(res.nutritionalInfo.fiber);
+        setNutritionFats(res.nutritionalInfo.fats || "0.4 جم");
+      }
+      setTagsList(res.tags);
+      toast.success("تم توليد وتعبئة كافة تفاصيل المنتج (الوصف، نصيحة الشيف، الخصائص، التخزين، المنشأ، القيمة الغذائية) بنجاح ✨");
+    } catch {
+      toast.error("تعذر توليد البيانات بالذكاء الاصطناعي");
+    } finally {
+      setIsGeneratingTip(false);
     }
   };
 
-  // تبديل سريع للعرض الخاص (is_on_sale)
-  const toggleOnSale = async (p: Product) => {
-    const newVal = !p.is_on_sale;
-    setProducts((prev) =>
-      prev.map((item) => (item.id === p.id ? { ...item, is_on_sale: newVal } : item)),
-    );
+  // توليد نصيحة طبخ سريعة بالذكاء الاصطناعي
+  const handleGenerateCookingTip = async () => {
+    if (!editing) return;
+    setIsGeneratingTip(true);
+    try {
+      const productName = editing.name?.trim() || "هذا المنتج";
+      const catObj = cats.find((c) => c.id === editing.category_id);
+      const res = await generateProductCopywriting({
+        productName,
+        categoryName: catObj?.name,
+        isByWeight: !!editing.is_by_weight,
+      });
 
-    const { error } = await supabase.from("products").update({ is_on_sale: newVal }).eq("id", p.id);
-    if (error) {
-      toast.error(error.message);
-      load();
-    } else {
-      toast.success(newVal ? "تم وضع علامة عرض خاص 🔥" : "تم إلغاء العرض الخاص");
+      setEditing((prev) =>
+        prev
+          ? {
+              ...prev,
+              cooking_tip: res.cookingTip,
+              cookingTip: res.cookingTip,
+            }
+          : null,
+      );
+      toast.success("تم توليد نصيحة الطبخ بالذكاء الاصطناعي بنجاح ✨");
+    } catch {
+      toast.error("تعذر توليد النصيحة في الوقت الحالي، يرجى المحاولة لاحقاً.");
+    } finally {
+      setIsGeneratingTip(false);
     }
   };
 
@@ -326,26 +440,41 @@ function ProductsPage() {
 
     setSaving(true);
 
-    // دمج الوسوم والكلمات المفتاحية في الوصف
-    let finalDesc = (editing.description || "").split("#وسوم:")[0].trim();
-    if (tagsList.length > 0) {
-      finalDesc = `${finalDesc}\n\n#وسوم: ${tagsList.join(", ")}`.trim();
-    }
+    // تجهيز الوصف المنظم والشامل مع البيانات الوصفية (الخصائص، التخزين، المنشأ، القيمة الغذائية، الوسوم)
+    const charArray = characteristicsText
+      .split("\n")
+      .map((s) => s.replace(/^[-•*✓]\s*/, "").trim())
+      .filter(Boolean);
+
+    const finalDesc = formatProductDescriptionWithMetadata(cleanDesc || editing.name, {
+      characteristics: charArray,
+      storageInstructions: storageText,
+      originSource: originText,
+      nutritionalInfo: {
+        calories: nutritionCalories,
+        protein: nutritionProtein,
+        carbs: nutritionCarbs,
+        fiber: nutritionFiber,
+        fats: nutritionFats,
+      },
+      tags: tagsList,
+    });
 
     const payload = {
       name: editing.name.trim(),
+      name_ar: (editing as any).name_ar || null,
       description: finalDesc || null,
+      description_ar: (editing as any).description_ar || null,
       category_id: editing.category_id || null,
-      price_per_unit: price,
-      old_price: editing.old_price ? Number(editing.old_price) : null,
+      price,
+      original_price: editing.old_price ? Number(editing.old_price) : null,
       image_url: editing.image_url || null,
-      is_by_weight: !!editing.is_by_weight,
-      unit_label: editing.unit_label || (editing.is_by_weight ? "كجم" : "قطعة"),
-      is_popular: !!editing.is_popular,
-      is_on_sale: !!editing.is_on_sale,
+      images: (editing as any).images || null,
       is_featured: !!editing.is_featured,
-      stock_quantity: Number(editing.stock_quantity ?? 0),
-      low_stock_threshold: Number(editing.low_stock_threshold ?? 10),
+      is_active: true,
+      stock: Number(editing.stock_quantity ?? 0),
+      rating: editing.avg_rating ?? null,
+      reviews_count: editing.reviews_count ?? null,
     };
 
     const res = editing.id
@@ -360,7 +489,9 @@ function ProductsPage() {
     }
 
     toast.success(editing.id ? "تم تحديث بيانات المنتج بنجاح ✨" : "تمت إضافة المنتج بنجاح 🎉");
+    const savedId = editing.id;
     setEditing(null);
+    syncStorefrontPreview(savedId);
     load();
   };
 
@@ -374,6 +505,7 @@ function ProductsPage() {
     } else {
       toast.success("تم حذف المنتج");
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      syncStorefrontPreview(id);
     }
   };
 
@@ -791,26 +923,23 @@ function ProductsPage() {
                       )}
                     </td>
 
-                    {/* مفتاح الأكثر مبيعاً (Star Toggle) */}
+                    {/* حالة الأكثر مبيعاً (قراءة تلقائية بدون زر يدوي) */}
                     <td className="p-3.5 text-center">
-                      <button
-                        onClick={() => toggleFeatured(p)}
-                        className="p-1.5 rounded-xl hover:bg-secondary transition-colors"
-                        title={p.is_featured ? "إلغاء التثبيت" : "تثبيت كأكثر مبيعاً"}
-                      >
-                        <Star
-                          className={`h-5 w-5 transition-transform hover:scale-125 ${
-                            p.is_featured
-                              ? "fill-amber-400 text-amber-500"
-                              : "text-muted-foreground/40"
-                          }`}
-                        />
-                      </button>
+                      {Boolean(p.is_top_seller || p.isTopSeller || p.is_featured) ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] px-2 py-0.5 border border-amber-500/20 shadow-2xs"
+                          title="شارة الأكثر مبيعاً (تلقائية)"
+                        >
+                          <Flame className="h-3 w-3 fill-amber-500/20 text-amber-500" /> أكثر مبيعاً
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground/40 font-medium">—</span>
+                      )}
                     </td>
 
                     {/* مفتاح العرض الخاص (Sale Toggle) */}
                     <td className="p-3.5 text-center">
-                      <Switch checked={p.is_on_sale} onCheckedChange={() => toggleOnSale(p)} />
+                      <span className="text-[10px] font-bold text-muted-foreground">{p.is_on_sale ? "عرض" : "سعر عادي"}</span>
                     </td>
 
                     {/* الإجراءات */}
@@ -861,11 +990,40 @@ function ProductsPage() {
           className="max-h-[92vh] max-w-2xl overflow-y-auto bg-card backdrop-blur-md rounded-3xl p-6 border-border"
           dir="rtl"
         >
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between gap-2 border-b border-border/60 pb-3">
             <DialogTitle className="font-display text-lg font-black text-foreground flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500" />
+              <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               <span>{editing?.id ? "تعديل تفاصيل المنتج" : "إضافة منتج جديد للمتجر"}</span>
             </DialogTitle>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isGeneratingTip}
+                onClick={handleGenerateAllAI}
+                className="h-8 rounded-xl text-xs font-black gap-1.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+                title="توليد الوصف، النصيحة، الخصائص، التخزين، المنشأ، والقيمة الغذائية آلياً"
+              >
+                {isGeneratingTip ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                )}
+                <span>توليد تلقائي بالـ AI ✨</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCopywriterModalOpen(true)}
+                className="h-8 rounded-xl text-xs font-black gap-1 text-muted-foreground hover:text-foreground"
+                title="فتح محرر الذكاء الاصطناعي المتقدم للمعاينة والتخصيص"
+              >
+                <span>محرر الـ AI ✍️</span>
+              </Button>
+            </div>
           </DialogHeader>
 
           {editing && (
@@ -904,16 +1062,140 @@ function ProductsPage() {
                 </Select>
               </Field>
 
-              {/* الوصف */}
-              <Field label="الوصف التوضيحي" full>
+              {/* الوصف الأساسي */}
+              <Field label="الوصف التوضيحي (يدوي أو من الذكاء الاصطناعي)" full>
                 <Textarea
                   rows={2}
-                  value={(editing.description || "").split("#وسوم:")[0].trim()}
-                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                  placeholder="ملاحظات حول جودة المنتج، المصدر، أو القيمة الغذائية..."
+                  value={cleanDesc}
+                  onChange={(e) => setCleanDesc(e.target.value)}
+                  placeholder="وصف تسويقي وتوضيحي شامل للمنتج..."
                   className="rounded-xl font-bold text-xs"
                 />
               </Field>
+
+              {/* الخصائص والمميزات */}
+              <Field label="الخصائص والمميزات (كل ميزة في سطر)" full>
+                <Textarea
+                  rows={2}
+                  value={characteristicsText}
+                  onChange={(e) => setCharacteristicsText(e.target.value)}
+                  placeholder="طازج ومغلف بعناية&#10;خالي من المواد الحافظة&#10;إنتاج اليوم"
+                  className="rounded-xl font-bold text-xs bg-background"
+                />
+              </Field>
+
+              {/* طريقة الحفظ والتخزين */}
+              <Field label="طريقة الحفظ والتخزين">
+                <Input
+                  value={storageText}
+                  onChange={(e) => setStorageText(e.target.value)}
+                  placeholder="مثال: يُحفظ في الثلاجة عند 2-5 مئوية"
+                  className="h-10 rounded-xl font-bold text-xs bg-background"
+                />
+              </Field>
+
+              {/* المصدر وبلد المنشأ */}
+              <Field label="المصدر وبلد المنشأ">
+                <Input
+                  value={originText}
+                  onChange={(e) => setOriginText(e.target.value)}
+                  placeholder="مثال: مزارع محلية مصرية معتمدة"
+                  className="h-10 rounded-xl font-bold text-xs bg-background"
+                />
+              </Field>
+
+              {/* القيمة الغذائية (لكل 100 جرام) */}
+              <div className="sm:col-span-2 space-y-2 rounded-2xl border border-border/80 bg-secondary/20 p-3">
+                <div className="text-xs font-black text-foreground flex items-center justify-between">
+                  <span>القيمة والحقائق الغذائية (لكل 100 جرام)</span>
+                  <span className="text-[10px] text-muted-foreground font-semibold">تُعرض للعميل في صفحة المنتج</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">سعرات</label>
+                    <Input
+                      value={nutritionCalories}
+                      onChange={(e) => setNutritionCalories(e.target.value)}
+                      placeholder="55 kcal"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">بروتين</label>
+                    <Input
+                      value={nutritionProtein}
+                      onChange={(e) => setNutritionProtein(e.target.value)}
+                      placeholder="1.5 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">كربوهيدرات</label>
+                    <Input
+                      value={nutritionCarbs}
+                      onChange={(e) => setNutritionCarbs(e.target.value)}
+                      placeholder="11 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">ألياف</label>
+                    <Input
+                      value={nutritionFiber}
+                      onChange={(e) => setNutritionFiber(e.target.value)}
+                      placeholder="2.2 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">دهون</label>
+                    <Input
+                      value={nutritionFats}
+                      onChange={(e) => setNutritionFats(e.target.value)}
+                      placeholder="0.4 جم"
+                      className="h-8 rounded-lg text-xs font-bold bg-background"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* نصيحة الشيف وطريقة التحضير */}
+              <div className="sm:col-span-2 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>نصيحة الشيف والطهي (Chef Tip)</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isGeneratingTip}
+                    onClick={handleGenerateCookingTip}
+                    className="h-7 rounded-xl border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-[10px] font-black gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {isGeneratingTip ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                    )}
+                    <span>توليد نصيحة الشيف</span>
+                  </Button>
+                </div>
+                <Textarea
+                  rows={2}
+                  value={editing.cooking_tip || (editing as any).cookingTip || ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      cooking_tip: e.target.value,
+                      cookingTip: e.target.value,
+                    })
+                  }
+                  placeholder="اكتب نصيحة شيف خاصة بالمنتج أو دع الذكاء الاصطناعي يبتكرها..."
+                  className="rounded-xl font-bold text-xs bg-background"
+                />
+              </div>
 
               {/* الوسوم والكلمات المفتاحية (Tags) */}
               <Field label="الوسوم والكلمات المفتاحية (Tags)" full>
@@ -1013,7 +1295,7 @@ function ProductsPage() {
               </Field>
 
               {/* الخيارات والتغييرات السريعة */}
-              <div className="sm:col-span-2 grid grid-cols-3 gap-2.5 rounded-2xl border border-border bg-secondary/30 p-3">
+              <div className="sm:col-span-2 grid grid-cols-2 gap-2.5 rounded-2xl border border-border bg-secondary/30 p-3">
                 <Toggle
                   label="موزون (كجم)"
                   checked={!!editing.is_by_weight}
@@ -1026,19 +1308,14 @@ function ProductsPage() {
                   }
                 />
                 <Toggle
-                  label="الأكثر مبيعاً"
-                  checked={!!editing.is_featured}
-                  onChange={(v) => setEditing({ ...editing, is_featured: v })}
-                />
-                <Toggle
                   label="عرض خاص"
                   checked={!!editing.is_on_sale}
                   onChange={(v) => setEditing({ ...editing, is_on_sale: v })}
                 />
               </div>
 
-              {/* منطقة رفع الصور مع السحب والإفلات Drag & Drop Zone */}
-              <Field label="صورة المنتج (السحب والإفلات متاح)" full>
+              {/* منطقة رفع الصور مع السحب والإفلات وتوليد الصور بالذكاء الاصطناعي Drag & Drop Zone */}
+              <Field label="صورة المنتج (رفع أو توليد بالذكاء الاصطناعي)" full>
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -1050,44 +1327,73 @@ function ProductsPage() {
                   }`}
                 >
                   {editing.image_url ? (
-                    <div className="relative group w-32 h-32 rounded-2xl overflow-hidden border border-border shadow-xs">
-                      <img src={editing.image_url} className="h-full w-full object-cover" alt="" />
-                      <button
-                        type="button"
-                        onClick={() => setEditing({ ...editing, image_url: null })}
-                        className="absolute top-1 end-1 bg-rose-600 text-white p-1 rounded-full shadow-md hover:scale-110 transition-transform"
-                        title="حذف الصورة"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="relative group w-36 h-36 rounded-2xl overflow-hidden border border-border shadow-xs">
+                        <img
+                          src={editing.image_url}
+                          className="h-full w-full object-cover"
+                          alt=""
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditing({ ...editing, image_url: null })}
+                          className="absolute top-1 end-1 bg-rose-600 text-white p-1 rounded-full shadow-md hover:scale-110 transition-transform"
+                          title="حذف الصورة"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAiImageModalOpen(true)}
+                          className="h-8 rounded-xl text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          <span>تعديل الصورة بالـ AI (Gemini)</span>
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-center space-y-2">
+                    <div className="text-center space-y-2.5">
                       <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary mx-auto">
                         <ImageIcon className="h-6 w-6" />
                       </div>
                       <div className="text-xs font-extrabold text-foreground">
-                        اسحب واسقط صورة المنتج هنا، أو اضغط للاختيار
+                        اسحب واسقط صورة المنتج هنا، أو اختر التوليد بالذكاء الاصطناعي
                       </div>
                       <p className="text-[10px] text-muted-foreground font-semibold">
-                        يدعم صيغ PNG, JPG, WEBP بحجم أقصى 5 ميجابايت
+                        يدعم صيغ PNG, JPG, WEBP أو الإنشاء عبر Google Gemini 3.1 Flash Image
                       </p>
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl hero-gradient text-primary-foreground px-4 py-2 text-xs font-black shadow-xs hover:opacity-90">
-                        {uploading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Upload className="h-4 w-4" />
-                        )}
-                        {uploading ? "جاري الرفع..." : "اختر صورة من جهازك"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) =>
-                            e.target.files?.[0] && processImageUpload(e.target.files[0])
-                          }
-                        />
-                      </label>
+                      <div className="flex flex-wrap justify-center gap-2 pt-1">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl hero-gradient text-primary-foreground px-4 py-2 text-xs font-black shadow-xs hover:opacity-90">
+                          {uploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {uploading ? "جاري الرفع..." : "اختر صورة من جهازك"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              e.target.files?.[0] && processImageUpload(e.target.files[0])
+                            }
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setAiImageModalOpen(true)}
+                          className="rounded-xl px-3.5 py-2 text-xs font-black bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 gap-1.5 shadow-xs"
+                        >
+                          <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>توليد صورة بالـ AI ✨</span>
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -1104,6 +1410,29 @@ function ProductsPage() {
               </Field>
             </div>
           )}
+
+          {/* Modal توليد الصور بالذكاء الاصطناعي للمنتجات */}
+          <AdminAiImageGeneratorModal
+            open={aiImageModalOpen}
+            onOpenChange={setAiImageModalOpen}
+            onImageSelected={(url) => {
+              if (editing) {
+                setEditing({ ...editing, image_url: url });
+              }
+            }}
+            initialImageUrl={editing?.image_url}
+            initialPrompt={
+              editing?.name
+                ? `صورة استوديو تجارية فائقة الجودة لمنتج ${editing.name}${editing.description ? ` - ${editing.description}` : ""}`
+                : ""
+            }
+            categoryHint={cats.find((c) => c.id === editing?.category_id)?.name}
+            title={
+              editing?.name
+                ? `توليد صورة لمنتج: ${editing.name}`
+                : "توليد صورة منتج بالذكاء الاصطناعي"
+            }
+          />
 
           <DialogFooter className="gap-2 pt-2 border-t border-border mt-4">
             <Button
@@ -1128,6 +1457,45 @@ function ProductsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* مودال كاتب المحتوى الذكي */}
+      <SmartProductCopywriterModal
+        open={copywriterModalOpen}
+        onOpenChange={setCopywriterModalOpen}
+        initialProductName={editing?.name ?? ""}
+        initialCategoryName={cats.find((c) => c.id === editing?.category_id)?.name ?? ""}
+        isByWeight={Boolean(editing?.is_by_weight)}
+        onApplyCopywriting={(data) => {
+          if (editing) {
+            setEditing({
+              ...editing,
+              name: data.name || editing.name,
+              cooking_tip: data.cookingTip || editing.cooking_tip,
+              cookingTip: data.cookingTip || editing.cookingTip,
+            });
+            setCleanDesc(data.description || "");
+            if (data.characteristics && data.characteristics.length > 0) {
+              setCharacteristicsText(data.characteristics.join("\n"));
+            }
+            if (data.storageInstructions) {
+              setStorageText(data.storageInstructions);
+            }
+            if (data.originSource) {
+              setOriginText(data.originSource);
+            }
+            if (data.nutritionalInfo) {
+              setNutritionCalories(data.nutritionalInfo.calories || "55 kcal");
+              setNutritionProtein(data.nutritionalInfo.protein || "1.5 جم");
+              setNutritionCarbs(data.nutritionalInfo.carbs || "11 جم");
+              setNutritionFiber(data.nutritionalInfo.fiber || "2.2 جم");
+              setNutritionFats(data.nutritionalInfo.fats || "0.4 جم");
+            }
+            if (data.tags && data.tags.length > 0) {
+              setTagsList((prev) => Array.from(new Set([...prev, ...data.tags])));
+            }
+          }
+        }}
+      />
     </motion.div>
   );
 }

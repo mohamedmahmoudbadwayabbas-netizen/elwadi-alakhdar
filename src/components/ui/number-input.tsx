@@ -22,7 +22,7 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       const raw = e.target.value ?? "";
       const normalized = normalizeDigits(raw)
         // keep digits, one decimal point, leading minus
-        .replace(decimal ? /[^0-9.\-]/g : /[^0-9\-]/g, "");
+        .replace(decimal ? /[^0-9.-]/g : /[^0-9-]/g, "");
       // mutate the event value so consumers see normalized text
       e.target.value = normalized;
       onValueChange?.(normalized);

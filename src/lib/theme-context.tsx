@@ -23,9 +23,9 @@ const DEFAULTS: ThemeSettings = {
   accent_hex: "#E85D2F",
   card_radius_px: 24,
   hero_grid_images: [],
-  hero_title: "الوادي الأخضر",
-  hero_subtitle: "سوبر ماركت وعطارة - أفضل أنواع الاختيارات وتوصيل سريع مباشر لباب بيتك",
-  hero_cta_text: "تسوّق الآن",
+  hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+  hero_subtitle: "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
+  hero_cta_text: "تسوّق الآن 🛒",
   auth_bg_url: null,
   cart_empty_bg_url: null,
 };
@@ -89,23 +89,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    (globalThis as any).__themeEffectRuns = ((globalThis as any).__themeEffectRuns || 0) + 1;
-    const runId = (globalThis as any).__themeEffectRuns;
-    console.log(`[ThemeProvider] useEffect run #${runId} — fetching theme_settings`);
-    if (runId > 2) {
-      console.error("[ThemeProvider] ⚠️ Potential infinite loop — useEffect ran more than twice");
-    }
-    (async () => {
-      const t0 = performance.now();
-      const { data, error } = await supabase
-        .from("theme_settings")
-        .select("*")
-        .limit(1)
-        .maybeSingle();
-      console.log(`[ThemeProvider] fetch done in ${(performance.now() - t0).toFixed(0)}ms`, {
-        hasData: !!data,
-        error,
-      });
+
+    const load = async () => {
+      const { data } = await supabase.from("store_settings_public").select("*").limit(1).maybeSingle();
       if (!mounted) return;
       if (!data) {
         applyTokens(DEFAULTS);
@@ -114,17 +100,33 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const d = data as any;
       const merged: ThemeSettings = {
         ...DEFAULTS,
-        ...d,
+        id: d.id ?? DEFAULTS.id,
+        primary_hex: d.primary_color ?? DEFAULTS.primary_hex,
+        accent_hex: d.accent_color ?? DEFAULTS.accent_hex,
+        card_radius_px: 24,
         hero_title: d.hero_title ?? DEFAULTS.hero_title,
         hero_subtitle: d.hero_subtitle ?? DEFAULTS.hero_subtitle,
         hero_cta_text: d.hero_cta_text ?? DEFAULTS.hero_cta_text,
-        hero_grid_images: Array.isArray(d.hero_grid_images) ? (d.hero_grid_images as string[]) : [],
+        hero_grid_images: d.hero_image_url ? [d.hero_image_url] : [],
+        auth_bg_url: d.login_bg_pattern ?? DEFAULTS.auth_bg_url,
+        cart_empty_bg_url: d.cart_empty_bg ?? DEFAULTS.cart_empty_bg_url,
       };
       setTheme(merged);
       applyTokens(merged);
-    })();
+    };
+
+    void load();
+
+    const channel = supabase
+      .channel("theme_settings_live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "store_settings" }, () => {
+        void load();
+      })
+      .subscribe();
+
     return () => {
       mounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 

@@ -44,7 +44,7 @@ export type StoreSettings = {
 
 // ⚠️ القيم دي بقت HSL نصي زي "142 76% 24%" مش Hex — لازم تتطابق مع admin.settings.tsx
 const DEFAULTS: StoreSettings = {
-  site_name: "الوادي الأخضر — هايبر ماركت",
+  site_name: "الوادي الأخضر",
   logo_url: null,
   favicon_url: null,
   primary_color: "142 76% 24%",
@@ -53,17 +53,16 @@ const DEFAULTS: StoreSettings = {
   foreground_color: "120 18% 12%",
   font_family: "Tajawal",
   announcement_text:
-    "🛒 هايبر ماركت الوادي الأخضر — توصيل فورى لجميع الأغذية، السلع التموينية، اللحوم والمنظفات ⚡ | شحن مجاني للطلبات أكثر من ٥٠٠ ج.م 🚀",
+    "🛒 سوبرماركت الوادي الأخضر — كل احتياجات بيتك وتموينك بتوصيل فوري لباب بيتك ⚡",
   announcement_enabled: true,
   announcement_bg_color: "142 76% 24%",
   whatsapp_number: null,
-  hero_title: "الوادي الأخضر — هايبر ماركت أونلاين متكامل 🛒",
-  hero_subtitle:
-    "تسوّق جميع سلع البقالة، اللحوم البلدية الطازجة، الأجبان، المشروبات والمنظفات بأسعار الجملة التنافسية وتوصيل سريع لباب المنزل.",
+  hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+  hero_subtitle: "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
   hero_image_url: null,
-  hero_cta_text: "تصفح العروض والمنتجات 🛒",
+  hero_cta_text: "تسوّق الآن 🛒",
   hero_bg_image:
-    "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=85",
+    "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=85",
   login_bg_pattern: null,
   cart_empty_bg: null,
   floating_element_image:
@@ -103,9 +102,22 @@ function applyTheme(s: StoreSettings) {
   };
   setHsl("--primary", s.primary_color);
   setHsl("--accent", s.accent_color);
+  if (s.background_color) setHsl("--background", s.background_color);
+  if (s.foreground_color) setHsl("--foreground", s.foreground_color);
+  if (s.card_radius) {
+    const radMap: Record<string, string> = {
+      "rounded-xl": "0.75rem",
+      "rounded-2xl": "1rem",
+      "rounded-3xl": "1.5rem",
+    };
+    if (radMap[s.card_radius]) {
+      root.style.setProperty("--radius", radMap[s.card_radius]);
+    }
+  }
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
+  // Start with DEFAULTS on both server and initial client render to guarantee 100% hydration match
   const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
 
   const updateLocalSettings = (updated: Partial<StoreSettings>) => {
@@ -119,40 +131,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
+    const load = async () => {
       const { data, error } = await supabase
-        .from("store_settings_public" as any)
+        .from("store_settings_public")
         .select("*")
         .limit(1)
         .maybeSingle();
-
       if (!mounted) return;
-
-      if (error) {
-        console.error("[SettingsProvider] failed to load store_settings_public", error);
+      if (error) console.warn("[Settings] Supabase error:", error.message);
+      const merged = { ...DEFAULTS, ...((data as any) ?? {}) } as StoreSettings;
+      for (const key of Object.keys(merged) as (keyof StoreSettings)[]) {
+        if (merged[key] === null && DEFAULTS[key] !== null && DEFAULTS[key] !== undefined) (merged as any)[key] = DEFAULTS[key];
       }
+      setSettings(merged);
+      applyTheme(merged);
+    };
 
-      // Check saved local customizer overrides if any
-      let localCustomizer = {};
-      try {
-        const cached = localStorage.getItem("store_customizer_options");
-        if (cached) localCustomizer = JSON.parse(cached);
-      } catch {}
-
-      if (data) {
-        const merged = { ...DEFAULTS, ...(data as any), ...localCustomizer } as StoreSettings;
-        setSettings(merged);
-        applyTheme(merged);
-      } else {
-        const merged = { ...DEFAULTS, ...localCustomizer } as StoreSettings;
-        setSettings(merged);
-        applyTheme(merged);
-      }
-    })();
+    void load();
 
     // Listen to custom event for real-time live preview update across admin & storefront
     const handleCustomUpdate = (e: CustomEvent<Partial<StoreSettings>>) => {
-      if (e.detail) {
+      if (e.detail && mounted) {
         updateLocalSettings(e.detail);
       }
     };

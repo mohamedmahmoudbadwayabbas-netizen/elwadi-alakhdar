@@ -38,15 +38,14 @@ import { motion, AnimatePresence } from "motion/react";
 type Coupon = {
   id: string;
   code: string;
-  discount_type: "percent" | "fixed";
+  discount_type: "percentage" | "fixed";
   discount_value: number;
   min_order_amount: number | null;
-  max_uses: number | null;
-  uses_count: number | null;
+  usage_limit: number | null;
+  used_count: number;
   expires_at: string | null;
   is_active: boolean;
-  first_order_only: boolean;
-  created_at?: string;
+    created_at?: string;
 };
 
 export const Route = createFileRoute("/admin/coupons")({
@@ -74,10 +73,15 @@ function CouponsPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setRows((data as Coupon[]) ?? []);
-    } catch (err: any) {
-      toast.error(`تعذر جلب الكوبونات: ${err.message}`);
+      if (error) {
+        console.warn("[Coupons] Supabase error:", error.message);
+      }
+
+      const result = (data as Coupon[]) || [];
+      setRows(result);
+    } catch (err) {
+      console.error("[Coupons] Error loading coupons:", err);
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -88,32 +92,19 @@ function CouponsPage() {
   }, []);
 
   const removeCoupon = async (id: string, code: string) => {
-    if (!confirm(`هل أنت ألكيد من حذف كوبون الخصم "${code}"؟`)) return;
-    try {
-      const { error } = await supabase.from("coupons").delete().eq("id", id);
-      if (error) throw error;
-      toast.success("تم حذف الكوبون بنجاح");
-      loadData();
-    } catch (err: any) {
-      toast.error(`تعذر الحذف: ${err.message}`);
-    }
+    if (!confirm(`هل أنت متأكد من حذف كوبون الخصم "${code}"؟`)) return;
+    const { error } = await supabase.from("coupons").delete().eq("id", id);
+    if (error) return toast.error(`تعذر حذف الكوبون: ${error.message}`);
+    toast.success("تم حذف الكوبون بنجاح 🗑️");
+    await loadData();
   };
 
   const toggleActive = async (c: Coupon) => {
-    try {
-      const { error } = await supabase
-        .from("coupons")
-        .update({ is_active: !c.is_active })
-        .eq("id", c.id);
-
-      if (error) throw error;
-      setRows((prev) =>
-        prev.map((item) => (item.id === c.id ? { ...item, is_active: !c.is_active } : item)),
-      );
-      toast.success(c.is_active ? "تم إيقاف الكوبون" : "تم تفعيل الكوبون");
-    } catch (err: any) {
-      toast.error(`تعذر تغيير حالة الكوبون: ${err.message}`);
-    }
+    const updated = { ...c, is_active: !c.is_active };
+    const { error } = await supabase.from("coupons").update({ is_active: updated.is_active }).eq("id", c.id);
+    if (error) return toast.error(`تعذر تحديث الكوبون: ${error.message}`);
+    toast.success(updated.is_active ? "تم تفعيل الكوبون بنجاح ✨" : "تم إيقاف الكوبون");
+    await loadData();
   };
 
   const handleCopy = (code: string) => {
@@ -136,29 +127,29 @@ function CouponsPage() {
     }
 
     const payload = {
-      code: editing.code.trim().toUpperCase(),
-      discount_type: editing.discount_type || "percent",
+            code: editing.code.trim().toUpperCase(),
+      discount_type: editing.discount_type || "percentage",
       discount_value: Number(editing.discount_value),
       min_order_amount: editing.min_order_amount ? Number(editing.min_order_amount) : null,
-      max_uses: editing.max_uses ? Number(editing.max_uses) : null,
+      usage_limit: editing.usage_limit ? Number(editing.usage_limit) : null,
+      used_count: editing.used_count ?? 0,
       expires_at: editing.expires_at || null,
       is_active: editing.is_active ?? true,
-      first_order_only: editing.first_order_only ?? false,
     };
 
     try {
-      const res = editing.id
+      const result = editing.id
         ? await supabase.from("coupons").update(payload).eq("id", editing.id)
         : await supabase.from("coupons").insert(payload);
-
-      if (res.error) throw res.error;
-
-      toast.success(editing.id ? "تم تحديث الكوبون بنجاح ✏️" : "تم إنشاء الكوبون الجديد بنجاح 🎉");
-      setEditing(null);
-      loadData();
-    } catch (err: any) {
-      toast.error(`تعذر الحفظ: ${err.message}`);
+      if (result.error) throw result.error;
+    } catch (error: any) {
+      toast.error(`تعذر حفظ الكوبون: ${error.message || "خطأ غير معروف"}`);
+      return;
     }
+
+    toast.success(editing.id ? "تم تحديث الكوبون بنجاح ✏️" : "تم إنشاء الكوبون الجديد بنجاح 🎉");
+    setEditing(null);
+    await loadData();
   };
 
   // توليد كود عشوائي
@@ -176,7 +167,7 @@ function CouponsPage() {
 
   // إحصائيات سريعة
   const activeCount = useMemo(() => rows.filter((c) => c.is_active).length, [rows]);
-  const totalUses = useMemo(() => rows.reduce((acc, c) => acc + (c.uses_count || 0), 0), [rows]);
+  const totalUses = useMemo(() => rows.reduce((acc, c) => acc + (c.used_count || 0), 0), [rows]);
 
   return (
     <motion.div
@@ -207,12 +198,11 @@ function CouponsPage() {
           onClick={() =>
             setEditing({
               code: "",
-              discount_type: "percent",
+              discount_type: "percentage",
               discount_value: 15,
               min_order_amount: 100,
               is_active: true,
-              first_order_only: false,
-            })
+                          })
           }
           className="rounded-2xl hero-gradient text-primary-foreground font-black text-xs gap-2 h-10 px-4 shadow-md"
         >
@@ -257,7 +247,7 @@ function CouponsPage() {
               {Math.max(
                 0,
                 ...rows
-                  .filter((c) => c.is_active && c.discount_type === "percent")
+                  .filter((c) => c.is_active && c.discount_type === "percentage")
                   .map((c) => c.discount_value),
               )}
               %
@@ -339,13 +329,13 @@ function CouponsPage() {
                     </button>
                   </div>
                   <div className="text-xs font-black text-primary flex items-center gap-1 pt-1">
-                    {c.discount_type === "percent" ? (
+                    {c.discount_type === "percentage" ? (
                       <Percent className="h-3.5 w-3.5" />
                     ) : (
                       <DollarSign className="h-3.5 w-3.5" />
                     )}
                     <span>
-                      خصم {c.discount_value} {c.discount_type === "percent" ? "%" : "ج.م"}
+                      خصم {c.discount_value} {c.discount_type === "percentage" ? "%" : "ج.م"}
                     </span>
                   </div>
                 </div>
@@ -372,19 +362,13 @@ function CouponsPage() {
                 <div>
                   الاستخدامات:{" "}
                   <strong className="text-foreground">
-                    {c.uses_count ?? 0} / {c.max_uses ?? "∞"}
+                    {c.used_count ?? 0} / {c.usage_limit ?? "∞"}
                   </strong>
                 </div>
                 <div>
                   الانتهاء:{" "}
                   <strong className="text-foreground">
                     {c.expires_at ? new Date(c.expires_at).toLocaleDateString("ar-EG") : "غير محدد"}
-                  </strong>
-                </div>
-                <div>
-                  النطاق:{" "}
-                  <strong className="text-foreground">
-                    {c.first_order_only ? "للطلب الأول فقط" : "جميع الطلبات"}
                   </strong>
                 </div>
               </div>
@@ -444,7 +428,7 @@ function CouponsPage() {
                 <div className="space-y-1.5">
                   <span className="text-xs font-extrabold text-foreground">نوع الخصم</span>
                   <select
-                    value={editing.discount_type ?? "percent"}
+                    value={editing.discount_type ?? "percentage"}
                     onChange={(e) =>
                       setEditing({ ...editing, discount_type: e.target.value as any })
                     }
@@ -497,16 +481,6 @@ function CouponsPage() {
 
               {/* Switches */}
               <div className="space-y-3 border-t border-border/60 pt-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-foreground">
-                    متاح للطلب الأول فقط
-                  </span>
-                  <Switch
-                    checked={editing.first_order_only ?? false}
-                    onCheckedChange={(v) => setEditing({ ...editing, first_order_only: v })}
-                  />
-                </div>
-
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-foreground">الكوبون مفعّل ونشط</span>
                   <Switch

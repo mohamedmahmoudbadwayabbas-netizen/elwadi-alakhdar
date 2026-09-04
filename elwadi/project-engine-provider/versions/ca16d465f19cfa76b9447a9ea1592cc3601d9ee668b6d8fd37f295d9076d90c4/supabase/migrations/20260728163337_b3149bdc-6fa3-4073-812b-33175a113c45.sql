@@ -1,1 +1,0 @@
-delete from public.orders where ref_source = 'selftest';

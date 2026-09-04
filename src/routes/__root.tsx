@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/brand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -18,11 +19,13 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { ColorModeProvider } from "@/lib/color-mode-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { SearchProvider } from "@/lib/search-context";
+import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
 import { BottomNav } from "@/components/storefront/BottomNav";
 import { Header } from "@/components/storefront/Header";
 import { useRouterState } from "@tanstack/react-router";
 
+import { LayoutConfigProvider } from "@/lib/layout-config-context";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -89,23 +92,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "الوادي الأخضر" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
-      { property: "og:title", content: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
-      { name: "twitter:title", content: "الوادي الأخضر — سوبر ماركت أونلاين وتوصيل سريع" },
+      { title: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك 🛒" },
+      { property: "og:title", content: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك 🛒" },
+      { name: "twitter:title", content: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك 🛒" },
       {
         name: "description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق جميع سلع البقالة والتموين، الألبان والأجبان، اللحوم البلدية والمنظفات من سوبرماركت الوادي الأخضر بأفضل الأسعار وتوصيل فوري لباب بيتك.",
       },
       {
         property: "og:description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق جميع سلع البقالة والتموين، الألبان والأجبان، اللحوم البلدية والمنظفات من سوبرماركت الوادي الأخضر بأفضل الأسعار وتوصيل فوري لباب بيتك.",
       },
       {
         name: "twitter:description",
         content:
-          "تسوّق البقالة واللحوم والدواجن والعطارة من الوادي الأخضر بأسعار مناسبة مع توصيل سريع لباب بيتك.",
+          "تسوّق جميع سلع البقالة والتموين، الألبان والأجبان، اللحوم البلدية والمنظفات من سوبرماركت الوادي الأخضر بأفضل الأسعار وتوصيل فوري لباب بيتك.",
       },
       {
         property: "og:image",
@@ -127,7 +130,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "stylesheet", href: appCss },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "الوادي الأخضر",
+          url: `${SITE_URL}/`,
+          logo: `${SITE_URL}/favicon.svg`,
+          description:
+            "سوبرماركت الوادي الأخضر أونلاين: سلع تموينية، لحوم بلدية، أجبان، منظفات وبقالة مع توصيل سريع.",
+        }),
+      },
+    ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -150,27 +168,35 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  
+  useEffect(() => {
+    // Attempt auto-seed ONLY IF Supabase products are empty (as requested)
+    autoSeedDatabaseIfNeeded().catch(console.error);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <SettingsProvider>
           <ThemeProvider>
             <ColorModeProvider storageKey="store-color-mode" defaultMode="light">
-              <AuthProvider>
-                <CartProvider>
-                  <SearchProvider>
-                    <AnnouncementBar />
-                    <StorefrontHeader />
-                    <RouteFade>
-                      <div className="pb-20">
-                        <Outlet />
-                      </div>
-                    </RouteFade>
-                    <BottomNav />
-                    <Toaster position="top-center" dir="rtl" richColors />
-                  </SearchProvider>
-                </CartProvider>
-              </AuthProvider>
+              <LayoutConfigProvider>
+                <AuthProvider>
+                  <CartProvider>
+                    <SearchProvider>
+                      <AnnouncementBar />
+                      <StorefrontHeader />
+                      <RouteFade>
+                        <div className="pb-20">
+                          <Outlet />
+                        </div>
+                      </RouteFade>
+                      <BottomNav />
+                      <Toaster position="top-center" dir="rtl" richColors />
+                    </SearchProvider>
+                  </CartProvider>
+                </AuthProvider>
+              </LayoutConfigProvider>
             </ColorModeProvider>
           </ThemeProvider>
         </SettingsProvider>
@@ -186,12 +212,7 @@ function StorefrontHeader() {
   return <Header />;
 }
 
-// Fade transition on route change — respects prefers-reduced-motion.
+// Smooth route layout container without forced unmount
 function RouteFade({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  return (
-    <div key={pathname} className="motion-safe:animate-fade-in">
-      {children}
-    </div>
-  );
+  return <div className="transition-opacity duration-150">{children}</div>;
 }

@@ -1,12 +1,33 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import {
+  getArabicAuthErrorMessage,
+  formatPhoneNumber,
+  getPhoneSyntheticEmail,
+  type UserRole,
+} from "@/services/authService";
 
-type AuthCtx = {
-  user: User | null;
+export interface AppUser {
+  id: string;
+  email: string;
+  user_metadata?: {
+    full_name?: string;
+    phone?: string;
+    avatar_url?: string;
+    provider?: string;
+  };
+}
+
+export interface AuthCtx {
+  user: AppUser | null;
   session: Session | null;
+  role: UserRole;
   isAdmin: boolean;
+  isStaff: boolean;
+  isCustomer: boolean;
+  /** Kept for backwards compatibility; super_admin is now database-controlled. */
+  isRootAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (
@@ -20,208 +41,237 @@ type AuthCtx = {
     phone: string,
     password: string,
     fullName?: string,
-  ) => Promise<{ error?: string }>;
+  ) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signInWithGoogle: (redirectUri?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   claimAdmin: () => Promise<boolean>;
   refreshRole: () => Promise<void>;
-};
+}
+
+export const normalizePhone = formatPhoneNumber;
+export const phoneEmail = getPhoneSyntheticEmail;
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
+function toAppUser(user: User | null): AppUser | null {
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email || "",
+    user_metadata: {
+      full_name: user.user_metadata?.full_name,
+      phone: user.user_metadata?.phone,
+      avatar_url: user.user_metadata?.avatar_url,
+      provider: user.app_metadata?.provider,
+    },
+  };
+}
+
+async function fetchRole(): Promise<UserRole> {
+  const { data, error } = await supabase.rpc("get_my_role");
+  if (error) {
+    console.warn("Unable to resolve database role:", error.message);
+    return "customer";
+  }
+
+  const role = String(data || "customer").toLowerCase();
+  if (role === "super_admin") return "super_admin";
+  if (role === "admin") return "admin";
+  if (role === "staff") return "staff";
+  return "customer";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<UserRole>("customer");
   const [loading, setLoading] = useState(true);
 
-  // دالة جلب الصلاحيات المعدلة لمعرفة الأخطاء وتجنب الـ silent fail عند تغيير الجهاز
-  const fetchRole = async (uid: string | undefined) => {
-    if (!uid) {
-      setIsAdmin(false);
+  const refreshRole = async () => {
+    if (!currentSession?.user) {
+      setRole("customer");
       return;
     }
-
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", uid)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    if (error) {
-      console.error("🚨 [AuthContext] خطأ أثناء جلب صلاحيات الأدمن:", error.message);
-    }
-
-    setIsAdmin(!!data);
+    setRole(await fetchRole());
   };
 
-  // مراقب الحالة المعدل ليتعامل بسلاسة مع الجلسات القادمة من الأجهزة والمتصفحات المختلفة
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    const applySession = async (session: Session | null) => {
       if (!mounted) return;
-      setSession(data.session);
-      fetchRole(data.session?.user.id).finally(() => {
+      setCurrentSession(session);
+      setCurrentUser(toAppUser(session?.user || null));
+      setRole(session?.user ? await fetchRole() : "customer");
+    };
+
+    const initialize = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        await applySession(data.session);
+      } catch (error) {
+        if (mounted) {
+          setCurrentSession(null);
+          setCurrentUser(null);
+          setRole("customer");
+          console.warn("Auth initialization error:", getArabicAuthErrorMessage(error));
+        }
+      } finally {
         if (mounted) setLoading(false);
-      });
-    });
+      }
+    };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-
-      // أضفنا فحص أحداث الجلسة الإضافية مثل TOKEN_REFRESHED لضمان ثبات الدخول من الأجهزة الأخرى
-      if (
-        event === "SIGNED_IN" ||
-        event === "SIGNED_OUT" ||
-        event === "USER_UPDATED" ||
-        event === "TOKEN_REFRESHED"
-      ) {
-        setSession(s);
+      // Do not await Supabase calls inside the auth callback. Schedule role lookup
+      // after the auth event has been processed to avoid deadlocks.
+      setCurrentSession(session);
+      setCurrentUser(toAppUser(session?.user || null));
+      if (!session?.user) {
+        setRole("customer");
+      } else {
         setTimeout(() => {
-          if (mounted) fetchRole(s?.user.id);
+          if (mounted) void fetchRole().then((nextRole) => mounted && setRole(nextRole));
         }, 0);
       }
+      if (event === "SIGNED_OUT") setRole("customer");
     });
+
+    void initialize();
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
   }, []);
 
-  const value = useMemo<AuthCtx>(
-    () => ({
-      user: session?.user ?? null,
-      session,
-      isAdmin,
-      loading,
-      signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return error ? { error: translateAuthError(error.message) } : {};
-      },
-      signUp: async (email, password, fullName, phone) => {
-        const redirectTo =
-          typeof window !== "undefined" ? `${window.location.origin}/auth` : undefined;
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectTo,
-            data: { full_name: fullName, phone: phone },
-          },
-        });
-        if (error) return { error: translateAuthError(error.message) };
-        const needsConfirmation = !data.session;
-        return { needsConfirmation };
-      },
-      signInWithPhone: async (phone, password) => {
-        // تنظيف رقم الهاتف ومطابقته
-        let formattedPhone = phone.trim().replace(/\s+/g, "");
-        if (!formattedPhone.startsWith("+")) {
-          if (formattedPhone.startsWith("0")) formattedPhone = "+20" + formattedPhone.slice(1);
-          else formattedPhone = "+20" + formattedPhone;
-        }
-        if (password) {
-          const { error } = await supabase.auth.signInWithPassword({
-            phone: formattedPhone,
-            password,
-          });
-          if (!error) return {};
-        }
-        // محاولة التسجيل/الدخول بـ OTP أو البريد الوهمي للسهولة
-        const synthEmail = `${formattedPhone.replace("+", "")}@phone.elwadi.local`;
-        const synthPass = password || `Pass_${formattedPhone.slice(-6)}_2026`;
-        const { error: inErr } = await supabase.auth.signInWithPassword({
-          email: synthEmail,
-          password: synthPass,
-        });
-        if (!inErr) return {};
-        const { error: upErr } = await supabase.auth.signUp({
-          email: synthEmail,
-          password: synthPass,
-          options: { data: { phone: formattedPhone } },
-        });
-        if (upErr) return { error: translateAuthError(upErr.message) };
-        return {};
-      },
-      signUpWithPhone: async (phone, password, fullName) => {
-        let formattedPhone = phone.trim().replace(/\s+/g, "");
-        if (!formattedPhone.startsWith("+")) {
-          if (formattedPhone.startsWith("0")) formattedPhone = "+20" + formattedPhone.slice(1);
-          else formattedPhone = "+20" + formattedPhone;
-        }
-        const synthEmail = `${formattedPhone.replace("+", "")}@phone.elwadi.local`;
-        const { data, error } = await supabase.auth.signUp({
-          email: synthEmail,
-          password: password || `Pass_${formattedPhone.slice(-6)}_2026`,
-          options: { data: { full_name: fullName, phone: formattedPhone } },
-        });
-        if (error) return { error: translateAuthError(error.message) };
-        if (!data.session) {
-          // محاولة الدخول مباشرة إذا كانت الحسابات مفعلة تلقائياً
-          await supabase.auth.signInWithPassword({
-            email: synthEmail,
-            password: password || `Pass_${formattedPhone.slice(-6)}_2026`,
-          });
-        }
-        return {};
-      },
-      signInWithGoogle: async (redirectUri?: string) => {
-        const redirect_uri =
-          redirectUri ?? (typeof window !== "undefined" ? window.location.origin : undefined);
-        try {
-          const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
-          if (result && !result.error) return {};
-          // fallback to Supabase OAuth
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: redirect_uri },
-          });
-          if (error) return { error: translateAuthError(error.message) };
-          return {};
-        } catch (e) {
-          try {
-            const { error } = await supabase.auth.signInWithOAuth({
-              provider: "google",
-              options: { redirectTo: redirect_uri },
-            });
-            if (error) return { error: translateAuthError(error.message) };
-            return {};
-          } catch (err: any) {
-            return { error: translateAuthError(err.message) };
-          }
-        }
-      },
-      signOut: async () => {
-        await supabase.auth.signOut();
-        setIsAdmin(false);
-      },
-      claimAdmin: async () => false,
-      refreshRole: async () => {
-        await fetchRole(session?.user.id);
-      },
-    }),
-    [session, isAdmin, loading],
-  );
+  const isAdmin = role === "admin" || role === "super_admin";
+  const isStaff = isAdmin || role === "staff";
+  const isCustomer = !isStaff;
+  // There is no special email/password root-admin bypass anymore.
+  const isRootAdmin = role === "super_admin";
+
+  const signIn = async (emailInput: string, password: string) => {
+    setLoading(true);
+    try {
+      const email = emailInput.trim().toLowerCase();
+      if (!email || !password) return { error: "البريد الإلكتروني وكلمة المرور مطلوبان" };
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: getArabicAuthErrorMessage(error) };
+
+      setCurrentSession(data.session);
+      setCurrentUser(toAppUser(data.user));
+      setRole(await fetchRole());
+      return {};
+    } catch (error) {
+      return { error: getArabicAuthErrorMessage(error) };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (emailInput: string, password: string, fullName?: string, phone?: string) => {
+    setLoading(true);
+    try {
+      const email = emailInput.trim().toLowerCase();
+      const cleanName = fullName?.trim() || email.split("@")[0] || "عميل الوادي الأخضر";
+      const cleanPhone = phone ? formatPhoneNumber(phone) : undefined;
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: cleanName, phone: cleanPhone },
+        },
+      });
+      if (error) return { error: getArabicAuthErrorMessage(error) };
+
+      if (data.user && data.session) {
+        setCurrentSession(data.session);
+        setCurrentUser(toAppUser(data.user));
+        setRole(await fetchRole());
+      }
+
+      return {
+        needsConfirmation: Boolean(data.user && !data.session),
+      };
+    } catch (error) {
+      return { error: getArabicAuthErrorMessage(error) };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithPhone = async (phoneInput: string, password?: string) => {
+    if (!password) return { error: "كلمة المرور مطلوبة" };
+    return signIn(getPhoneSyntheticEmail(formatPhoneNumber(phoneInput)), password);
+  };
+
+  const signUpWithPhone = async (phoneInput: string, password: string, fullName?: string) => {
+    if (!password || password.length < 6) {
+      return { error: "اختر كلمة مرور قوية (6 أحرف على الأقل)" };
+    }
+    const formattedPhone = formatPhoneNumber(phoneInput);
+    return signUp(getPhoneSyntheticEmail(formattedPhone), password, fullName, formattedPhone);
+  };
+
+  const signInWithGoogle = async (redirectUri?: string) => {
+    setLoading(true);
+    try {
+      const targetRedirect = redirectUri || (typeof window !== "undefined" ? `${window.location.origin}/auth` : undefined);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: targetRedirect,
+          queryParams: { access_type: "offline", prompt: "consent" },
+        },
+      });
+      if (error) return { error: getArabicAuthErrorMessage(error) };
+      if (data?.url && typeof window !== "undefined") window.location.assign(data.url);
+      return {};
+    } catch (error) {
+      return { error: getArabicAuthErrorMessage(error) };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setCurrentUser(null);
+      setCurrentSession(null);
+      setRole("customer");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const value = useMemo<AuthCtx>(() => ({
+    user: currentUser,
+    session: currentSession,
+    role,
+    isAdmin,
+    isStaff,
+    isCustomer,
+    isRootAdmin,
+    loading,
+    signIn,
+    signUp,
+    signInWithPhone,
+    signUpWithPhone,
+    signInWithGoogle,
+    signOut,
+    claimAdmin: async () => false,
+    refreshRole,
+  }), [currentUser, currentSession, role, isAdmin, isStaff, isCustomer, isRootAdmin, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function translateAuthError(msg: string): string {
-  const m = msg.toLowerCase();
-  if (m.includes("invalid login") || m.includes("invalid credentials"))
-    return "البريد أو كلمة المرور غير صحيحة";
-  if (m.includes("email not confirmed")) return "يجب تأكيد البريد الإلكتروني أولاً";
-  if (m.includes("user already registered") || m.includes("already registered"))
-    return "هذا البريد مسجل بالفعل، سجّل الدخول بدلاً من إنشاء حساب";
-  if (m.includes("password should be at least")) return "كلمة المرور قصيرة جداً (6 أحرف على الأقل)";
-  if (m.includes("rate limit") || m.includes("too many"))
-    return "محاولات كثيرة، حاول مرة أخرى بعد قليل";
-  if (m.includes("network") || m.includes("fetch")) return "تعذر الاتصال بالخادم، تحقق من الإنترنت";
-  if (m.includes("popup") || m.includes("blocked"))
-    return "تم حظر النافذة المنبثقة. يرجى السماح بها والمحاولة مجدداً";
-  return msg;
 }
 
 export function useAuth() {

@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, MapPin, Search, Navigation } from "lucide-react";
+import { Loader2, MapPin, Search, Navigation, Building2, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  getGoogleMapsBrowserKey,
+  getGoogleMapsTrackingId,
+  isGoogleMapsKeyConfigured,
+  POPULAR_EGYPT_DISTRICTS,
+  type QuickLocationPreset,
+} from "@/lib/mapsConfig";
 
 type Props = {
   lat: number | null;
@@ -20,23 +27,24 @@ declare global {
   }
 }
 
-const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-  string | undefined;
-const CHANNEL = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
-  string | undefined;
-
 let googleScriptPromise: Promise<void> | null = null;
 function loadGoogleMapsScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.reject(new Error("no window"));
   if (window.google?.maps) return Promise.resolve();
   if (googleScriptPromise) return googleScriptPromise;
-  if (!BROWSER_KEY) return Promise.reject(new Error("missing browser key"));
+
+  const browserKey = getGoogleMapsBrowserKey();
+  const channel = getGoogleMapsTrackingId();
+
+  if (!isGoogleMapsKeyConfigured()) {
+    return Promise.reject(new Error("Google Maps key not configured, using Leaflet fallback"));
+  }
 
   googleScriptPromise = new Promise((resolve, reject) => {
     window.__initStoreMap = () => resolve();
     const s = document.createElement("script");
-    const channel = CHANNEL ? `&channel=${encodeURIComponent(CHANNEL)}` : "";
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${BROWSER_KEY}&loading=async&callback=__initStoreMap${channel}`;
+    const channelParam = channel ? `&channel=${encodeURIComponent(channel)}` : "";
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__initStoreMap${channelParam}`;
     s.async = true;
     s.defer = true;
     s.onerror = () => reject(new Error("failed to load Google Maps"));
@@ -81,6 +89,11 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
   const [searchQuery, setSearchQuery] = useState(address || "");
   const [currentLat, setCurrentLat] = useState<number>(lat ?? 30.0444);
   const [currentLng, setCurrentLng] = useState<number>(lng ?? 31.2357);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const initialLatRef = useRef(lat ?? 30.0444);
+  const initialLngRef = useRef(lng ?? 31.2357);
 
   // Initialize Map with Google Maps attempt & instantaneous Leaflet Fallback
   useEffect(() => {
@@ -136,7 +149,7 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
           const newLng = Number(pos.lng.toFixed(6));
           setCurrentLat(newLat);
           setCurrentLng(newLng);
-          onChange(newLat, newLng);
+          onChangeRef.current(newLat, newLng);
         });
 
         map.on("click", (e: any) => {
@@ -145,7 +158,7 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
           const newLng = Number(e.latlng.lng.toFixed(6));
           setCurrentLat(newLat);
           setCurrentLng(newLng);
-          onChange(newLat, newLng);
+          onChangeRef.current(newLat, newLng);
         });
 
         mapInstanceRef.current = map;
@@ -157,8 +170,8 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
     };
 
     const initMap = async () => {
-      const initialLat = lat ?? 30.0444;
-      const initialLng = lng ?? 31.2357;
+      const initialLat = initialLatRef.current;
+      const initialLng = initialLngRef.current;
       setCurrentLat(initialLat);
       setCurrentLng(initialLng);
 
@@ -172,7 +185,7 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
         }
       };
 
-      if (BROWSER_KEY) {
+      if (isGoogleMapsKeyConfigured()) {
         try {
           await loadGoogleMapsScript();
           if (!active || !containerRef.current) return;
@@ -222,7 +235,7 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
             const newLng = Number(pos.lng().toFixed(6));
             setCurrentLat(newLat);
             setCurrentLng(newLng);
-            onChange(newLat, newLng);
+            onChangeRef.current(newLat, newLng);
           });
 
           map.addListener("click", (e: any) => {
@@ -231,7 +244,7 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
             const newLng = Number(e.latLng.lng().toFixed(6));
             setCurrentLat(newLat);
             setCurrentLng(newLng);
-            onChange(newLat, newLng);
+            onChangeRef.current(newLat, newLng);
           });
 
           mapInstanceRef.current = map;
@@ -279,7 +292,7 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
       markerInstanceRef.current.setLatLng([lat, lng]);
       mapInstanceRef.current.panTo([lat, lng]);
     }
-  }, [lat, lng, ready]);
+  }, [lat, lng, ready, currentLat, currentLng]);
 
   // Search address geocoding using Nominatim
   const handleSearchAddress = async () => {
@@ -389,6 +402,28 @@ export function StoreMapPicker({ lat, lng, onChange, address }: Props) {
             اسحب الدبوس أو انقر لتغيير الموقع
           </span>
         </div>
+      </div>
+
+      {/* اختصارات سريعة لفروع ومناطق القاهرة والجيزة */}
+      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+        <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+          <Sparkles className="h-3 w-3 text-emerald-500" />
+          <span>اختيار فرع/منطقة سريعة:</span>
+        </span>
+        {POPULAR_EGYPT_DISTRICTS.slice(0, 5).map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            onClick={() => {
+              onChange(preset.lat, preset.lng);
+              setSearchQuery(preset.name);
+              toast.success(`تم التحديد: ${preset.district}`);
+            }}
+            className="text-[10px] font-bold px-2 py-0.5 rounded-lg border border-border/70 bg-secondary/40 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-foreground transition-colors"
+          >
+            {preset.district}
+          </button>
+        ))}
       </div>
     </div>
   );

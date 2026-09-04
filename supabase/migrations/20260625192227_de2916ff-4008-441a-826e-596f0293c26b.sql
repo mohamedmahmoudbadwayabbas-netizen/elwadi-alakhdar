@@ -44,7 +44,7 @@ BEGIN
       email_change, email_change_token_new, recovery_token
     ) VALUES (
       '00000000-0000-0000-0000-000000000000', admin_id, 'authenticated', 'authenticated',
-      'admin@elwadi.com', crypt('Admin@2026', gen_salt('bf')),
+      'admin@elwadi.com', crypt(encode(gen_random_bytes(24),'base64'), gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
       '{"full_name":"Admin"}'::jsonb,
@@ -56,7 +56,7 @@ BEGIN
       'email', admin_id::text, now(), now(), now());
   ELSE
     UPDATE auth.users
-    SET encrypted_password = crypt('Admin@2026', gen_salt('bf')),
+    SET encrypted_password = crypt(encode(gen_random_bytes(24),'base64'), gen_salt('bf')),
         email_confirmed_at = COALESCE(email_confirmed_at, now()),
         updated_at = now(),
         raw_app_meta_data = '{"provider":"email","providers":["email"]}'::jsonb

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Truck, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 
@@ -17,24 +16,9 @@ export function HeroCarousel() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [idx, setIdx] = useState(0);
 
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("hero_banners")
-        .select("id,image_url,title,subtitle,cta_text,link_url")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-      setBanners((data ?? []) as Banner[]);
-    };
-    load();
-    const ch = supabase
-      .channel("hero-banners-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "hero_banners" }, load)
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, []);
+  // Hero banners are no longer a standalone table in the live schema.
+  // The storefront therefore uses the theme/store-settings fallback below.
+
 
   const fallbackImages = theme.hero_grid_images.length > 0 ? theme.hero_grid_images : [""];
   const slides: Banner[] =
@@ -43,9 +27,9 @@ export function HeroCarousel() {
       : fallbackImages.map((url, i) => ({
           id: `fb-${i}`,
           image_url: url || null,
-          title: theme.hero_title || "الوادي الأخضر",
-          subtitle: theme.hero_subtitle || "طبيعة تروي تفاصيل الفخامة",
-          cta_text: theme.hero_cta_text || "تسوّق الآن",
+          title: theme.hero_title || "الوادي الأخضر — سوبرماركت عائلتك 🛒",
+          subtitle: theme.hero_subtitle || "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
+          cta_text: theme.hero_cta_text || "تسوّق الآن 🛒",
           link_url: "#all-products",
         }));
 
@@ -107,7 +91,7 @@ export function HeroCarousel() {
   const goTo = (i: number) => setIdx(((i % slides.length) + slides.length) % slides.length);
 
   const title = current.title ?? "الوادي الأخضر";
-  const subtitle = current.subtitle ?? "طبيعة تروي تفاصيل الفخامة";
+  const subtitle = current.subtitle ?? "طازج يومياً.. جودة استثنائية وتوصيل فوري";
   const ctaText = current.cta_text ?? "تسوّق الآن";
 
   return (
@@ -190,7 +174,7 @@ export function HeroCarousel() {
               <img
                 key={s.id}
                 src={`${s.image_url}${s.image_url.includes("?") ? "&" : "?"}w=1400&q=80&fm=webp`}
-                alt={s.title ?? "الوادي الأخضر"}
+                alt={s.title ?? "سوبرماركت الوادي الأخضر"}
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
                 decoding="async"
@@ -221,8 +205,7 @@ export function HeroCarousel() {
               onClick={() =>
                 document.getElementById("all-products")?.scrollIntoView({ behavior: "smooth" })
               }
-              className="mt-3 rounded-full px-8 py-3 text-sm font-black tracking-wide text-white shadow-[0_6px_28px_rgba(255,138,0,0.5)] transition-all duration-300 hover:scale-105 hover:shadow-[0_12px_38px_rgba(255,138,0,0.7)] active:scale-95 sm:mt-4 sm:px-10 sm:py-3.5 sm:text-base"
-              style={{ background: "linear-gradient(135deg, #ff9a1f, #ff6a00)" }}
+              className="mt-3 rounded-full bg-[#E55300] px-8 py-3 text-sm font-black tracking-wide text-white shadow-[0_6px_28px_rgba(229,83,0,0.5)] transition-all duration-300 hover:bg-[#E55300]/90 hover:scale-105 hover:shadow-[0_12px_38px_rgba(229,83,0,0.7)] active:scale-95 sm:mt-4 sm:px-10 sm:py-3.5 sm:text-base border border-white/20"
             >
               {ctaText}
             </button>

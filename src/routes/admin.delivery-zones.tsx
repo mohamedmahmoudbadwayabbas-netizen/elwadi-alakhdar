@@ -62,19 +62,42 @@ function ZonesPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("delivery_zones")
-      .select("*")
-      .order("country", { ascending: true })
-      .order("governorate", { ascending: true })
-      .order("city", { ascending: true })
-      .order("area", { ascending: true });
-    if (error) toast.error(error.message);
-    setRows((data as Zone[]) ?? []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("delivery_zones")
+        .select("*")
+        .order("country", { ascending: true })
+        .order("governorate", { ascending: true })
+        .order("city", { ascending: true })
+        .order("area", { ascending: true });
+
+      if (error) {
+        console.warn("[Delivery Zones] Supabase error:", error.message);
+      }
+
+      const result = (data as Zone[]) || [];
+      setRows(result);
+    } catch (err) {
+      console.error("[Delivery Zones] Error loading zones:", err);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   };
+
   useEffect(() => {
     load();
+
+    const channel = supabase
+      .channel("admin-delivery-zones-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_zones" }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const openCreate = () => {
@@ -109,7 +132,8 @@ function ZonesPage() {
       return;
     }
     const displayName = [governorate, city, area].filter(Boolean).join(" — ");
-    const payload = {
+    const payload: Zone = {
+      id: editing ? editing.id : `zone-${Date.now()}`,
       name: displayName || governorate,
       country,
       governorate: governorate || null,
@@ -121,37 +145,32 @@ function ZonesPage() {
       is_active: form.is_active,
       sort_order: form.sort_order ?? 0,
     };
+
     setSaving(true);
-    const { error } = editing
-      ? await (supabase as any).from("delivery_zones").update(payload).eq("id", editing.id)
-      : await (supabase as any).from("delivery_zones").insert(payload);
+    const result = editing
+      ? await supabase.from("delivery_zones").update(payload).eq("id", editing.id)
+      : await supabase.from("delivery_zones").insert(payload);
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(editing ? "تم التحديث" : "تمت الإضافة");
+    if (result.error) return toast.error(`تعذر حفظ منطقة التوصيل: ${result.error.message}`);
+    toast.success(editing ? "تم تحديث منطقة التوصيل بنجاح ✨" : "تمت إضافة منطقة التوصيل بنجاح ✨");
     setOpen(false);
-    load();
+    await load();
   };
 
   const remove = async (id: string) => {
-    if (!confirm("حذف المنطقة؟")) return;
+    if (!confirm("هل أنت متأكد من حذف منطقة التوصيل هذه؟")) return;
     const { error } = await supabase.from("delivery_zones").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("تم الحذف");
-      load();
-    }
+    if (error) return toast.error(`تعذر حذف منطقة التوصيل: ${error.message}`);
+    toast.success("تم حذف منطقة التوصيل بنجاح");
+    await load();
   };
 
   const toggle = async (z: Zone) => {
-    const { error } = await supabase
-      .from("delivery_zones")
-      .update({ is_active: !z.is_active })
-      .eq("id", z.id);
-    if (error) toast.error(error.message);
-    else load();
+    const updated = { ...z, is_active: !z.is_active };
+    const { error } = await supabase.from("delivery_zones").update({ is_active: updated.is_active }).eq("id", z.id);
+    if (error) return toast.error(`تعذر تحديث المنطقة: ${error.message}`);
+    toast.success(updated.is_active ? "تم تفعيل المنطقة" : "تم تعطيل المنطقة");
+    await load();
   };
 
   const filtered = useMemo(() => {

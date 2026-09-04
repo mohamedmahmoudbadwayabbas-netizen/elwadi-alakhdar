@@ -1,4 +1,7 @@
+import { SITE_URL } from "@/lib/brand";
 import { NumberInput } from "@/components/ui/number-input";
+import { WeightSelector } from "@/components/storefront/WeightSelector";
+import { formatWeightLabel, calculateEstimatedPrice } from "@/lib/cart-context";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +22,6 @@ import {
   Award,
   Package,
   ChevronLeft,
-  Heart,
   Share2,
   Truck,
   ShieldCheck,
@@ -45,21 +47,15 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { ProductPageSkeleton } from "@/components/storefront/Skeletons";
+import { ProductStatsAndTip } from "@/components/storefront/ProductStatsAndTip";
+import { extractProductDetails } from "@/lib/product-metadata";
 import { flyToCart } from "@/lib/fly-to-cart";
-import { MOCK_PRODUCTS } from "@/lib/categories-data";
-import { autoSeedDatabaseIfNeeded } from "@/lib/auto-seed";
 import { motion, AnimatePresence } from "motion/react";
+import { useStoreProduct, useStoreProducts } from "@/lib/store-data-hooks";
+import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
 
 // ─── الأنواع ───────────────────────────────────────────────────────────────────
-type Review = {
-  id: string;
-  product_id: string;
-  author_name: string;
-  rating: number;
-  comment: string;
-  created_at: string;
-  verified?: boolean;
-};
+
 
 // 📍 إحداثيات موقع متجرك الثابت (قم بتغييرها لتطابق موقع السوبرماركت الفعلي)
 const STORE_LAT = 30.0444;
@@ -80,6 +76,64 @@ const DELIVERY_ZONES = [
 const WEIGHT_PRESETS = [0.25, 0.5, 1, 2];
 
 export const Route = createFileRoute("/products/$productId")({
+  loader: async ({ params }) => {
+    const { data } = await supabase
+      .from("products")
+      .select("name,description,image_url,price")
+      .eq("id", params.productId)
+      .maybeSingle();
+    return { seo: data ?? null };
+  },
+  head: ({ params, loaderData }) => {
+    const url = `${SITE_URL}/products/${params.productId}`;
+    const p = loaderData?.seo;
+    const name = p?.name ?? "منتج";
+    const title = `${name} — سوبرماركت الوادي الأخضر`.slice(0, 60);
+    const description = (
+      p?.description?.trim() ||
+      `اشترِ ${name} طازجًا من سوبرماركت الوادي الأخضر بأفضل سعر مع توصيل سريع لباب بيتك.`
+    ).slice(0, 158);
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "product" },
+        { property: "og:url", content: url },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        ...(p?.image_url?.startsWith("https://")
+          ? [
+              { property: "og:image", content: p.image_url },
+              { name: "twitter:image", content: p.image_url },
+            ]
+          : []),
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: p
+        ? [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "Product",
+                name: p.name,
+                description,
+                ...(p.image_url ? { image: p.image_url } : {}),
+                offers: {
+                  "@type": "Offer",
+                  price: p.price,
+                  priceCurrency: "EGP",
+                  availability: "https://schema.org/InStock",
+                  url,
+                },
+              }),
+            },
+          ]
+        : [],
+    };
+  },
   component: ProductPage,
 });
 
@@ -138,38 +192,14 @@ function Stars({
 }
 
 // ─── ملخص التقييمات ───────────────────────────────────────────────────────────
-function RatingSummary({ reviews }: { reviews: Review[] }) {
-  if (reviews.length === 0) return null;
-  const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-  const counts = [5, 4, 3, 2, 1].map((star) => ({
-    star,
-    count: reviews.filter((r) => r.rating === star).length,
-    pct: Math.round((reviews.filter((r) => r.rating === star).length / reviews.length) * 100),
-  }));
+function RatingSummary({ rating, count }: { rating: number | null | undefined; count: number | null | undefined }) {
+  if (!count) return null;
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-      <h3 className="mb-4 text-base font-bold">ملخص التقييمات</h3>
-      <div className="flex gap-6">
-        <div className="flex flex-col items-center justify-center gap-1 min-w-[80px]">
-          <div className="font-display text-5xl font-black text-primary">{avg.toFixed(1)}</div>
-          <Stars value={avg} size="sm" />
-          <div className="text-xs text-muted-foreground">{reviews.length} تقييم</div>
-        </div>
-        <div className="flex-1 space-y-1.5">
-          {counts.map(({ star, count, pct }) => (
-            <div key={star} className="flex items-center gap-2">
-              <span className="min-w-[12px] text-xs text-muted-foreground">{star}</span>
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
-              <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-amber-400 transition-all duration-700"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <span className="min-w-[24px] text-xs text-muted-foreground text-end">{count}</span>
-            </div>
-          ))}
-        </div>
+      <h3 className="mb-3 text-base font-bold">تقييم المنتج</h3>
+      <div className="flex items-center gap-3">
+        <div className="font-display text-4xl font-black text-primary">{Number(rating ?? 0).toFixed(1)}</div>
+        <div><Stars value={Number(rating ?? 0)} size="sm" /><div className="text-xs text-muted-foreground">{count} تقييمات مسجلة</div></div>
       </div>
     </div>
   );
@@ -181,135 +211,44 @@ function ProductPage() {
   const { addItem } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<Product | null>(null);
+
+  // Instant cached query
+  const { data: cachedProduct, isLoading: isProdLoading } = useStoreProduct(productId);
+  const { data: allStoreProducts } = useStoreProducts();
+
+  const initialProd =
+    cachedProduct ??
+    (allStoreProducts?.find((p) => p.id === productId) || null);
+
+  const [product, setProduct] = useState<Product | null>(initialProd);
   const [similar, setSimilar] = useState<Product[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [qty, setQty] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [qty, setQty] = useState(() => (initialProd?.is_by_weight ? 0.5 : 1));
+  const [images, setImages] = useState<string[]>(() =>
+    initialProd?.image_url ? [initialProd.image_url] : [],
+  );
 
-  // المفضلة عبر قاعدة البيانات
-  const [wishlistRowId, setWishlistRowId] = useState<string | null>(null);
-  const wished = !!wishlistRowId;
-
-  // 🔀 دمج الميزتين: تتبع المسافة الحالية والتوصيل المتوقع ونوع الحساب
-  const [deliveryMethod, setDeliveryMethod] = useState<"manual" | "gps">(() => {
-    if (typeof window === "undefined") return "manual";
-    return (localStorage.getItem("delivery_method") as "manual" | "gps") || "manual";
-  });
-  const [selectedZone, setSelectedZone] = useState(() => {
-    if (typeof window === "undefined") return "near";
-    return localStorage.getItem("user_delivery_zone") || "near";
-  });
-  const [calculatedDistanceKM, setCalculatedDistanceKM] = useState<number | null>(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("calculated_distance");
-    return saved ? parseFloat(saved) : null;
-  });
-  const [isDetecting, setIsDetecting] = useState(false);
-
-  const [images, setImages] = useState<string[]>([]);
-  const [activeImg, setActiveImg] = useState(0);
-  const [zoomed, setZoomed] = useState(false);
-
-  const [authorName, setAuthorName] = useState("");
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"desc" | "specs" | "nutrition">("desc");
-  const [selectedStarFilter, setSelectedStarFilter] = useState<number | null>(null);
-
-  // العد التنازلي للتوصيل اليومي السريع
-  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
-    hours: 2,
-    minutes: 45,
-    seconds: 0,
-  });
-
-  const addBtnRef = useRef<HTMLDivElement>(null);
-  const mainImgRef = useRef<HTMLImageElement>(null);
-  const [showSticky, setShowSticky] = useState(false);
-
-  // حاسبة العد التنازلي للتسليم اليومي
+  // Sync cached product instantly
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return { hours: 3, minutes: 0, seconds: 0 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (cachedProduct) {
+      setProduct(cachedProduct);
+      setQty(cachedProduct.is_by_weight ? 0.5 : 1);
+      setImages(cachedProduct.image_url ? [cachedProduct.image_url] : []);
+      setLoading(false);
 
-  const handleShare = async () => {
-    const shareData = {
-      title: product?.name || "منتج متميز",
-      text: `تسوق ${product?.name} بسعر رائع من متجرنا!`,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // تم إلغاء المشاركة بواسطة المستخدم
+      if (allStoreProducts && cachedProduct.category_id) {
+        const simList = allStoreProducts
+          .filter((p) => p.category_id === cachedProduct.category_id && p.id !== productId)
+          .slice(0, 6);
+        setSimilar(simList);
       }
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      toast.success("تم نسخ رابط المنتج إلى الحافظة 📋");
-      setTimeout(() => setCopied(false), 2500);
     }
-  };
-
-  // تحميل المفضلة من قاعدة البيانات للمستخدم المسجل
-  useEffect(() => {
-    if (!user) {
-      setWishlistRowId(null);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from("wishlists")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("product_id", productId)
-        .maybeSingle();
-      setWishlistRowId(data?.id ?? null);
-    })();
-  }, [user, productId]);
-
-  // تفعيل/إلغاء المفضلة (مرتبطة بحساب المستخدم)
-  const toggleWishlist = async () => {
-    if (!user) {
-      toast.error("سجّل الدخول لإضافة المنتج للمفضلة");
-      navigate({ to: "/auth", search: { next: undefined } });
-      return;
-    }
-    if (wishlistRowId) {
-      const { error } = await supabase.from("wishlists").delete().eq("id", wishlistRowId);
-      if (error) return toast.error(error.message);
-      setWishlistRowId(null);
-      toast.info("تمت الإزالة من المفضلة");
-    } else {
-      const { data, error } = await supabase
-        .from("wishlists")
-        .insert({ user_id: user.id, product_id: productId })
-        .select("id")
-        .single();
-      if (error) return toast.error(error.message);
-      setWishlistRowId(data!.id);
-      toast.success("تمت الإضافة للمفضلة ❤️");
-    }
-  };
+  }, [cachedProduct, allStoreProducts, productId]);
 
   // تغيير المنطقة يدوياً
   const handleZoneChange = (zoneId: string) => {
     setSelectedZone(zoneId);
     setDeliveryMethod("manual");
-    localStorage.setItem("delivery_method", "manual");
-    localStorage.setItem("user_delivery_zone", zoneId);
     toast.success("تم تحديث وقت التوصيل حسب المنطقة المختارة يدوياً");
   };
 
@@ -329,8 +268,6 @@ function ProductPage() {
         setCalculatedDistanceKM(distance);
         setDeliveryMethod("gps");
         setIsDetecting(false);
-        localStorage.setItem("delivery_method", "gps");
-        localStorage.setItem("calculated_distance", distance.toString());
         toast.success(`تم تحديد موقعك بنجاح! المسافة للمتجر: ${distance.toFixed(1)} كم`);
       },
       (error) => {
@@ -363,125 +300,22 @@ function ProductPage() {
     return () => observer.disconnect();
   }, [product]);
 
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      setLoading(true);
 
-      // Auto seed if database has no products
-      autoSeedDatabaseIfNeeded();
 
-      const [{ data: prod }, { data: revs }] = await Promise.all([
-        supabase.from("products").select("*").eq("id", productId).maybeSingle(),
-        supabase
-          .from("reviews")
-          .select("*")
-          .eq("product_id", productId)
-          .order("created_at", { ascending: false }),
-      ]);
-      if (!isMounted) return;
-
-      let foundProd = prod as Product | null;
-      if (!foundProd) {
-        // Fallback to MOCK_PRODUCTS if DB entry doesn't exist yet
-        const mockMatch = MOCK_PRODUCTS.find((m) => m.id === productId);
-        if (mockMatch) {
-          foundProd = {
-            id: mockMatch.id,
-            name: mockMatch.name,
-            description: mockMatch.description || null,
-            category_id: mockMatch.category_id || null,
-            price_per_unit: mockMatch.price_per_unit,
-            old_price: mockMatch.old_price || null,
-            image_url: mockMatch.image_url || null,
-            unit_label: mockMatch.unit_label || "قطعة",
-            is_by_weight: !!mockMatch.is_by_weight,
-            stock_quantity: mockMatch.stock_quantity ?? 100,
-          } as Product;
-        }
-      }
-
-      if (foundProd) {
-        setProduct(foundProd);
-        setQty(foundProd.is_by_weight ? 0.5 : 1);
-        setImages(foundProd.image_url ? [foundProd.image_url] : []);
-
-        if (foundProd.category_id) {
-          const { data: sim } = await supabase
-            .from("products")
-            .select("*")
-            .eq("category_id", foundProd.category_id)
-            .neq("id", productId)
-            .limit(6);
-
-          if (isMounted) {
-            let list = (sim ?? []) as Product[];
-            if (list.length === 0) {
-              list = MOCK_PRODUCTS.filter(
-                (m) => m.category_id === foundProd?.category_id && m.id !== productId,
-              ) as unknown as Product[];
-            }
-            setSimilar(list);
-          }
-        }
-      }
-
-      if (isMounted) {
-        setReviews((revs ?? []) as Review[]);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [productId]);
-
-  if (loading) return <ProductPageSkeleton />;
-  if (!product) return <div className="text-center py-20">المنتج غير موجود</div>;
+  if (!product && isProdLoading) return <ProductPageSkeleton />;
+  if (!product)
+    return (
+      <div className="text-center py-20 font-bold text-muted-foreground">
+        المنتج غير موجود أو جارٍ تحميله...
+      </div>
+    );
 
   const outOfStock = (product.stock_quantity ?? 1) <= 0;
   const step = product.is_by_weight ? 0.25 : 1;
   const min = product.is_by_weight ? 0.25 : 1;
   const totalCost = lineSubtotal(product, qty).toFixed(2);
 
-  async function submitReview() {
-    if (!user) {
-      toast.error("يجب تسجيل الدخول لإضافة تقييم");
-      navigate({ to: "/auth", search: { next: undefined } });
-      return;
-    }
-    if (!comment.trim()) {
-      toast.error("يرجى كتابة تعليقك");
-      return;
-    }
-    setSubmitting(true);
-    const userMetadata = user.user_metadata as Record<string, string> | undefined;
-    const displayName =
-      authorName.trim() ||
-      userMetadata?.full_name ||
-      user.email?.split("@")[0] ||
-      "عميل";
-    const { data, error } = await supabase
-      .from("reviews")
-      .insert({
-        product_id: productId,
-        user_id: user.id,
-        author_name: displayName,
-        rating,
-        comment: comment.trim(),
-      })
-      .select()
-      .single();
-    setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setReviews((prev) => [data as Review, ...prev]);
-    setAuthorName("");
-    setComment("");
-    toast.success("تمت إضافة تقييمك بنجاح");
-  }
+
 
   return (
     <div className="min-h-screen bg-background pb-28" dir="rtl">
@@ -574,13 +408,22 @@ function ProductPage() {
               <div className="grid h-full w-full place-items-center text-6xl">🌿</div>
             )}
 
-            {/* شارات الجودة والتخفيض ─── */}
+            {/* شارات الجودة والتخفيض والأكثر مبيعاً ─── */}
             <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
-              {product.original_price && product.original_price > product.price && (
+              {Boolean(
+                (product as any).isTopSeller ||
+                (product as any).is_top_seller ||
+                product.is_featured,
+              ) && (
+                <span className="rounded-full bg-amber-500 text-white font-black text-[11px] px-3 py-1 shadow-md flex items-center gap-1">
+                  <Flame className="h-3.5 w-3.5" /> الأكثر مبيعاً
+                </span>
+              )}
+              {product.old_price && product.old_price > product.price_per_unit && (
                 <span className="rounded-full bg-red-500 text-white font-black text-[11px] px-3 py-1 shadow-md">
                   خصم{" "}
                   {Math.round(
-                    ((product.original_price - product.price) / product.original_price) * 100,
+                    ((product.old_price - product.price_per_unit) / product.old_price) * 100,
                   )}
                   %
                 </span>
@@ -642,7 +485,7 @@ function ProductPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
-                {product.unit ? `يباع بـ: ${product.unit}` : "منتج فاخر"}
+                {product.unit_label ? `يباع بـ: ${product.unit_label}` : "منتج فاخر"}
               </span>
               <h1 className="mt-2 text-2xl font-black text-foreground">{product.name}</h1>
             </div>
@@ -650,158 +493,208 @@ function ProductPage() {
               <div className="font-display text-3xl font-black text-primary">
                 {totalCost} <span className="text-sm font-bold text-muted-foreground">ج.م</span>
               </div>
-              {product.original_price && product.original_price > product.price && (
+              {product.old_price && product.old_price > product.price_per_unit && (
                 <div className="text-xs text-muted-foreground line-through font-bold">
-                  {(product.original_price * (product.is_by_weight ? qty : 1)).toFixed(2)} ج.م
+                  {(product.old_price * (product.is_by_weight ? qty : 1)).toFixed(2)} ج.م
                 </div>
               )}
             </div>
           </div>
 
-          {/* مؤشرات الشراء والتقييم والسعادة ─── */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-xl">
-              <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-              <span>4.9</span>
-              <span className="text-muted-foreground font-normal">
-                ({reviews.length || 18} تقييم)
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-emerald-600 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-xl">
-              <Eye className="h-3.5 w-3.5" />
-              <span>يشاهده 14 شخصاً الآن</span>
-            </div>
-          </div>
-
           {/* تأثير الـ FOMO للمخزون المتبقي */}
           {!outOfStock && product.stock_quantity && product.stock_quantity <= 5 && (
-            <div className="rounded-xl bg-orange-500/10 p-3 border border-orange-500/20 text-center animate-pulse">
-              <p className="text-xs font-bold text-orange-600 flex items-center justify-center gap-1.5">
-                <Flame className="h-4 w-4 text-orange-600" />
+            <div className="rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 text-center">
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1.5">
+                <Flame className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 متبقي {product.stock_quantity} قطع فقط في المخزون! اطلب قبل نفاذ الكمية.
               </p>
             </div>
           )}
         </div>
 
-        {/* ─── تبويبات تفاصيل المنتج التفاعلية (الوصف / التخزين / الجودة) ─── */}
-        <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 border-b pb-3">
-            <button
-              onClick={() => setActiveTab("desc")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === "desc"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
-              )}
-            >
-              <Info className="h-3.5 w-3.5" />
-              الوصف والخصائص
-            </button>
-            <button
-              onClick={() => setActiveTab("specs")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === "specs"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
-              )}
-            >
-              <Thermometer className="h-3.5 w-3.5" />
-              التخزين والمصدر
-            </button>
-            <button
-              onClick={() => setActiveTab("nutrition")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === "nutrition"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
-              )}
-            >
-              <Utensils className="h-3.5 w-3.5" />
-              القيمة الغذائية
-            </button>
-          </div>
+        {/* استخراج كافة بيانات المنتج والذكاء الاصطناعي */}
+        {(() => {
+          const details = extractProductDetails(product);
+          return (
+            <>
+              {/* ─── مكون إحصاءات المنتج والمشاهدات والمشترين ونظرة الشيف والطبخ ─── */}
+              <ProductStatsAndTip
+                viewsCount={(product as any).viewsCount ?? (product as any).views_count ?? 0}
+                purchaseCount={(product as any).purchaseCount ?? (product as any).purchase_count ?? 0}
+                avgRating={product.avg_rating ?? 0}
+                reviewsCount={product.reviews_count ?? 0}
+                cookingTip={details.cookingTip || (product as any).cooking_tip || null}
+                isTopSeller={Boolean(
+                  (product as any).isTopSeller ?? (product as any).is_top_seller ?? product.is_featured,
+                )}
+              />
 
-          <div className="min-h-[80px]">
-            {activeTab === "desc" && (
-              <div className="space-y-2 animate-in fade-in duration-200">
-                <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
-                  {product.description && product.description.trim().length > 0
-                    ? product.description
-                    : "منتج طازج عالي الجودة مختار بعناية فائقة ليلبي احتياجات أسرتك اليومية بأعلى معايير السلامة والنظافة."}
-                </p>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 px-2.5 py-1 text-[11px] font-bold">
-                    <Leaf className="h-3 w-3" /> طازج 100%
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 text-blue-600 px-2.5 py-1 text-[11px] font-bold">
-                    <ShieldCheck className="h-3 w-3" /> بدون مواد حافظة
-                  </span>
+              {/* ─── تبويبات تفاصيل المنتج التفاعلية (الوصف / التخزين / الجودة / التغذية) ─── */}
+              <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b pb-3 overflow-x-auto no-scrollbar">
+                  <button
+                    onClick={() => setActiveTab("desc")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                      activeTab === "desc"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                    الوصف والخصائص
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("specs")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                      activeTab === "specs"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Thermometer className="h-3.5 w-3.5" />
+                    التخزين والمصدر
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("nutrition")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                      activeTab === "nutrition"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <Utensils className="h-3.5 w-3.5" />
+                    القيمة الغذائية
+                  </button>
+                </div>
+
+                <div className="min-h-[80px]">
+                  {activeTab === "desc" && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
+                        {details.cleanDescription && details.cleanDescription.trim().length > 0
+                          ? details.cleanDescription
+                          : "منتج طازج عالي الجودة مختار بعناية فائقة ليلبي احتياجات أسرتك اليومية بأعلى معايير السلامة والنظافة."}
+                      </p>
+
+                      {/* مميزات وخصائص المنتج */}
+                      {details.characteristics.length > 0 && (
+                        <div className="pt-1 space-y-1.5">
+                          <div className="text-[11px] font-bold text-foreground">أبرز الخصائص والمميزات:</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {details.characteristics.map((char, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 text-xs text-foreground/90 bg-secondary/30 p-2 rounded-xl border border-border/40"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span className="font-semibold text-[11px]">{char}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* الوسوم والشارات */}
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 text-[11px] font-bold">
+                          <Leaf className="h-3 w-3" /> طازج 100%
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2.5 py-1 text-[11px] font-bold">
+                          <ShieldCheck className="h-3 w-3" /> جودة مضمونة
+                        </span>
+                        {details.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 rounded-lg bg-secondary text-muted-foreground px-2 py-0.5 text-[10px] font-bold"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === "specs" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs animate-in fade-in duration-200">
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">
+                          المصدر وبلد المنشأ
+                        </div>
+                        <div className="font-bold flex items-center gap-1.5 text-foreground">
+                          <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>{details.originSource || "مزارع محلية طازجة معتمدة"}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">
+                          طريقة الحفظ والتخزين المثالية
+                        </div>
+                        <div className="font-bold flex items-center gap-1.5 text-foreground">
+                          <Thermometer className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>{details.storageInstructions || "يُحفظ في درجة حرارة 2 - 4°C"}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">
+                          التعبئة والتغليف
+                        </div>
+                        <div className="font-bold text-foreground">عبوة آمنة ومفرغة من الهواء لضمان الجودة</div>
+                      </div>
+                      <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
+                        <div className="text-muted-foreground text-[10px] font-bold">مدة الصلاحية</div>
+                        <div className="font-bold text-foreground">أسبوع من تاريخ الاستلام والتجهيز</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === "nutrition" && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span>الحقائق والقيمة الغذائية (لكل 100 جرام):</span>
+                        <span className="text-[10px] text-muted-foreground font-semibold">تقدير معتمد</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                        <div className="rounded-xl border bg-amber-500/10 border-amber-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">سعرات</div>
+                          <div className="font-black text-amber-600 dark:text-amber-400">
+                            {details.nutritionalInfo.calories || "52 kcal"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-emerald-500/10 border-emerald-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">بروتين</div>
+                          <div className="font-black text-emerald-600 dark:text-emerald-400">
+                            {details.nutritionalInfo.protein || "1.2 جم"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-blue-500/10 border-blue-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">كربوهيدرات</div>
+                          <div className="font-black text-blue-600 dark:text-blue-400">
+                            {details.nutritionalInfo.carbs || "14 جم"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-purple-500/10 border-purple-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">ألياف</div>
+                          <div className="font-black text-purple-600 dark:text-purple-400">
+                            {details.nutritionalInfo.fiber || "2.4 جم"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border bg-rose-500/10 border-rose-500/20 p-2.5">
+                          <div className="text-[10px] text-muted-foreground font-bold">دهون</div>
+                          <div className="font-black text-rose-600 dark:text-rose-400">
+                            {details.nutritionalInfo.fats || "0.4 جم"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-
-            {activeTab === "specs" && (
-              <div className="grid grid-cols-2 gap-3 text-xs animate-in fade-in duration-200">
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">
-                    بلد المنشأ / المصدر
-                  </div>
-                  <div className="font-bold flex items-center gap-1 text-foreground">
-                    <Globe className="h-3.5 w-3.5 text-primary" /> مزارع محلية طازجة
-                  </div>
-                </div>
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">
-                    طريقة التخزين المثالية
-                  </div>
-                  <div className="font-bold flex items-center gap-1 text-foreground">
-                    <Thermometer className="h-3.5 w-3.5 text-primary" /> يُحفظ في درجة حرارة 2 - 4°C
-                  </div>
-                </div>
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">
-                    التعبئة والتغليف
-                  </div>
-                  <div className="font-bold text-foreground">عبوة آمنة ومفرغة من الهواء</div>
-                </div>
-                <div className="rounded-xl border bg-secondary/20 p-3 space-y-1">
-                  <div className="text-muted-foreground text-[10px] font-bold">مدة الصلاحية</div>
-                  <div className="font-bold text-foreground">أسبوع من تاريخ الاستلام</div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "nutrition" && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                <div className="text-xs font-bold text-foreground">
-                  القيمة الغذائية الملاحظة (لكل 100 جرام):
-                </div>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div className="rounded-xl border bg-amber-500/10 border-amber-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">سعرات</div>
-                    <div className="font-black text-amber-600">52 kcal</div>
-                  </div>
-                  <div className="rounded-xl border bg-emerald-500/10 border-emerald-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">بروتين</div>
-                    <div className="font-black text-emerald-600">1.2 جم</div>
-                  </div>
-                  <div className="rounded-xl border bg-blue-500/10 border-blue-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">كربوهيدرات</div>
-                    <div className="font-black text-blue-600">14 جم</div>
-                  </div>
-                  <div className="rounded-xl border bg-purple-500/10 border-purple-500/20 p-2.5">
-                    <div className="text-[10px] text-muted-foreground font-bold">ألياف</div>
-                    <div className="font-black text-purple-600">2.4 جم</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+            </>
+          );
+        })()}
 
         {/* ─── ميزات الخدمة وحساب وقت التوصيل الديناميكي المدمج ─── */}
         <div className="grid grid-cols-3 gap-2">
@@ -867,48 +760,24 @@ function ProductPage() {
               ))}
             </select>
           </div>
+
+          {/* خريطة وتغطية Google Maps للمنتج */}
+          <StoreGoogleMapsWidget
+            title="تغطية التوصيل وموقع المتجر المباشر"
+            subtitle={`التوصيل السريع لمنتج ${product.name} إلى موقعك`}
+            storeName="المركز الرئيسي - سوبرماركت الوادي الأخضر"
+            showAiGrounding={true}
+          />
         </div>
 
-        {/* ─── أوزان وكميات الشراء ─── */}
+        {/* ─── أوزان وكميات الشراء (Variable Weight Selector: 250g, 500g, 750g, 1kg, 1.5kg) ─── */}
         {product.is_by_weight && (
-          <div className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
-            <div className="text-xs font-bold">اختر الوزن المطلـوب:</div>
-            <div className="grid grid-cols-4 gap-2">
-              {WEIGHT_PRESETS.map((w) => (
-                <button
-                  key={w}
-                  onClick={() => setQty(w)}
-                  className={cn(
-                    "rounded-xl border py-2.5 text-xs font-bold transition-all",
-                    qty === w
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm scale-105"
-                      : "bg-secondary/30 hover:bg-secondary",
-                  )}
-                >
-                  {w >= 1 ? `${w} كجم` : `${w * 1000} جم`}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-1.5 pt-2 border-t">
-              <label className="text-[11px] font-bold text-muted-foreground">
-                أو أدخل وزناً مخصصاً (بالجرام):
-              </label>
-              <div className="flex gap-2">
-                <NumberInput
-                  decimal={false}
-                  placeholder="مثال: 350"
-                  className="flex-1 min-w-0 rounded-xl border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:border-primary"
-                  onValueChange={(v) => {
-                    const grams = parseFloat(v);
-                    if (!isNaN(grams) && grams > 0) setQty(+(grams / 1000).toFixed(3));
-                  }}
-                />
-                <div className="grid place-items-center rounded-xl bg-secondary/40 px-3 text-[11px] font-bold text-muted-foreground shrink-0">
-                  {Math.round(qty * 1000)} جم
-                </div>
-              </div>
-            </div>
-          </div>
+          <WeightSelector
+            product={product}
+            selectedWeight={qty}
+            onWeightChange={(w) => setQty(w)}
+            showEstimatedPrice={true}
+          />
         )}
 
         {/* ─── زر إضافة السلة + شراء فوري ─── */}
@@ -938,21 +807,35 @@ function ProductPage() {
             <Button
               disabled={outOfStock}
               onClick={() => {
-                addItem(product, qty);
+                const label = product.is_by_weight ? formatWeightLabel(qty) : `${qty} قطعة`;
+                addItem(product, qty, {
+                  selected_weight: product.is_by_weight ? qty : undefined,
+                  selected_weight_label: product.is_by_weight ? label : undefined,
+                });
                 flyToCart(mainImgRef.current);
-                toast.success("تمت الإضافة للسلة 🛒");
+                toast.success("تمت الإضافة للسلة 🛒", {
+                  description: `${product.name} (${label} — ${calculateEstimatedPrice(product, qty)} ج.م)`,
+                });
               }}
               variant="outline"
               className="flex-1 h-11 rounded-xl font-bold text-xs"
             >
               <ShoppingBag className="me-2 h-4 w-4" />{" "}
-              {outOfStock ? "نفدت الكمية" : "أضف إلى السلة"}
+              {outOfStock
+                ? "نفدت الكمية"
+                : product.is_by_weight
+                  ? `أضف للسلة (${formatWeightLabel(qty)})`
+                  : "أضف إلى السلة"}
             </Button>
           </div>
           <Button
             disabled={outOfStock}
             onClick={() => {
-              addItem(product, qty);
+              const label = product.is_by_weight ? formatWeightLabel(qty) : `${qty} قطعة`;
+              addItem(product, qty, {
+                selected_weight: product.is_by_weight ? qty : undefined,
+                selected_weight_label: product.is_by_weight ? label : undefined,
+              });
               navigate({ to: "/cart" });
             }}
             className="w-full h-11 rounded-xl hero-gradient font-black text-sm text-primary-foreground shadow-md"
@@ -961,126 +844,7 @@ function ProductPage() {
           </Button>
         </div>
 
-        {/* ─── نموذج التعليقات والآراء مع الفلاتر ─── */}
-        <div className="space-y-4 pt-2">
-          <RatingSummary reviews={reviews} />
-
-          {reviews.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                <h3 className="text-sm font-bold">آراء العملاء ({reviews.length})</h3>
-                {/* فلاتر النجوم */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-1">
-                  <button
-                    onClick={() => setSelectedStarFilter(null)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0",
-                      selectedStarFilter === null
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary/60 text-muted-foreground",
-                    )}
-                  >
-                    الكل
-                  </button>
-                  {[5, 4, 3, 2, 1].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSelectedStarFilter(selectedStarFilter === s ? null : s)}
-                      className={cn(
-                        "flex items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0",
-                        selectedStarFilter === s
-                          ? "bg-amber-500 text-white"
-                          : "bg-secondary/60 text-muted-foreground",
-                      )}
-                    >
-                      <span>{s}</span>
-                      <Star className="h-3 w-3 fill-current" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2.5">
-                {reviews
-                  .filter((r) => selectedStarFilter === null || r.rating === selectedStarFilter)
-                  .map((r) => (
-                    <div key={r.id} className="rounded-2xl border bg-card p-4 shadow-sm space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-xs font-black text-primary shrink-0">
-                            {r.author_name?.trim().charAt(0) || "؟"}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold truncate">
-                                {r.author_name || "زائر"}
-                              </span>
-                              <span className="inline-flex items-center gap-0.5 text-[9px] bg-emerald-500/10 text-emerald-600 px-1.5 py-0.2 rounded font-bold">
-                                <CheckCircle2 className="h-2.5 w-2.5" /> مشتري مؤكد
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground">
-                              {new Date(r.created_at).toLocaleDateString("ar-EG", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                        <Stars value={r.rating} size="sm" />
-                      </div>
-                      {r.comment && (
-                        <p className="text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
-                          {r.comment}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {user ? (
-            <div className="rounded-2xl border bg-card p-5 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold">شاركنا رأيك بالمنتج</h3>
-              <input
-                type="text"
-                value={authorName}
-                onChange={(e) => setAuthorName(e.target.value)}
-                placeholder="الاسم المعروض (اختياري)"
-                className="w-full rounded-xl border bg-background px-3 py-2 text-xs focus:outline-none focus:border-primary"
-              />
-              <Stars value={rating} interactive={true} size="lg" onChange={setRating} />
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="اكتب تجربتك هنا..."
-                rows={3}
-                className="w-full rounded-xl border bg-background px-3 py-2 text-xs focus:outline-none focus:border-primary resize-none"
-              />
-              <Button
-                onClick={submitReview}
-                disabled={submitting}
-                className="w-full h-9 rounded-xl font-bold text-xs"
-              >
-                {submitting ? "جاري الإرسال..." : "إرسال التقييم"}
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-2xl border bg-card p-5 shadow-sm text-center space-y-3">
-              <p className="text-xs text-muted-foreground">
-                سجّل الدخول لتشارك تقييمك ورأيك بالمنتج
-              </p>
-              <Button
-                onClick={() => navigate({ to: "/auth", search: { next: undefined } })}
-                className="w-full h-9 rounded-xl hero-gradient font-bold text-xs text-primary-foreground"
-              >
-                تسجيل الدخول لكتابة تقييم
-              </Button>
-            </div>
-          )}
-        </div>
+        <RatingSummary rating={product.avg_rating} count={product.reviews_count} />
 
         {/* ─── منتجات قد تعجبك ─── */}
         {similar.length > 0 && (

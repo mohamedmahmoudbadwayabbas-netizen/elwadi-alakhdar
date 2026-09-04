@@ -11,125 +11,41 @@ export type CouponValidationResult = {
 };
 
 /**
- * Validates a coupon code against Supabase rules & current cart total
+ * Coupon validation is delegated to the live validate_coupon RPC so the client
+ * never invents first-order/usage rules or trusts mutable client-side fields.
  */
 export async function validateCouponCode(
   code: string,
   cartTotal: number,
-  isFirstOrder: boolean = false,
+  _isFirstOrder = false,
 ): Promise<CouponValidationResult> {
   const cleanCode = code.trim().toUpperCase();
-
-  if (!cleanCode) {
-    return {
-      isValid: false,
-      discountAmount: 0,
-      discountType: "percent",
-      discountValue: 0,
-      message: "يرجى إدخال كود الخصم أولاً",
-    };
-  }
+  if (!cleanCode) return { isValid: false, discountAmount: 0, discountType: "percent", discountValue: 0, message: "يرجى إدخال كود الخصم أولاً" };
 
   try {
-    const { data: coupon, error } = await supabase
-      .from("coupons")
-      .select("*")
-      .eq("code", cleanCode)
-      .maybeSingle();
-
-    if (error || !coupon) {
-      return {
-        isValid: false,
-        discountAmount: 0,
-        discountType: "percent",
-        discountValue: 0,
-        message: "كود الخصم غير صحيح أو غير موجود",
+    const { data, error } = await supabase.rpc("validate_coupon", {
+      p_code: cleanCode,
+      p_subtotal: Number(cartTotal),
+    });
+    if (error) {
+      const messages: Record<string, string> = {
+        INVALID_CODE: "كود الخصم غير صحيح أو غير موجود",
+        EXPIRED: "انتهت صلاحية كود الخصم هذا",
+        EXHAUSTED: "تجاوز هذا الكوبون الحد الأقصى للمرات المسموحة للاستخدام",
+        MIN_ORDER: "الحد الأدنى لتفعيل هذا الكوبون غير مستوفى",
       };
+      const key = Object.keys(messages).find((k) => error.message?.includes(k));
+      return { isValid: false, discountAmount: 0, discountType: "percent", discountValue: 0, message: key ? messages[key] : `تعذر التحقق من الكوبون: ${error.message}` };
     }
 
-    const discountType = (coupon.discount_type as "fixed" | "percent") || "percent";
+    const coupon = data?.[0];
+    if (!coupon) return { isValid: false, discountAmount: 0, discountType: "percent", discountValue: 0, message: "كود الخصم غير متاح" };
 
-    if (!coupon.is_active) {
-      return {
-        isValid: false,
-        discountAmount: 0,
-        discountType,
-        discountValue: coupon.discount_value || 0,
-        message: "كود الخصم غير مفعّل حالياً",
-      };
-    }
-
-    // Check expiration date
-    if (coupon.expires_at) {
-      const expiryDate = new Date(coupon.expires_at);
-      if (expiryDate < new Date()) {
-        return {
-          isValid: false,
-          discountAmount: 0,
-          discountType,
-          discountValue: coupon.discount_value || 0,
-          message: "انتهت صلاحية كود الخصم هذا",
-        };
-      }
-    }
-
-    // Check minimum order amount requirement
-    if (coupon.min_order_amount && cartTotal < coupon.min_order_amount) {
-      return {
-        isValid: false,
-        discountAmount: 0,
-        discountType,
-        discountValue: coupon.discount_value || 0,
-        message: `الحد الأدنى لتفعيل هذا الكوبون هو ${coupon.min_order_amount} ج.م`,
-      };
-    }
-
-    // Check maximum usage limit
-    if (coupon.max_uses && coupon.uses_count && coupon.uses_count >= coupon.max_uses) {
-      return {
-        isValid: false,
-        discountAmount: 0,
-        discountType,
-        discountValue: coupon.discount_value || 0,
-        message: "تجاوز هذا الكوبون الحد الأقصى للمرات المسموحة للاستخدام",
-      };
-    }
-
-    // Check first order only condition
-    if (coupon.first_order_only && !isFirstOrder) {
-      return {
-        isValid: false,
-        discountAmount: 0,
-        discountType,
-        discountValue: coupon.discount_value || 0,
-        message: "هذا الكوبون مخصص للعملاء الجدد في الطلب الأول فقط",
-      };
-    }
-
-    // Calculate discount amount
-    let discountAmount = 0;
-    if (discountType === "percent") {
-      discountAmount = (cartTotal * coupon.discount_value) / 100;
-    } else {
-      discountAmount = Math.min(coupon.discount_value, cartTotal);
-    }
-
-    return {
-      isValid: true,
-      discountAmount: Number(discountAmount.toFixed(2)),
-      discountType,
-      discountValue: coupon.discount_value || 0,
-      message: `تم تفعيل خصم بقيمة ${discountAmount.toFixed(2)} ج.م بنجاح 🎉`,
-      couponId: coupon.id,
-      code: coupon.code,
-    };
+    const discountType: "percent" | "fixed" = coupon.discount_type === "percentage" ? "percent" : "fixed";
+    const discountValue = Number(coupon.discount_value || 0);
+    const discountAmount = discountType === "percent" ? Math.min(Number(cartTotal), Number((cartTotal * discountValue / 100).toFixed(2))) : Math.min(discountValue, Number(cartTotal));
+    return { isValid: true, discountAmount, discountType, discountValue, message: `تم تفعيل خصم بقيمة ${discountAmount.toFixed(2)} ج.م بنجاح 🎉`, code: coupon.code };
   } catch (err: any) {
-    return {
-      isValid: false,
-      discountAmount: 0,
-      discountType: "percent",
-      discountValue: 0,
-      message: `حدث خلل أثناء التحقق: ${err.message}`,
-    };
+    return { isValid: false, discountAmount: 0, discountType: "percent", discountValue: 0, message: `حدث خلل أثناء التحقق: ${err.message}` };
   }
 }

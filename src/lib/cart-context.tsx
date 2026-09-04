@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { playClickSound } from "@/lib/sounds";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,71 +6,60 @@ import { toast } from "sonner";
 export type Product = {
   id: string;
   name: string;
+  name_ar?: string | null;
   category_id: string | null;
   description: string | null;
-  price_per_unit: number; // For is_by_weight: price per 1 KG. Otherwise: price per piece.
+  description_ar?: string | null;
+  price_per_unit: number;
   old_price: number | null;
   image_url: string | null;
+  images?: string[] | null;
   is_by_weight: boolean;
   unit_label: string;
   is_popular: boolean;
   is_on_sale: boolean;
   is_featured?: boolean;
+  is_active?: boolean | null;
   stock_quantity?: number;
   low_stock_threshold?: number;
+  views_count?: number | null;
+  purchase_count?: number | null;
+  avg_rating?: number | null;
+  reviews_count?: number | null;
+  cooking_tip?: string | null;
+  is_top_seller?: boolean | null;
+  characteristics?: string[] | string | null;
+  storage_instructions?: string | null;
+  storageInstructions?: string | null;
+  origin_source?: string | null;
+  originSource?: string | null;
+  nutritional_info?: Record<string, string> | string | null;
+  nutritionalInfo?: Record<string, string> | string | null;
 };
 
-export type CartItem = {
-  product: Product;
-  /** قطعة count OR كجم weight (decimal) depending on is_by_weight */
-  quantity: number;
-};
+export type SubstitutionPreference = "call_me" | "auto_best" | "do_not_substitute";
+export type CartItem = { product: Product; quantity: number; selected_weight?: number; selected_weight_label?: string; substitution_preference?: SubstitutionPreference; estimated_price?: number };
 
+export const WEIGHT_OPTIONS = [
+  { value: 0.25, label: "250 جم", grams: 250 }, { value: 0.5, label: "500 جم", grams: 500 },
+  { value: 0.75, label: "750 جم", grams: 750 }, { value: 1, label: "1 كجم", grams: 1000 }, { value: 1.5, label: "1.5 كجم", grams: 1500 },
+] as const;
+export function formatWeightLabel(weightInKg: number) { return weightInKg >= 1 ? `${Number.isInteger(weightInKg) ? weightInKg : weightInKg.toFixed(2)} كجم` : `${Math.round(weightInKg * 1000)} جم`; }
+export function calculateEstimatedPrice(product: Product, quantity: number) { return +(product.price_per_unit * quantity).toFixed(2); }
+export function lineSubtotal(product: Product, quantity: number) { return calculateEstimatedPrice(product, quantity); }
+
+type AddItemMeta = { selected_weight?: number; selected_weight_label?: string; substitution_preference?: SubstitutionPreference };
 type CartContextValue = {
-  items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
-  clear: () => void;
-  totalPrice: number;
-  totalCount: number;
-  isOpen: boolean;
-  setOpen: (v: boolean) => void;
+  items: CartItem[]; addItem: (product: Product, quantity?: number, meta?: AddItemMeta) => void; updateQuantity: (productId: string, quantity: number) => void;
+  updateItemPreference: (productId: string, preference: SubstitutionPreference) => void; updateItemWeight: (productId: string, weightInKg: number) => void;
+  removeItem: (productId: string) => void; clear: () => void; totalPrice: number; totalCount: number; isOpen: boolean; setOpen: (v: boolean) => void;
   isMerging: boolean;
 };
-
 const CartContext = createContext<CartContextValue | null>(null);
 
-const GUEST_STORAGE_KEY = "alwadi_cart_v1";
-const getUserStorageKey = (uid: string) => `alwadi_cart_user_${uid}`;
-
-export function lineSubtotal(product: Product, quantity: number) {
-  return product.price_per_unit * quantity;
-}
-
-/** Merges guest cart items with user's existing cart items (sums duplicate product quantities) */
-function mergeCartItems(userItems: CartItem[], guestItems: CartItem[]): CartItem[] {
-  const map = new Map<string, CartItem>();
-
-  for (const item of userItems) {
-    if (item && item.product && item.product.id) {
-      map.set(item.product.id, { ...item });
-    }
-  }
-
-  for (const item of guestItems) {
-    if (item && item.product && item.product.id) {
-      const existing = map.get(item.product.id);
-      if (existing) {
-        const newQty = +(existing.quantity + item.quantity).toFixed(3);
-        map.set(item.product.id, { ...existing, quantity: newQty });
-      } else {
-        map.set(item.product.id, { ...item });
-      }
-    }
-  }
-
-  return Array.from(map.values());
+const LIVE_PRODUCT_COLUMNS = "id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at";
+function mapDbProduct(row: any): Product {
+  return { ...row, price_per_unit: Number(row.price ?? 0), old_price: row.original_price == null ? null : Number(row.original_price), stock_quantity: Number(row.stock ?? 0), low_stock_threshold: 5, unit_label: "قطعة", is_by_weight: false, is_popular: Boolean(row.is_featured), is_on_sale: Number(row.original_price ?? 0) > Number(row.price ?? 0), avg_rating: row.rating ?? null, reviews_count: row.reviews_count ?? null, is_top_seller: false };
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -88,171 +69,71 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [isMerging, setIsMerging] = useState(false);
 
-  const currentUserIdRef = useRef<string | null>(null);
-
-  // Capture referral attribution parameter once
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const ref = params.get("ref");
-      if (ref) sessionStorage.setItem("alwadi_ref", ref.slice(0, 60));
-    } catch {}
-  }, []);
-
-  // Listen to Supabase Auth state changes & manage cart merging
-  useEffect(() => {
-    let active = true;
-
-    // Initial session load
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      const uid = data.session?.user.id ?? null;
-      currentUserIdRef.current = uid;
-      setUserId(uid);
-
-      if (uid) {
-        // Load user cart & merge guest cart if exists
-        loadAndMergeUserCart(uid);
-      } else {
-        // Load guest cart
-        try {
-          const raw = localStorage.getItem(GUEST_STORAGE_KEY);
-          if (raw) setItems(JSON.parse(raw));
-        } catch {}
-        setHydrated(true);
-      }
-    });
-
-    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      const newUid = session?.user.id ?? null;
-      const prevUid = currentUserIdRef.current;
-      currentUserIdRef.current = newUid;
-      setUserId(newUid);
-
-      if (event === "SIGNED_IN" && newUid) {
-        loadAndMergeUserCart(newUid);
-      } else if (event === "SIGNED_OUT") {
-        // Load guest cart on logout
-        try {
-          const raw = localStorage.getItem(GUEST_STORAGE_KEY);
-          setItems(raw ? JSON.parse(raw) : []);
-        } catch {
-          setItems([]);
-        }
-      }
-    });
-
-    return () => {
-      active = false;
-      authSub.subscription.unsubscribe();
-    };
-  }, []);
-
-  const loadAndMergeUserCart = (uid: string) => {
+  const loadUserCart = async (uid: string) => {
     setIsMerging(true);
-    let guestCart: CartItem[] = [];
     try {
-      const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
-      if (guestRaw) guestCart = JSON.parse(guestRaw);
-    } catch {}
-
-    let userCart: CartItem[] = [];
-    try {
-      const userRaw = localStorage.getItem(getUserStorageKey(uid));
-      if (userRaw) userCart = JSON.parse(userRaw);
-    } catch {}
-
-    if (guestCart.length > 0) {
-      // Merge guest items into user cart
-      const merged = mergeCartItems(userCart, guestCart);
-      setItems(merged);
-      try {
-        localStorage.setItem(getUserStorageKey(uid), JSON.stringify(merged));
-        // Clear guest cart to avoid re-merging
-        localStorage.removeItem(GUEST_STORAGE_KEY);
-      } catch {}
-
-      toast.success("تم دمج سلة التسوق مع حسابك الشخصي بنجاح 🛒✨", {
-        description: `تم حفظ ${merged.length} منتج في حسابك.`,
-      });
-    } else {
-      setItems(userCart);
-    }
-
-    setHydrated(true);
-    setIsMerging(false);
+      const { data, error } = await supabase.from("cart_items").select("id,user_id,product_id,quantity,created_at").eq("user_id", uid).order("created_at", { ascending: true });
+      if (error) throw error;
+      const productIds = [...new Set((data ?? []).map((r) => r.product_id).filter(Boolean))] as string[];
+      const { data: products, error: productError } = productIds.length ? await supabase.from("products").select(LIVE_PRODUCT_COLUMNS).in("id", productIds) : { data: [], error: null };
+      if (productError) throw productError;
+      const map = new Map((products ?? []).map((p) => [p.id, mapDbProduct(p)]));
+      setItems((data ?? []).filter((r) => r.product_id && map.has(r.product_id)).map((r) => {
+        const product = map.get(r.product_id!)!; const quantity = Number(r.quantity ?? 0);
+        return { product, quantity, estimated_price: calculateEstimatedPrice(product, quantity), substitution_preference: "call_me" as const };
+      }));
+    } catch (error: any) {
+      setItems([]); toast.error(`تعذر تحميل سلة حسابك: ${error.message}`);
+    } finally { setHydrated(true); setIsMerging(false); }
   };
 
-  // Persist cart items whenever items or userId changes
   useEffect(() => {
-    if (!hydrated) return;
-    try {
-      if (userId) {
-        localStorage.setItem(getUserStorageKey(userId), JSON.stringify(items));
-      } else {
-        localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(items));
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (!active) return; const uid = data.session?.user.id ?? null; setUserId(uid); if (uid) void loadUserCart(uid); else setHydrated(true); });
+    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      const uid = session?.user.id ?? null; setUserId(uid);
+      if (event === "SIGNED_IN" && uid) void loadUserCart(uid);
+      if (event === "SIGNED_OUT") { setItems([]); setHydrated(true); }
+    });
+    return () => { active = false; authSub.subscription.unsubscribe(); };
+  }, []);
+
+  const syncUserItem = (productId: string, quantity: number) => {
+    if (!userId) return;
+    void (async () => {
+      if (quantity <= 0) {
+        const { error } = await supabase.from("cart_items").delete().eq("user_id", userId).eq("product_id", productId);
+        if (error) toast.error(`تعذر حذف الصنف من السلة: ${error.message}`);
+        return;
       }
-    } catch {}
-  }, [items, hydrated, userId]);
+      const { error } = await supabase.from("cart_items").upsert({ user_id: userId, product_id: productId, quantity }, { onConflict: "user_id,product_id" });
+      if (error) toast.error(`تعذر حفظ السلة: ${error.message}`);
+    })();
+  };
 
   const value = useMemo<CartContextValue>(() => {
-    const addItem = (product: Product, quantity = 1) => {
+    const addItem = (product: Product, quantity = 1, meta?: AddItemMeta) => {
       playClickSound();
       setItems((prev) => {
         const existing = prev.find((i) => i.product.id === product.id);
-        if (existing) {
-          return prev.map((i) =>
-            i.product.id === product.id
-              ? { ...i, quantity: +(i.quantity + quantity).toFixed(3) }
-              : i,
-          );
-        }
-        return [...prev, { product, quantity }];
+        const nextQty = +(existing ? existing.quantity + quantity : quantity).toFixed(3);
+        const item: CartItem = { product, quantity: nextQty, selected_weight: meta?.selected_weight ?? (product.is_by_weight ? nextQty : undefined), selected_weight_label: meta?.selected_weight_label ?? (product.is_by_weight ? formatWeightLabel(nextQty) : undefined), substitution_preference: meta?.substitution_preference ?? existing?.substitution_preference ?? "call_me", estimated_price: calculateEstimatedPrice(product, nextQty) };
+        return existing ? prev.map((i) => i.product.id === product.id ? item : i) : [...prev, item];
       });
+      syncUserItem(product.id, quantity + (items.find((i) => i.product.id === product.id)?.quantity ?? 0));
     };
-
-    const updateQuantity = (productId: string, quantity: number) => {
-      setItems((prev) =>
-        quantity <= 0
-          ? prev.filter((i) => i.product.id !== productId)
-          : prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i)),
-      );
-    };
-
-    const removeItem = (productId: string) =>
-      setItems((prev) => prev.filter((i) => i.product.id !== productId));
-
-    const clear = () => {
-      setItems([]);
-      try {
-        if (userId) localStorage.removeItem(getUserStorageKey(userId));
-        else localStorage.removeItem(GUEST_STORAGE_KEY);
-      } catch {}
-    };
-
-    const totalPrice = items.reduce((s, i) => s + lineSubtotal(i.product, i.quantity), 0);
-    const totalCount = items.reduce((s, i) => s + (i.product.is_by_weight ? 1 : i.quantity), 0);
-
-    return {
-      items,
-      addItem,
-      updateQuantity,
-      removeItem,
-      clear,
-      totalPrice,
-      totalCount,
-      isOpen,
-      setOpen,
-      isMerging,
-    };
+    const updateQuantity = (productId: string, quantity: number) => { setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity, estimated_price: calculateEstimatedPrice(i.product, quantity) } : i).filter((i) => i.quantity > 0)); syncUserItem(productId, quantity); };
+    const updateItemPreference = (productId: string, preference: SubstitutionPreference) => setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, substitution_preference: preference } : i));
+    const updateItemWeight = (productId: string, weightInKg: number) => { setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity: weightInKg, selected_weight: weightInKg, selected_weight_label: formatWeightLabel(weightInKg), estimated_price: calculateEstimatedPrice(i.product, weightInKg) } : i)); syncUserItem(productId, weightInKg); };
+    const removeItem = (productId: string) => { setItems((prev) => prev.filter((i) => i.product.id !== productId)); syncUserItem(productId, 0); };
+    const clear = () => { const ids = items.map((i) => i.product.id); setItems([]); for (const id of ids) syncUserItem(id, 0); };
+    const totalPrice = items.reduce((sum, i) => sum + lineSubtotal(i.product, i.quantity), 0);
+    const totalCount = items.reduce((sum, i) => sum + (i.product.is_by_weight ? 1 : i.quantity), 0);
+    return { items, addItem, updateQuantity, updateItemPreference, updateItemWeight, removeItem, clear, totalPrice, totalCount, isOpen, setOpen, isMerging };
   }, [items, isOpen, isMerging, userId]);
 
+  if (!hydrated) return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
-
-export function useCart() {
-  const ctx = useContext(CartContext);
-  if (!ctx) throw new Error("useCart must be used within CartProvider");
-  return ctx;
-}
+export function useCart() { const ctx = useContext(CartContext); if (!ctx) throw new Error("useCart must be used within CartProvider"); return ctx; }

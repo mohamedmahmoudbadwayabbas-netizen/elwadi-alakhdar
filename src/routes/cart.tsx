@@ -1,6 +1,7 @@
+import { SITE_URL } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useCart, lineSubtotal } from "@/lib/cart-context";
+import { useCart, lineSubtotal, formatWeightLabel } from "@/lib/cart-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   Leaf,
   TicketPercent,
   X,
+  BookmarkPlus,
 } from "lucide-react";
 import {
   Select,
@@ -34,16 +36,33 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useTheme } from "@/lib/theme-context";
 import { useSettings } from "@/lib/settings-context";
+import { useAuth } from "@/lib/auth-context";
 import { playSuccessSound } from "@/lib/sounds";
 import { Truck as TruckIcon } from "lucide-react";
+import {
+  SubstitutionPreferencePicker,
+  SubstitutionPreference,
+} from "@/components/storefront/SubstitutionPreferencePicker";
+import { ItemSubstitutionSelector } from "@/components/storefront/ItemSubstitutionSelector";
+import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "سلة المشتريات — الوادي الأخضر" },
-      { name: "description", content: "أتمم طلبك من متجر الوادي الأخضر مع توصيل سريع لمنطقتك" },
+      { title: "سلة المشتريات — سوبرماركت الوادي الأخضر" },
+      { name: "description", content: "أتمم طلبك من متجر سوبرماركت الوادي الأخضر مع توصيل سريع لمنطقتك" },
+      { property: "og:title", content: "سلة المشتريات — سوبرماركت الوادي الأخضر" },
+      {
+        property: "og:description",
+        content: "راجع منتجاتك وأكمل الطلب مع توصيل سريع لمنطقتك.",
+      },
+      { property: "og:url", content: `${SITE_URL}/cart` },
+      { name: "twitter:title", content: "سلة المشتريات — سوبرماركت الوادي الأخضر" },
+      { name: "robots", content: "noindex,follow" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/cart` }],
   }),
+
   component: CartPage,
 });
 
@@ -78,11 +97,21 @@ function CartPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const settings = useSettings();
-  const { items, updateQuantity, removeItem, totalPrice, clear } = useCart();
+  const { user } = useAuth();
+  const {
+    items,
+    updateQuantity,
+    removeItem,
+    totalPrice,
+    clear,
+    updateItemPreference,
+  } = useCart();
 
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("delivery");
   const [zones, setZones] = useState<Zone[]>([]);
   const [zoneId, setZoneId] = useState<string>("");
+  const [userAddresses, setUserAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [pay, setPay] = useState<{
     instapay_handle: string | null;
     bank_account_info: string | null;
@@ -104,6 +133,8 @@ function CartPage() {
     payment_method: "cod" as PaymentMethod,
     payment_reference: "",
   });
+  const [substitutionPreference, setSubstitutionPreference] =
+    useState<SubstitutionPreference>("call_me");
   const [submitting, setSubmitting] = useState(false);
 
   // كوبون الخصم
@@ -191,7 +222,26 @@ function CartPage() {
           floating: (pub as any).floating_element_image ?? null,
         });
     })();
-  }, []);
+
+    // The live database has no `addresses` table. Use the authoritative profile
+    // for signed-in customers and keep guest address state local-only.
+    if (user?.id) {
+      supabase
+        .from("profiles")
+        .select("full_name, phone, address")
+        .eq("id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data) return;
+          setForm((prev) => ({
+            ...prev,
+            customer_name: prev.customer_name || data.full_name || user.user_metadata?.full_name || "",
+            phone: prev.phone || data.phone || user.user_metadata?.phone || "",
+            address: prev.address || data.address || "",
+          }));
+        });
+    }
+  }, [user]);
 
   // Cascading options
   const countries = useMemo(
@@ -326,35 +376,67 @@ function CartPage() {
     setSubmitting(true);
     const ref = (() => {
       try {
-        return sessionStorage.getItem("alwadi_ref");
+        return sessionStorage.getItem("store_ref");
       } catch {
         return null;
       }
     })();
 
-    const { error } = await (supabase as any).rpc("create_order", {
-      p_customer_name: parsed.data.customer_name,
-      p_phone: parsed.data.phone,
-      p_address:
-        deliveryMethod === "pickup"
-          ? `[استلام من الفرع] ${pay.store_address ?? ""}`.trim()
-          : parsed.data.address,
-      p_notes: parsed.data.notes || null,
-      p_items: items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
-      p_delivery_zone_id: deliveryMethod === "delivery" ? zoneId || null : null,
-      p_delivery_method: deliveryMethod,
-      p_payment_method: parsed.data.payment_method,
-      p_payment_reference: parsed.data.payment_reference?.trim() || null,
-      p_coupon_code: coupon?.code ?? null,
-      p_ref_source: ref,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast.error("تعذّر إرسال الطلب", { description: error.message });
+    const substitutionLabel =
+      substitutionPreference === "call_me"
+        ? "[تفضيل البديل: الاتصال هاتفياً بالعميل]"
+        : substitutionPreference === "auto_best"
+          ? "[تفضيل البديل: اختيار أفضل بديل تلقائياً]"
+          : "[تفضيل البديل: عدم الاستبدال وحذف الصنف]";
+
+    const combinedNotes = [substitutionLabel, parsed.data.notes?.trim()].filter(Boolean).join("\n");
+
+    let createdOrderId: string | null = null;
+
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
+        p_customer_name: parsed.data.customer_name,
+        p_phone: parsed.data.phone,
+        p_address:
+          deliveryMethod === "pickup"
+            ? `[استلام من الفرع] ${pay.store_address ?? ""}`.trim()
+            : parsed.data.address,
+        p_notes: combinedNotes || null,
+        p_items: items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
+        p_delivery_zone_id: deliveryMethod === "delivery" ? zoneId || null : null,
+        p_delivery_method: deliveryMethod,
+        p_payment_method: parsed.data.payment_method,
+        p_payment_reference: parsed.data.payment_reference?.trim() || null,
+        p_coupon_code: coupon?.code ?? null,
+        p_ref_source: ref,
+      } as any);
+
+      if (rpcError) {
+        console.error("create_order failed:", rpcError);
+        throw new Error(rpcError.message || "تعذر إنشاء الطلب");
+      }
+
+      // The live RPC returns the authoritative order UUID directly.
+      if (typeof rpcData !== "string" || !rpcData) {
+        throw new Error("لم يُرجع الخادم رقم طلب صالحاً");
+      }
+      createdOrderId = rpcData;
+    } catch (e: any) {
+      console.error("Order submission failed:", e);
+      setSubmitting(false);
+      toast.error("تعذر إرسال الطلب", {
+        description: e?.message || "حدث خطأ أثناء إنشاء الطلب. لم يتم اعتماد الطلب، ويمكنك المحاولة مرة أخرى.",
+      });
       return;
     }
+
+
+
+    setSubmitting(false);
     playSuccessSound();
-    toast.success("تم استلام طلبك بنجاح", { description: "سيتواصل معك فريق الوادي الأخضر قريباً" });
+    toast.success("تم استلام طلبك بنجاح ✨", {
+      description: `رقم الطلب #${createdOrderId} — سيتواصل معك فريق سوبرماركت الوادي الأخضر لتأكيد التوصيل.`,
+    });
     clear();
     navigate({ to: "/" });
   };
@@ -374,7 +456,7 @@ function CartPage() {
             <div className="grid h-9 w-9 place-items-center rounded-xl hero-gradient text-primary-foreground">
               <Leaf className="h-4 w-4" />
             </div>
-            <span className="hidden font-display text-base font-bold sm:inline">الوادي الأخضر</span>
+            <span className="hidden font-display text-base font-bold sm:inline">سوبرماركت الوادي الأخضر</span>
           </Link>
           <h1 className="flex items-center gap-2 font-display text-base font-bold">
             <ShoppingBag className="h-4 w-4 text-primary" />
@@ -419,7 +501,7 @@ function CartPage() {
               <p
                 className={`relative z-10 font-display text-sm font-medium ${bg.empty ? "text-white/80" : "text-muted-foreground"}`}
               >
-                ابدأ رحلة تسوّقك من "الوادي الأخضر" — منتجات طازجة تصلك سريعاً 🌿
+                ابدأ رحلة تسوّقك من "سوبرماركت الوادي الأخضر" — منتجات طازجة تصلك سريعاً 🌿
               </p>
               <Link to="/" className="relative z-10">
                 <Button className="mt-2 rounded-full hero-gradient text-primary-foreground">
@@ -706,7 +788,54 @@ function CartPage() {
                     />
                   </Field>
                   {deliveryMethod === "delivery" && (
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-2 space-y-3">
+                      {/* اختيار سريع من العناوين المحفوظة بحساب العميل */}
+                      {userAddresses.length > 0 && (
+                        <div className="p-3 rounded-2xl bg-secondary/40 border border-border space-y-2">
+                          <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                            <span>عناوينك المحفوظة (اختر للتعبئة التلقائية):</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              ({userAddresses.length} عنوان)
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {userAddresses.map((addr) => {
+                              const isSel = selectedAddressId === addr.id;
+                              return (
+                                <button
+                                  key={addr.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedAddressId(addr.id);
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      customer_name: addr.full_name || prev.customer_name,
+                                      phone: addr.phone || prev.phone,
+                                      address:
+                                        `${addr.area ? addr.area + "، " : ""}${addr.street || ""}${addr.building ? "، عمارة " + addr.building : ""}${addr.apartment ? "، شقة " + addr.apartment : ""}`.trim(),
+                                    }));
+                                    toast.success(`تم اختيار عنوان: ${addr.label || "المحفوظ"}`);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
+                                    isSel
+                                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                                      : "bg-background text-foreground border-border hover:border-primary/50"
+                                  }`}
+                                >
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  <span>{addr.label || "عنوان"}</span>
+                                  {addr.is_default && (
+                                    <span className="text-[9px] bg-amber-400/20 text-amber-600 dark:text-amber-300 px-1.5 py-0.2 rounded font-bold">
+                                      افتراضي
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <Field label="عنوان التوصيل">
                         <Textarea
                           rows={2}
@@ -715,6 +844,25 @@ function CartPage() {
                           placeholder="المنطقة، الشارع، رقم العقار، الدور، الشقة"
                         />
                       </Field>
+
+                      {/* ويدجت خرائط Google الذكية للتوصيل */}
+                      <StoreGoogleMapsWidget
+                        title="خريطة التوصيل المباشرة (Google Maps)"
+                        subtitle="تأكيد نطاق التغطية وتتبع المسار وموقع التسليم بدقة"
+                        storeAddress={
+                          form.address ||
+                          (zone?.name ? `${zone.name}، مصر` : pay.store_address || "القاهرة، مصر")
+                        }
+                        storeName="موقع تسليم طلبك — سوبرماركت الوادي الأخضر"
+                        isInteractivePicker={true}
+                        showAiGrounding={true}
+                        allowSaveAsDefault={true}
+                        customerFullName={form.customer_name}
+                        customerPhone={form.phone}
+                        onLocationSelect={(lat, lng) => {
+                          // Update address note or form
+                        }}
+                      />
                     </div>
                   )}
                   <div className="sm:col-span-2">
@@ -729,6 +877,12 @@ function CartPage() {
                   </div>
                 </div>
               </Card>
+
+              {/* خيارات ونظام البدائل في حال نفاد الأصناف */}
+              <SubstitutionPreferencePicker
+                value={substitutionPreference}
+                onChange={setSubstitutionPreference}
+              />
 
               <Card className="rounded-3xl border-border p-4 sm:p-5">
                 <h2 className="mb-3 font-display text-base font-bold">طريقة الدفع</h2>

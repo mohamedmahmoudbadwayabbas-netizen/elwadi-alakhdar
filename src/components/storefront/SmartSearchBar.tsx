@@ -59,11 +59,15 @@ export function SmartSearchBar({
     const fetchCatalog = async () => {
       const { data } = await supabase
         .from("products")
-        .select("id, name, price_per_unit, old_price, image_url, unit_label, is_by_weight")
+.select("id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at")
         .limit(200);
 
       if (data) {
-        setAllProducts(data as SearchProduct[]);
+        setAllProducts((data as any[]).map((p) => ({
+          ...p, price_per_unit: Number(p.price ?? 0), old_price: p.original_price == null ? null : Number(p.original_price),
+          unit_label: "قطعة", is_by_weight: false, is_on_sale: Number(p.original_price ?? 0) > Number(p.price ?? 0),
+          stock_quantity: Number(p.stock ?? 0), is_popular: Boolean(p.is_featured),
+        })) as SearchProduct[]);
       }
     };
     fetchCatalog();
@@ -256,7 +260,7 @@ export function SmartSearchBar({
                 </div>
                 <h4 className="text-xs font-bold text-foreground">لم نجد منتجات تطابق "{query}"</h4>
                 <p className="text-[11px] text-muted-foreground">
-                  جرب البحث بكلمة عامة مثل (لحم، خضار، زبادي، أرز)
+                  جرب البحث بكلمة عامة مثل (أرز، زيت، لحم، جبن، مسحوق)
                 </p>
               </div>
             )}
