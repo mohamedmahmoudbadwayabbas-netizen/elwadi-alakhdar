@@ -103,12 +103,18 @@ export async function rollbackLastAction(
     try {
       const { table, kind, rows, id } = last.db;
       if (kind === "restore-rows" && rows && rows.length > 0) {
-        await supabase.from(table as any).upsert(rows as any);
+        const { error } = await supabase.from(table as any).upsert(rows as any);
+        if (error) throw error;
       } else if (kind === "delete-row" && id) {
-        await supabase.from(table as any).delete().eq("id", id);
+        const { error } = await supabase.from(table as any).delete().eq("id", id);
+        if (error) throw error;
       }
     } catch (err) {
-      console.warn("Database rollback restoration error:", err);
+      return {
+        tool: "rollbackLastAction",
+        ok: false,
+        messageAr: `تعذر استعادة بيانات قاعدة البيانات: ${(err as Error).message}`,
+      };
     }
   }
 
@@ -152,11 +158,12 @@ export async function toolGenerateProductImage(
   // Attach image to Supabase product if productId provided
   if (args.productId && isSupabaseConfigured()) {
     try {
-      const { data: prev } = await supabase
+      const { data: prev, error: previousError } = await supabase
         .from("products")
         .select("id, image_url")
         .eq("id", args.productId)
         .maybeSingle();
+      if (previousError) throw previousError;
 
       if (prev) {
         attachDbUndo(pointId, {
@@ -166,12 +173,17 @@ export async function toolGenerateProductImage(
         });
       }
 
-      await supabase
+      const { error } = await supabase
         .from("products")
         .update({ image_url: res.imageUrl })
         .eq("id", args.productId);
+      if (error) throw error;
     } catch (e) {
-      console.warn("Product image remote attach skipped:", e);
+      return {
+        tool: "generateProductImage",
+        ok: false,
+        messageAr: `تم توليد الصورة لكن تعذر ربطها بالمنتج: ${(e as Error).message}`,
+      };
     }
   }
 
@@ -234,31 +246,36 @@ export async function toolUploadBannerImage(
 
   if (isSupabaseConfigured()) {
     try {
-      const { data: existing } = await supabase
+      const { data: existing, error: settingsError } = await supabase
         .from("store_settings")
         .select("id, hero_title, hero_subtitle, hero_image_url")
         .limit(1)
         .maybeSingle();
+      if (settingsError) throw settingsError;
+      if (!existing?.id) throw new Error("لم يتم العثور على سجل إعدادات المتجر لتحديث البانر.");
 
-      if (existing?.id) {
-        attachDbUndo(pointId, {
-          table: "store_settings",
-          kind: "restore-rows",
-          rows: [existing as Record<string, unknown>],
-        });
+      attachDbUndo(pointId, {
+        table: "store_settings",
+        kind: "restore-rows",
+        rows: [existing as Record<string, unknown>],
+      });
 
-        await supabase
-          .from("store_settings")
-          .update({
-            hero_title: headline,
-            hero_subtitle: args.subtitle || null,
-            hero_image_url: res.imageUrl,
-            updated_at: new Date().toISOString(),
-          } as never)
-          .eq("id", existing.id);
-      }
+      const { error } = await supabase
+        .from("store_settings")
+        .update({
+          hero_title: headline,
+          hero_subtitle: args.subtitle || null,
+          hero_image_url: res.imageUrl,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", existing.id);
+      if (error) throw error;
     } catch (e) {
-      console.warn("store_settings banner sync skipped:", e);
+      return {
+        tool: "uploadBannerImage",
+        ok: false,
+        messageAr: `تم توليد البانر لكن تعذر حفظه في إعدادات المتجر: ${(e as Error).message}`,
+      };
     }
   }
 
@@ -314,7 +331,19 @@ export async function toolManageProduct(
 
         if (inserted?.id) {
           attachDbUndo(pointId, { table: "products", kind: "delete-row", id: inserted.id });
+        } else {
+          throw new Error("لم تُرجع قاعدة البيانات معرّف المنتج بعد الإنشاء.");
         }
+
+        ctx?.refresh?.();
+
+        return {
+          tool: "manageProduct",
+          ok: true,
+          rollbackPointId: pointId,
+          messageAr: `تمت إضافة المنتج «${payload.name}» بسعر ${payload.price} ج.م في الكتالوج بنجاح.`,
+          data: { id: inserted.id, name: payload.name, price: payload.price },
+        };
       }
 
       ctx?.refresh?.();
@@ -351,6 +380,7 @@ export async function toolManageProduct(
           ok: true,
           rollbackPointId: pointId,
           messageAr: `تم حذف المنتج (id: ${id}) بنجاح مع إمكانية التراجع الفوري.`,
+          data: { id },
         };
       }
 
@@ -375,7 +405,7 @@ export async function toolManageProduct(
       ok: true,
       rollbackPointId: pointId,
       messageAr: `تم تحديث بيانات المنتج «${data.name || id}» في Supabase بنجاح.`,
-      data: { id, updatedFields: Object.keys(data) },
+      data: { id, ...data, updatedFields: Object.keys(data) },
     };
   } catch (e) {
     return {
@@ -419,7 +449,19 @@ export async function toolManageCategories(
 
         if (inserted?.id) {
           attachDbUndo(pointId, { table: "categories", kind: "delete-row", id: inserted.id });
+        } else {
+          throw new Error("لم تُرجع قاعدة البيانات معرّف القسم بعد الإنشاء.");
         }
+
+        ctx?.refresh?.();
+
+        return {
+          tool: "manageCategories",
+          ok: true,
+          rollbackPointId: pointId,
+          messageAr: `تمت إضافة القسم «${name}» لقاعدة البيانات بنجاح.`,
+          data: { id: inserted.id, name, name_ar: payload.name_ar, slug, image_url: payload.image_url },
+        };
       }
 
       ctx?.refresh?.();
@@ -456,6 +498,7 @@ export async function toolManageCategories(
           ok: true,
           rollbackPointId: pointId,
           messageAr: `تم حذف القسم بنجاح.`,
+          data: { id },
         };
       }
 
@@ -474,6 +517,7 @@ export async function toolManageCategories(
       ok: true,
       rollbackPointId: pointId,
       messageAr: `تم تحديث بيانات القسم بنجاح.`,
+      data: { id, ...data },
     };
   } catch (e) {
     return {
@@ -653,19 +697,24 @@ export async function toolUpdateThemeColors(
   // Sync theme values to the live store_settings table
   if (isSupabaseConfigured()) {
     try {
-      const { data: storeRow } = await supabase.from("store_settings").select("id").limit(1).maybeSingle();
-      if (storeRow?.id) {
-        await supabase
-          .from("store_settings")
-          .update({
-            primary_color: primary,
-            accent_color: accent,
-            updated_at: new Date().toISOString(),
-          } as never)
-          .eq("id", storeRow.id);
-      }
+      const { data: storeRow, error: selectError } = await supabase.from("store_settings").select("id").limit(1).maybeSingle();
+      if (selectError) throw selectError;
+      if (!storeRow?.id) throw new Error("لم يتم العثور على سجل إعدادات المتجر لتحديث الألوان.");
+      const { error } = await supabase
+        .from("store_settings")
+        .update({
+          primary_color: primary,
+          accent_color: accent,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", storeRow.id);
+      if (error) throw error;
     } catch (e) {
-      console.warn("Theme DB sync skipped:", e);
+      return {
+        tool: "updateThemeColors",
+        ok: false,
+        messageAr: `تم تطبيق اللون محليًا لكن تعذر حفظه في إعدادات المتجر: ${(e as Error).message}`,
+      };
     }
   }
 
@@ -713,12 +762,31 @@ export async function toolCreateDiscountBundle(
         .select("id")
         .maybeSingle();
 
-      if (!error && inserted?.id) {
-        attachDbUndo(pointId, { table: "coupons", kind: "delete-row", id: inserted.id });
-      }
+      if (error) throw error;
+      if (!inserted?.id) throw new Error("لم تُرجع قاعدة البيانات معرّف الكوبون بعد الإنشاء.");
+
+      const { data: confirmed, error: readBackError } = await supabase
+        .from("coupons")
+        .select("id, code, discount_type, discount_value, expires_at, is_active")
+        .eq("id", inserted.id)
+        .maybeSingle();
+      if (readBackError) throw readBackError;
+      if (!confirmed) throw new Error("تعذر التحقق من وجود الكوبون بعد الإنشاء.");
+
+      attachDbUndo(pointId, { table: "coupons", kind: "delete-row", id: inserted.id });
     } catch (e) {
-      console.warn("Coupons table insert skipped:", e);
+      return {
+        tool: "createDiscountBundle",
+        ok: false,
+        messageAr: `تعذر إنشاء الكوبون في قاعدة البيانات: ${(e as Error).message}`,
+      };
     }
+  } else {
+    return {
+      tool: "createDiscountBundle",
+      ok: false,
+      messageAr: "تعذر إنشاء الكوبون لأن اتصال قاعدة البيانات غير مهيأ.",
+    };
   }
 
   // Surface in flash sale timer

@@ -42,6 +42,7 @@ import {
   gitRollbackCommit,
 } from "./devopsTools";
 import { AI_TOOL_SUITE } from "./toolDefinitions";
+import { executeAIAction } from "./aiActionGateway";
 
 async function _executeAiToolInner(
   tool: AiToolName,
@@ -365,7 +366,18 @@ export async function executeAiTool(
   ctx?: any,
 ): Promise<ToolExecutionResult> {
   try {
-    const result = await _executeAiToolInner(tool, args, ctx);
+    const gatewayResult = await executeAIAction(tool, args, ctx, () => _executeAiToolInner(tool, args, ctx));
+    const result: ToolExecutionResult = {
+      tool,
+      ok: gatewayResult.success,
+      success: gatewayResult.success,
+      messageAr: gatewayResult.error || (gatewayResult.status === "approval_required" ? "هذا الإجراء يتطلب موافقة." : "تم تنفيذ الإجراء والتحقق منه."),
+      error: gatewayResult.error,
+      data: gatewayResult.data,
+      verified: gatewayResult.verification?.verified,
+      verificationDetails: gatewayResult.verification?.details,
+      gatewayStatus: gatewayResult.status,
+    };
     const source = typeof window !== "undefined" && window.location.hostname.includes("lovable") ? "lovable" : "ai-studio";
     result.source = source;
 

@@ -244,7 +244,6 @@ function AdminCoPilotPage() {
         model: selectedModel,
         role: selectedRole,
         page: "admin.copilot",
-        userRole: "admin", // Assuming admin given this is admin.copilot
         enableSearchGrounding: enableGoogleSearch || selectedRole === "market_researcher",
         currentLayout: layoutConfig,
         kpis,

@@ -78,6 +78,7 @@ export interface ToolExecutionResult {
   rollbackPointId?: string;
   verified?: boolean;
   source?: "lovable" | "ai-studio";
+  gatewayStatus?: "completed" | "failed" | "approval_required" | "rejected";
   verificationDetails?: string;
 }
 
