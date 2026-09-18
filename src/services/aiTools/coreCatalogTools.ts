@@ -3,7 +3,7 @@
    Strict database mutations, live Supabase queries, and instant rollback protection
    ========================================================================= */
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-loose";
 import { isSupabaseConfigured } from "./envValidation";
 import type {
   ToolExecutionContext,

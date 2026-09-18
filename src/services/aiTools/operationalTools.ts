@@ -3,7 +3,7 @@
    Custom CSS, Metadata, RBAC, Reports/Analytics, Push Alerts, Delivery Zones
    ========================================================================= */
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-loose";
 import { isSupabaseConfigured } from "./envValidation";
 import { createRollbackPoint, attachDbUndo } from "./coreCatalogTools";
 import type { ToolExecutionContext, ToolExecutionResult } from "./types";

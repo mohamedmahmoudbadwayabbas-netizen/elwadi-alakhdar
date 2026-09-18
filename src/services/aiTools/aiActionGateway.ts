@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-loose";
 import { isSupabaseConfigured } from "./envValidation";
 import type { AiToolName, ToolExecutionContext, ToolExecutionResult } from "./types";
 

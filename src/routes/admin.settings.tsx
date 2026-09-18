@@ -1,7 +1,7 @@
 import { NumberInput } from "@/components/ui/number-input";
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-loose";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
