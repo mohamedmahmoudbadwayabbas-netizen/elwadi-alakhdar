@@ -136,6 +136,8 @@ function CartPage() {
   const [substitutionPreference, setSubstitutionPreference] =
     useState<SubstitutionPreference>("call_me");
   const [submitting, setSubmitting] = useState(false);
+  // مفتاح idempotency يبقى ثابتاً لكل محاولة دفع (بما فيها إعادة المحاولة)
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   // كوبون الخصم
   const [couponInput, setCouponInput] = useState("");
