@@ -472,6 +472,7 @@ function CartPage() {
 
 
     setSubmitting(false);
+    setIdempotencyKey(null); // محاولة الدفع انتهت: أي طلب جديد يبدأ بمفتاح جديد
     playSuccessSound();
     toast.success("تم استلام طلبك بنجاح ✨", {
       description: `رقم الطلب #${createdOrderId} — سيتواصل معك فريق سوبرماركت الوادي الأخضر لتأكيد التوصيل.`,
