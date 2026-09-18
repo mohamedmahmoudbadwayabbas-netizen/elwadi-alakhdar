@@ -2,7 +2,7 @@ import { SITE_URL } from "@/lib/brand";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, lineSubtotal, formatWeightLabel } from "@/lib/cart-context";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-loose";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,6 +93,26 @@ const checkoutSchema = z.object({
   payment_reference: z.string().trim().max(120).optional(),
 });
 
+const ORDER_ERROR_MESSAGES: Record<string, string> = {
+  EMPTY_CART: "سلتك فارغة.",
+  CUSTOMER_DATA_REQUIRED: "يرجى إدخال الاسم ورقم الهاتف.",
+  INSUFFICIENT_STOCK: "عذراً، إحدى المنتجات في سلتك نفدت للتو. يرجى مراجعة السلة.",
+  INVALID_DELIVERY_ZONE: "منطقة التوصيل المختارة غير متاحة حالياً.",
+  MIN_DELIVERY_ORDER: "قيمة الطلب أقل من الحد الأدنى لهذه المنطقة.",
+  INVALID_CODE: "كود الخصم غير صحيح.",
+  EXPIRED: "انتهت صلاحية كود الخصم.",
+  EXHAUSTED: "تم استهلاك الحد الأقصى لاستخدام هذا الكود.",
+  MIN_ORDER: "قيمة الطلب أقل من الحد الأدنى لتطبيق كود الخصم.",
+};
+
+function mapOrderErrorMessage(message?: string | null) {
+  const raw = (message ?? "").trim();
+  for (const [code, text] of Object.entries(ORDER_ERROR_MESSAGES)) {
+    if (raw === code || raw.includes(code)) return text;
+  }
+  return "حدث خطأ أثناء إتمام الطلب. يرجى المحاولة مرة أخرى.";
+}
+
 function CartPage() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -136,6 +156,8 @@ function CartPage() {
   const [substitutionPreference, setSubstitutionPreference] =
     useState<SubstitutionPreference>("call_me");
   const [submitting, setSubmitting] = useState(false);
+  // مفتاح idempotency يبقى ثابتاً لكل محاولة دفع (بما فيها إعادة المحاولة)
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   // كوبون الخصم
   const [couponInput, setCouponInput] = useState("");
@@ -393,8 +415,15 @@ function CartPage() {
 
     let createdOrderId: string | null = null;
 
+    // مفتاح idempotency ثابت لكل محاولة دفع: لا يُعاد توليده عند إعادة المحاولة
+    let attemptKey = idempotencyKey;
+    if (!attemptKey) {
+      attemptKey = crypto.randomUUID();
+      setIdempotencyKey(attemptKey);
+    }
+
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
+      const baseArgs = {
         p_customer_name: parsed.data.customer_name,
         p_phone: parsed.data.phone,
         p_address:
@@ -409,11 +438,21 @@ function CartPage() {
         p_payment_reference: parsed.data.payment_reference?.trim() || null,
         p_coupon_code: coupon?.code ?? null,
         p_ref_source: ref,
+      };
+
+      let { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
+        ...baseArgs,
+        p_idempotency_key: attemptKey,
       } as any);
+
+      // توافق خلفي: لو نسخة الدالة الحالية لا تقبل مفتاح idempotency
+      if (rpcError && (rpcError.code === "PGRST202" || /p_idempotency_key|could not find|does not exist/i.test(rpcError.message ?? ""))) {
+        ({ data: rpcData, error: rpcError } = await supabase.rpc("create_order", baseArgs as any));
+      }
 
       if (rpcError) {
         console.error("create_order failed:", rpcError);
-        throw new Error(rpcError.message || "تعذر إنشاء الطلب");
+        throw new Error(mapOrderErrorMessage(rpcError.message));
       }
 
       // The live RPC returns the authoritative order UUID directly.
@@ -433,6 +472,7 @@ function CartPage() {
 
 
     setSubmitting(false);
+    setIdempotencyKey(null); // محاولة الدفع انتهت: أي طلب جديد يبدأ بمفتاح جديد
     playSuccessSound();
     toast.success("تم استلام طلبك بنجاح ✨", {
       description: `رقم الطلب #${createdOrderId} — سيتواصل معك فريق سوبرماركت الوادي الأخضر لتأكيد التوصيل.`,

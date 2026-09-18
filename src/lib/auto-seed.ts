@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 
 const CATEGORIES = [
-  { name: "Dairy & Cheese", name_ar: "الألبان والجبن الطازج", slug: "dairy-cheese", image_url: "https://images.unsplash.com/photo-1628088062854-d1870b4553da?q=80&w=600&auto=format&fit=crop" },
-  { name: "Vegetables & Fruits", name_ar: "الخضروات والفواكه", slug: "vegetables-fruits", image_url: "https://images.unsplash.com/photo-1596568289467-34c9c1b332b7?q=80&w=600&auto=format&fit=crop" },
-  { name: "Meat & Poultry", name_ar: "اللحوم والدواجن", slug: "meat-poultry", image_url: "https://images.unsplash.com/photo-1607623814075-e51df1bd6b51?q=80&w=600&auto=format&fit=crop" },
-  { name: "Bakery & Sweets", name_ar: "المخبوزات والحلويات", slug: "bakery-sweets", image_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=600&auto=format&fit=crop" },
-  { name: "Grocery & Canned", name_ar: "المعلبات والبقالة", slug: "grocery-canned", image_url: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?q=80&w=600&auto=format&fit=crop" },
+  { name: "الألبان والجبن الطازج", slug: "dairy-cheese", image_url: "https://images.unsplash.com/photo-1628088062854-d1870b4553da?q=80&w=600&auto=format&fit=crop" },
+  { name: "الخضروات والفواكه", slug: "vegetables-fruits", image_url: "https://images.unsplash.com/photo-1596568289467-34c9c1b332b7?q=80&w=600&auto=format&fit=crop" },
+  { name: "اللحوم والدواجن", slug: "meat-poultry", image_url: "https://images.unsplash.com/photo-1607623814075-e51df1bd6b51?q=80&w=600&auto=format&fit=crop" },
+  { name: "المخبوزات والحلويات", slug: "bakery-sweets", image_url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=600&auto=format&fit=crop" },
+  { name: "المعلبات والبقالة", slug: "grocery-canned", image_url: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?q=80&w=600&auto=format&fit=crop" },
 ];
 
 const PRODUCTS = [
@@ -28,7 +28,7 @@ export const forceSyncAllToSupabase = createServerFn({ method: "POST" }).handler
     const { data: insertedCats, error: catError } = await supabaseAdmin.from("categories").insert(CATEGORIES).select("id,slug");
     if (catError) throw catError;
     const catMap = new Map((insertedCats ?? []).map((c) => [c.slug, c.id]));
-    const products = PRODUCTS.map(([name, slug, price, stock, image_url]) => ({ name, name_ar: name, category_id: catMap.get(slug) ?? null, price, original_price: null, stock, image_url, is_active: true, is_featured: false }));
+    const products = PRODUCTS.map(([name, slug, price, stock, image_url]) => ({ name, category_id: catMap.get(slug) ?? null, price_per_unit: price, old_price: null, stock_quantity: stock, image_url, is_featured: false }));
     const { error: productError } = await supabaseAdmin.from("products").insert(products);
     if (productError) throw productError;
     return { success: true, categoriesCount: insertedCats?.length ?? 0, productsCount: products.length };

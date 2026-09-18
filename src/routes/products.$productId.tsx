@@ -4,7 +4,7 @@ import { WeightSelector } from "@/components/storefront/WeightSelector";
 import { formatWeightLabel, calculateEstimatedPrice } from "@/lib/cart-context";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-loose";
 import { useCart, lineSubtotal } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import type { Product } from "@/lib/cart-context";
