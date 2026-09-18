@@ -28,7 +28,7 @@ export const forceSyncAllToSupabase = createServerFn({ method: "POST" }).handler
     const { data: insertedCats, error: catError } = await supabaseAdmin.from("categories").insert(CATEGORIES).select("id,slug");
     if (catError) throw catError;
     const catMap = new Map((insertedCats ?? []).map((c) => [c.slug, c.id]));
-    const products = PRODUCTS.map(([name, slug, price, stock, image_url]) => ({ name, name_ar: name, category_id: catMap.get(slug) ?? null, price, original_price: null, stock, image_url, is_active: true, is_featured: false }));
+    const products = PRODUCTS.map(([name, slug, price, stock, image_url]) => ({ name, category_id: catMap.get(slug) ?? null, price_per_unit: price, old_price: null, stock_quantity: stock, image_url, is_featured: false }));
     const { error: productError } = await supabaseAdmin.from("products").insert(products);
     if (productError) throw productError;
     return { success: true, categoriesCount: insertedCats?.length ?? 0, productsCount: products.length };
