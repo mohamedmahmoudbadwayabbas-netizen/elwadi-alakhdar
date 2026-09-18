@@ -93,6 +93,26 @@ const checkoutSchema = z.object({
   payment_reference: z.string().trim().max(120).optional(),
 });
 
+const ORDER_ERROR_MESSAGES: Record<string, string> = {
+  EMPTY_CART: "سلتك فارغة.",
+  CUSTOMER_DATA_REQUIRED: "يرجى إدخال الاسم ورقم الهاتف.",
+  INSUFFICIENT_STOCK: "عذراً، إحدى المنتجات في سلتك نفدت للتو. يرجى مراجعة السلة.",
+  INVALID_DELIVERY_ZONE: "منطقة التوصيل المختارة غير متاحة حالياً.",
+  MIN_DELIVERY_ORDER: "قيمة الطلب أقل من الحد الأدنى لهذه المنطقة.",
+  INVALID_CODE: "كود الخصم غير صحيح.",
+  EXPIRED: "انتهت صلاحية كود الخصم.",
+  EXHAUSTED: "تم استهلاك الحد الأقصى لاستخدام هذا الكود.",
+  MIN_ORDER: "قيمة الطلب أقل من الحد الأدنى لتطبيق كود الخصم.",
+};
+
+function mapOrderErrorMessage(message?: string | null) {
+  const raw = (message ?? "").trim();
+  for (const [code, text] of Object.entries(ORDER_ERROR_MESSAGES)) {
+    if (raw === code || raw.includes(code)) return text;
+  }
+  return "حدث خطأ أثناء إتمام الطلب. يرجى المحاولة مرة أخرى.";
+}
+
 function CartPage() {
   const navigate = useNavigate();
   const theme = useTheme();
