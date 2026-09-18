@@ -395,8 +395,15 @@ function CartPage() {
 
     let createdOrderId: string | null = null;
 
+    // مفتاح idempotency ثابت لكل محاولة دفع: لا يُعاد توليده عند إعادة المحاولة
+    let attemptKey = idempotencyKey;
+    if (!attemptKey) {
+      attemptKey = crypto.randomUUID();
+      setIdempotencyKey(attemptKey);
+    }
+
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
+      const baseArgs = {
         p_customer_name: parsed.data.customer_name,
         p_phone: parsed.data.phone,
         p_address:
@@ -411,11 +418,21 @@ function CartPage() {
         p_payment_reference: parsed.data.payment_reference?.trim() || null,
         p_coupon_code: coupon?.code ?? null,
         p_ref_source: ref,
+      };
+
+      let { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
+        ...baseArgs,
+        p_idempotency_key: attemptKey,
       } as any);
+
+      // توافق خلفي: لو نسخة الدالة الحالية لا تقبل مفتاح idempotency
+      if (rpcError && (rpcError.code === "PGRST202" || /p_idempotency_key|could not find|does not exist/i.test(rpcError.message ?? ""))) {
+        ({ data: rpcData, error: rpcError } = await supabase.rpc("create_order", baseArgs as any));
+      }
 
       if (rpcError) {
         console.error("create_order failed:", rpcError);
-        throw new Error(rpcError.message || "تعذر إنشاء الطلب");
+        throw new Error(mapOrderErrorMessage(rpcError.message));
       }
 
       // The live RPC returns the authoritative order UUID directly.
