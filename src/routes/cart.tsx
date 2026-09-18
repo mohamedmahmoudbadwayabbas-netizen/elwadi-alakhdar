@@ -108,7 +108,6 @@ function CartPage() {
   } = useCart();
 
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("delivery");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [zones, setZones] = useState<Zone[]>([]);
   const [zoneId, setZoneId] = useState<string>("");
   const [userAddresses, setUserAddresses] = useState<any[]>([]);
