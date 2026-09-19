@@ -126,6 +126,24 @@ const STATUSES = [
     color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
   },
   {
+    key: "preparing",
+    label: "قيد التجهيز ⏳",
+    next: "shipped",
+    color: "bg-violet-500/10 text-violet-500 border-violet-500/20",
+  },
+  {
+    key: "partially_delivered",
+    label: "تم التسليم جزئيًا 📦",
+    next: null,
+    color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+  },
+  {
+    key: "delivery_failed",
+    label: "فشل التسليم ⚠️",
+    next: null,
+    color: "bg-red-500/10 text-red-500 border-red-500/20",
+  },
+  {
     key: "delivered",
     label: "مكتمل ✅",
     next: null,
