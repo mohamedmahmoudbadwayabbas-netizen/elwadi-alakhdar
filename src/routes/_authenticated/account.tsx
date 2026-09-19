@@ -539,6 +539,18 @@ function StatusBadge({ status }: { status: string }) {
       label: "جاري التوصيل",
       cls: "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300",
     },
+    preparing: {
+      label: "قيد التجهيز",
+      cls: "bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300",
+    },
+    partially_delivered: {
+      label: "تم التسليم جزئيًا",
+      cls: "bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300",
+    },
+    delivery_failed: {
+      label: "فشل التسليم",
+      cls: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300",
+    },
     delivered: {
       label: "تم التسليم",
       cls: "bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300",
