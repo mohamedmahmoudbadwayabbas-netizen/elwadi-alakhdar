@@ -8,7 +8,7 @@ export function SkeletonBox({ className }: { className?: string }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card p-0">
       <SkeletonBox className="aspect-square w-full rounded-none" />
       <div className="space-y-2 p-3">
         <SkeletonBox className="h-3 w-3/4" />
@@ -46,6 +46,24 @@ export function HomePageSkeleton() {
           <ProductCardSkeleton key={i} />
         ))}
       </div>
+    </div>
+  );
+}
+
+export function ProductShelvesSkeleton() {
+  return (
+    <div className="space-y-8" aria-label="جارٍ تحميل المنتجات">
+      {Array.from({ length: 2 }).map((_, shelfIndex) => (
+        <div key={shelfIndex} className="space-y-4">
+          <div className="flex items-center gap-3 border-b border-border pb-3">
+            <SkeletonBox className="h-9 w-9 rounded-lg" />
+            <div className="flex-1 space-y-2"><SkeletonBox className="h-4 w-40" /><SkeletonBox className="h-3 w-56 max-w-full" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, index) => <ProductCardSkeleton key={index} />)}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
