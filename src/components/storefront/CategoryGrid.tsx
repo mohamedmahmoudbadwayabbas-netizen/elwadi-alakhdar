@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
-import { ChevronLeft, ChevronRight, Layers, Sparkles } from "lucide-react";
+import { Grid2X2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { SkeletonBox } from "@/components/storefront/Skeletons";
 
 export type Category = {
   id: string;
@@ -16,6 +17,7 @@ interface CategoryGridProps {
   onSelect: (id: string | null) => void;
   productsCountByCategory?: Record<string, number>;
   totalProductsCount?: number;
+  isLoading?: boolean;
 }
 
 export function CategoryGrid({
@@ -24,190 +26,78 @@ export function CategoryGrid({
   onSelect,
   productsCountByCategory = {},
   totalProductsCount = 0,
+  isLoading = false,
 }: CategoryGridProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 320;
-      scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
-
   return (
-    <section className="mx-auto max-w-7xl px-3 pt-4 sm:px-6">
-      {/* رأس قسم التصنيفات مع أزرار التحريك الأفقي */}
-      <div className="mb-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="h-6 w-1.5 rounded-full bg-[#036233]" />
-          <h2 className="text-base font-black text-foreground sm:text-lg tracking-wide flex items-center gap-2">
-            <Layers className="h-5 w-5 text-[#036233]" />
-            <span>تسوّق حسب الأقسام الرئيسية 🛒</span>
-          </h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {active && active !== "all" && (
-            <button
-              onClick={() => onSelect(null)}
-              className="rounded-full bg-[#036233]/10 px-4 py-1.5 text-xs font-black text-[#036233] hover:bg-[#036233] hover:text-white transition-all cursor-pointer shadow-sm"
-            >
-              عرض كل المنتجات
-            </button>
-          )}
-
-          {/* أزرار التحريك اليدوي يميناً ويساراً */}
-          <div className="hidden sm:flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => scroll("right")}
-              className="h-8 w-8 rounded-xl border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all cursor-pointer shadow-2xs"
-              title="التمرير لليمين"
-              aria-label="التمرير لليمين"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll("left")}
-              className="h-8 w-8 rounded-xl border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all cursor-pointer shadow-2xs"
-              title="التمرير لليسار"
-              aria-label="التمرير لليسار"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+    <section aria-labelledby="category-grid-title" className="space-y-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+            <Layers className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h2 id="category-grid-title" className="truncate text-base font-bold text-foreground sm:text-lg">
+              تسوّق حسب القسم
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">ابدأ من القسم الأقرب لقائمتك</p>
           </div>
         </div>
+        {active && active !== "all" && <Button type="button" variant="ghost" size="sm" onClick={() => onSelect(null)}>عرض الكل</Button>}
       </div>
 
-      {/* شريط التصنيفات ذو الصور البارزة مع التحريك الأفقي السلس */}
-      <div
-        ref={scrollContainerRef}
-        className="flex items-stretch gap-3 overflow-x-auto pb-3 pt-1 scroll-smooth snap-x snap-mandatory no-scrollbar"
-        dir="rtl"
-      >
-        {/* بطاقة "كل المنتجات" البارزة */}
-        <button
-          type="button"
-          onClick={() => onSelect(null)}
-          className={cn(
-            "group relative flex flex-col justify-between shrink-0 w-36 sm:w-44 h-36 sm:h-40 overflow-hidden rounded-3xl border text-start transition-all duration-300 snap-start cursor-pointer",
-            !active || active === "all"
-              ? "border-[#036233]/50 bg-[#036233]/5 ring-2 ring-[#036233]/20 shadow-[0_8px_30px_rgb(3,98,51,0.1)] scale-[1.02]"
-              : "border-border/40 bg-card hover:border-[#036233]/30 hover:shadow-lg hover:-translate-y-0.5",
-          )}
-        >
-          {/* الصورة الخلفية البارزة */}
-          <div className="relative h-24 sm:h-28 w-full overflow-hidden bg-secondary">
-            <img
-              src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80"
-              alt="كل الأقسام"
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-            <span className="absolute top-2 start-2 text-xl drop-shadow-md">🛒</span>
-            {totalProductsCount > 0 && (
-              <span className="absolute bottom-2 start-2 text-[10px] font-black text-white/90 bg-black/50 backdrop-blur-xs px-2 py-0.5 rounded-full">
-                {totalProductsCount} صنف
-              </span>
-            )}
-          </div>
-
-          {/* العنوان والحالة */}
-          <div className="flex flex-1 items-center justify-between px-3 py-2 bg-card">
-            <span
-              className={cn(
-                "text-xs font-black truncate transition-colors",
-                !active || active === "all"
-                  ? "text-[#036233]"
-                  : "text-foreground group-hover:text-[#036233]",
-              )}
-            >
-              كل الأقسام
-            </span>
-            <div
-              className={cn(
-                "h-2 w-2 rounded-full transition-all shrink-0",
-                !active || active === "all"
-                  ? "bg-[#036233] scale-125 ring-2 ring-[#036233]/30"
-                  : "bg-border group-hover:bg-[#036233]/50",
-              )}
-            />
-          </div>
-        </button>
-
-        {/* بطاقات باقي الأقسام مع صورها البارزة */}
-        {categories.map((c) => {
+      {isLoading ? (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, index) => <SkeletonBox key={index} className="aspect-[4/3] rounded-lg" />)}
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="flex min-h-28 items-center gap-4 rounded-lg border border-dashed border-border bg-muted/40 p-4">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-card text-primary"><Grid2X2 className="h-5 w-5" /></div>
+          <div><h3 className="text-sm font-bold text-foreground">الأقسام قيد التجهيز</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">ستظهر هنا فور إضافتها إلى المتجر.</p></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onSelect(null)}
+            className={cn("h-auto min-h-24 flex-col whitespace-normal rounded-lg p-2 text-center", (!active || active === "all") && "border-primary bg-primary/10 text-primary")}
+          >
+            <Grid2X2 className="h-6 w-6" />
+            <span className="text-xs font-bold">كل المنتجات</span>
+            {totalProductsCount > 0 && <span className="text-[10px] font-normal text-muted-foreground">{totalProductsCount} صنف</span>}
+          </Button>
+          {categories.map((c, index) => {
           const isActive = active === c.id || active === c.slug;
           const count = productsCountByCategory[c.id] ?? productsCountByCategory[c.slug] ?? 0;
+          const tint = ["bg-primary/10", "bg-secondary", "bg-accent/10", "bg-muted"][index % 4];
 
           return (
-            <button
+            <Button
               key={c.id}
               type="button"
+              variant="outline"
               onClick={() => onSelect(isActive ? null : c.id)}
               className={cn(
-                "group relative flex flex-col justify-between shrink-0 w-36 sm:w-44 h-36 sm:h-40 overflow-hidden rounded-3xl border text-start transition-all duration-300 snap-start cursor-pointer",
-                isActive
-                  ? "border-[#036233]/50 bg-[#036233]/5 ring-2 ring-[#036233]/20 shadow-[0_8px_30px_rgb(3,98,51,0.1)] scale-[1.02]"
-                  : "border-border/40 bg-card hover:border-[#036233]/30 hover:shadow-lg hover:-translate-y-0.5",
+                "group h-auto min-h-24 flex-col overflow-hidden whitespace-normal rounded-lg p-0 text-center focus-visible:ring-2",
+                isActive ? "border-primary bg-primary/10 text-primary" : "border-border bg-card hover:border-primary/40",
               )}
             >
-              {/* شارة التمييز الأخضر */}
-              {/* الصورة الفوتوغرافية البارزة للقسم */}
-              <div className="relative h-24 sm:h-28 w-full overflow-hidden bg-secondary">
+              <div className={cn("relative h-14 w-full overflow-hidden", tint)}>
                 {c.image_url ? (
-                  <img
-                    src={c.image_url}
-                    alt={c.name_ar || c.name}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                  <img src={c.image_url} alt={`قسم ${c.name_ar || c.name}`} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                 ) : (
-                  <div className="grid h-full w-full place-items-center bg-[#036233]/10 text-3xl">
-                    🌿
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-                <span className="absolute bottom-2 start-2 text-base drop-shadow-md">
-                  🌿
-                </span>
-                {count > 0 && (
-                  <span className="absolute bottom-2 end-2 text-[10px] font-black text-white/90 bg-black/50 backdrop-blur-xs px-2 py-0.5 rounded-full">
-                    {count} صنف
-                  </span>
+                  <div className="grid h-full w-full place-items-center text-primary"><Layers className="h-6 w-6" /></div>
                 )}
               </div>
-
-              {/* اسم القسم واختيار الفئة */}
-              <div className="flex flex-1 items-center justify-between px-3 py-2 bg-card">
-                <span
-                  className={cn(
-                    "text-xs font-black truncate transition-colors",
-                    isActive
-                      ? "text-[#036233]"
-                      : "text-foreground group-hover:text-[#036233]",
-                  )}
-                >
-                  {c.name_ar || c.name}
-                </span>
-                <div
-                  className={cn(
-                    "h-2 w-2 rounded-full transition-all shrink-0",
-                    isActive
-                      ? "bg-[#036233] scale-125 ring-2 ring-[#036233]/30"
-                      : "bg-border group-hover:bg-[#036233]/50",
-                  )}
-                />
+              <div className="flex w-full min-w-0 flex-col px-2 py-2">
+                <span className="truncate text-xs font-bold">{c.name_ar || c.name}</span>
+                {count > 0 && <span className="text-[10px] font-normal text-muted-foreground">{count} صنف</span>}
               </div>
-            </button>
+            </Button>
           );
         })}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
