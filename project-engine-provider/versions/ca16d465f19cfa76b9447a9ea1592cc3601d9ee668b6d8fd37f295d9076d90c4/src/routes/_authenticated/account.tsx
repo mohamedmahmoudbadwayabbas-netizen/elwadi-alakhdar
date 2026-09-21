@@ -464,9 +464,7 @@ function OrderStepper({ status }: { status: string }) {
   const getStepIndex = (st: string) => {
     switch (st) {
       case "pending":
-      case "pending":
         return 0;
-      case "confirmed":
       case "confirmed":
         return 1;
       case "shipped":
