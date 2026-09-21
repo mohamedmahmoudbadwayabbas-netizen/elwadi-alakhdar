@@ -252,9 +252,6 @@ export type Database = {
           payment_method: string
           payment_reference: string | null
           phone: string
-          rated_at: string | null
-          rating: number | null
-          rating_feedback: string | null
           ref_source: string | null
           status: string
           total_price: number
@@ -274,9 +271,6 @@ export type Database = {
           payment_method?: string
           payment_reference?: string | null
           phone: string
-          rated_at?: string | null
-          rating?: number | null
-          rating_feedback?: string | null
           ref_source?: string | null
           status?: string
           total_price: number
@@ -296,9 +290,6 @@ export type Database = {
           payment_method?: string
           payment_reference?: string | null
           phone?: string
-          rated_at?: string | null
-          rating?: number | null
-          rating_feedback?: string | null
           ref_source?: string | null
           status?: string
           total_price?: number

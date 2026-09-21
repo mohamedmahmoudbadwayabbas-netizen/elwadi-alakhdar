@@ -50,10 +50,6 @@ export function ProductCard({
       : 0;
 
   const outOfStock = (product.stock_quantity ?? 1) <= 0;
-  const isLowStock =
-    !outOfStock &&
-    typeof product.stock_quantity === "number" &&
-    product.stock_quantity <= (product.low_stock_threshold ?? 5);
   const step = product.is_by_weight ? 0.25 : 1;
 
   // Dynamic estimated price calculation
@@ -150,13 +146,10 @@ export function ProductCard({
               alt={product.name}
               loading="lazy"
               decoding="async"
-              className={cn(
-                "h-full w-full object-cover transition-transform duration-500 group-hover:scale-105",
-                outOfStock && "grayscale opacity-60",
-              )}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className={cn("grid h-full w-full place-items-center bg-emerald-100/30 text-4xl", outOfStock && "grayscale opacity-60")}>
+            <div className="grid h-full w-full place-items-center bg-emerald-100/30 text-4xl">
               🌿
             </div>
           )}
@@ -165,30 +158,17 @@ export function ProductCard({
         {/* تدرج ظلي خفيف لتعزيز وضوح الشارات */}
         <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/25 via-transparent to-transparent opacity-80" />
 
-        {/* شارة الخصم والأكثر مبيعاً وحالة المخزون */}
+        {/* شارة الخصم والأكثر مبيعاً */}
         <div className="absolute top-2.5 start-2.5 z-10 flex flex-col gap-1.5">
-          {outOfStock ? (
-            <span className="rounded-full bg-slate-800/95 backdrop-blur-xs px-2.5 py-1 text-[10px] font-black text-white shadow-xs">
-              غير متوفر
+          {discount > 0 && (
+            <span className="rounded-full bg-[#E55300] px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
+              خصم {discount}%
             </span>
-          ) : (
-            <>
-              {discount > 0 && (
-                <span className="rounded-full bg-[#E55300] px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
-                  خصم {discount}%
-                </span>
-              )}
-              {isTopSellerActive && discount === 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
-                  <Flame className="h-3 w-3" /> مميز
-                </span>
-              )}
-              {isLowStock && (
-                <span className="rounded-full bg-amber-600/95 backdrop-blur-xs px-2 py-0.5 text-[9px] font-black text-white shadow-xs">
-                  متبقي {product.stock_quantity} فقط
-                </span>
-              )}
-            </>
+          )}
+          {isTopSellerActive && discount === 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
+              <Flame className="h-3 w-3" /> مميز
+            </span>
           )}
         </div>
 

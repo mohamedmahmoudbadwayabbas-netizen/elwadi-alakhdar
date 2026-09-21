@@ -22,47 +22,18 @@ type HomeProductShelvesProps = {
   onResetFilters: () => void;
 };
 
-const shelfTheme = {
-  deals: {
-    icon: Flame,
-    badgeBg: "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
-    border: "border-orange-500/20",
-  },
-  popular: {
-    icon: Award,
-    badgeBg: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    border: "border-border",
-  },
-  fresh: {
-    icon: Scale,
-    badgeBg: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    border: "border-border",
-  },
-  pantry: {
-    icon: ShoppingBag,
-    badgeBg: "border-teal-500/30 bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    border: "border-border",
-  },
+const shelfIcons = {
+  deals: Flame,
+  popular: Award,
+  fresh: Scale,
+  pantry: ShoppingBag,
 };
 
-function ProductGrid({
-  products,
-  onOpenProduct,
-  isTopSeller,
-}: {
-  products: Product[];
-  onOpenProduct: (product: Product) => void;
-  isTopSeller?: boolean;
-}) {
+function ProductGrid({ products, onOpenProduct }: { products: Product[]; onOpenProduct: (product: Product) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
       {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          isTopSeller={isTopSeller}
-          onOpen={onOpenProduct}
-        />
+        <ProductCard key={product.id} product={product} onOpen={onOpenProduct} />
       ))}
     </div>
   );
@@ -121,26 +92,21 @@ export default function HomeProductShelves({
   return (
     <div className="space-y-10">
       {shelves.filter((shelf) => shelf.products.length > 0).map((shelf) => {
-        const theme = shelfTheme[shelf.icon] || shelfTheme.deals;
-        const Icon = theme.icon;
+        const Icon = shelfIcons[shelf.icon];
         return (
           <section key={shelf.id} aria-labelledby={`${shelf.id}-title`} className="space-y-4">
-            <div className={`flex min-w-0 items-start gap-3 border-b ${theme.border} pb-3`}>
-              <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${theme.badgeBg}`}>
+            <div className="flex min-w-0 items-start gap-3 border-b border-border pb-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <h2 id={`${shelf.id}-title`} className="text-base font-bold text-foreground sm:text-lg font-display">
+                <h2 id={`${shelf.id}-title`} className="text-base font-bold text-foreground sm:text-lg">
                   {shelf.title}
                 </h2>
                 <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{shelf.description}</p>
               </div>
             </div>
-            <ProductGrid
-              products={shelf.products}
-              isTopSeller={shelf.icon === "popular"}
-              onOpenProduct={onOpenProduct}
-            />
+            <ProductGrid products={shelf.products} onOpenProduct={onOpenProduct} />
           </section>
         );
       })}
