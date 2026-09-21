@@ -5,9 +5,12 @@ import type { Product } from "@/lib/cart-context";
 export type Category = {
   id: string;
   name: string;
-  name_ar: string | null;
+  name_ar?: string | null;
   slug: string;
+  icon?: string | null;
   image_url: string | null;
+  parent_id?: string | null;
+  sort_order?: number | null;
   created_at: string | null;
 };
 
@@ -22,8 +25,27 @@ export type HeroBanner = {
   is_active: boolean;
 };
 
+// الأعمدة الحقيقية الموجودة فعلياً في جدول products
 export const PRODUCT_COLUMNS =
-  "id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at";
+  "id,name,description,price_per_unit,old_price,image_url,category_id,stock_quantity,low_stock_threshold,unit_label,is_by_weight,is_popular,is_on_sale,is_featured,is_top_seller,avg_rating,reviews_count,views_count,purchase_count,cooking_tip,created_at";
+
+function normalizeProduct(row: any): Product {
+  return {
+    ...row,
+    price_per_unit: Number(row.price_per_unit ?? 0),
+    old_price: row.old_price == null ? null : Number(row.old_price),
+    stock_quantity: Number(row.stock_quantity ?? 0),
+    low_stock_threshold: Number(row.low_stock_threshold ?? 10),
+    unit_label: row.unit_label ?? "قطعة",
+    is_by_weight: Boolean(row.is_by_weight),
+    is_popular: Boolean(row.is_popular),
+    is_on_sale: Boolean(row.is_on_sale),
+    is_featured: Boolean(row.is_featured),
+    is_top_seller: Boolean(row.is_top_seller),
+    avg_rating: row.avg_rating == null ? null : Number(row.avg_rating),
+    reviews_count: row.reviews_count ?? 0,
+  } as Product;
+}
 
 // ── 1. Fetch & Cache All Store Products (real Supabase data only) ──
 export async function fetchStoreProducts(): Promise<Product[]> {
@@ -37,19 +59,7 @@ export async function fetchStoreProducts(): Promise<Product[]> {
     console.warn("Error fetching products:", error.message);
     return [];
   }
-  return (data ?? []).map((p) => ({
-    ...(p as unknown as Product),
-    price_per_unit: Number((p as any).price ?? 0),
-    old_price: (p as any).original_price == null ? null : Number((p as any).original_price),
-    stock_quantity: Number((p as any).stock ?? 0),
-    unit_label: "قطعة",
-    is_by_weight: false,
-    is_popular: Boolean((p as any).is_featured),
-    is_on_sale: Number((p as any).original_price ?? 0) > Number((p as any).price ?? 0),
-    avg_rating: (p as any).rating ?? null,
-    reviews_count: (p as any).reviews_count ?? null,
-    is_top_seller: false,
-  })) as Product[];
+  return (data ?? []).map(normalizeProduct);
 }
 
 export function useStoreProducts() {
@@ -66,8 +76,8 @@ export function useStoreProducts() {
 export async function fetchStoreCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id,name,name_ar,slug,image_url,created_at")
-    .order("created_at", { ascending: true });
+    .select("id,name,slug,icon,image_url,parent_id,sort_order,created_at")
+    .order("sort_order", { ascending: true });
 
   if (error) {
     console.warn("Failed to fetch categories:", error.message);
@@ -86,9 +96,19 @@ export function useStoreCategories() {
   });
 }
 
-// ── 3. Fetch & Cache Hero Banners ──
+// ── 3. Fetch & Cache Hero Banners (real Supabase data only) ──
 export async function fetchHeroBanners(): Promise<HeroBanner[]> {
-  return [];
+  const { data, error } = await supabase
+    .from("hero_banners")
+    .select("id,image_url,title,subtitle,cta_text,link_url,sort_order,is_active")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.warn("Failed to fetch hero banners:", error.message);
+    return [];
+  }
+  return (data ?? []) as HeroBanner[];
 }
 
 export function useHeroBanners() {
@@ -110,14 +130,12 @@ export function useStoreProduct(productId: string) {
     queryFn: async (): Promise<Product | null> => {
       if (!productId) return null;
 
-      // 1. Check if product is already in the cached products list first
       const cachedProducts = queryClient.getQueryData<Product[]>(["store-products"]);
       if (cachedProducts) {
         const found = cachedProducts.find((p) => p.id === productId);
         if (found) return found;
       }
 
-      // 2. Query Supabase directly
       const { data, error } = await supabase
         .from("products")
         .select(PRODUCT_COLUMNS)
@@ -128,22 +146,8 @@ export function useStoreProduct(productId: string) {
         console.warn(`[Store Data] Error fetching product ${productId}:`, error.message);
         return null;
       }
-
       if (!data) return null;
-      const p = data as any;
-      return {
-        ...(p as Product),
-        price_per_unit: Number(p.price ?? 0),
-        old_price: p.original_price == null ? null : Number(p.original_price),
-        stock_quantity: Number(p.stock ?? 0),
-        unit_label: "قطعة",
-        is_by_weight: false,
-        is_popular: Boolean(p.is_featured),
-        is_on_sale: Number(p.original_price ?? 0) > Number(p.price ?? 0),
-        avg_rating: p.rating ?? null,
-        reviews_count: p.reviews_count ?? null,
-        is_top_seller: false,
-      };
+      return normalizeProduct(data);
     },
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
