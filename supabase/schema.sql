@@ -116,7 +116,10 @@ create table if not exists public.orders (
   user_id uuid,
   delivery_zone_id uuid,
   delivery_fee numeric default 0 not null,
-  delivery_method text default 'delivery'::text not null
+  delivery_method text default 'delivery'::text not null,
+  rating integer,
+  rating_feedback text,
+  rated_at timestamp with time zone
 );
 do $$ begin alter table public.orders add constraint orders_delivery_zone_id_fkey FOREIGN KEY (delivery_zone_id) REFERENCES delivery_zones(id) ON DELETE SET NULL; exception when duplicate_object then null when duplicate_table then null; end $$;
 do $$ begin alter table public.orders add constraint orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL; exception when duplicate_object then null when duplicate_table then null; end $$;

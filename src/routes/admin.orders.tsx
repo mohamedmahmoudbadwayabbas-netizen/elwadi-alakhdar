@@ -36,6 +36,7 @@ import {
   Radio,
   PhoneCall,
   Ban,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -68,6 +69,9 @@ type Order = {
   driver_phone?: string | null;
   driver_lat?: number | null;
   driver_lng?: number | null;
+  rating?: number | null;
+  rating_feedback?: string | null;
+  rated_at?: string | null;
 };
 
 type Driver = {
@@ -520,6 +524,12 @@ function OrdersPage() {
                           <h3 className="font-display text-base font-black text-foreground">
                             {o.customer_name}
                           </h3>
+                          {o.rating && (
+                            <span className="flex items-center gap-1 bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 px-2 py-0.5 rounded-lg text-xs font-black">
+                              <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+                              <span>{o.rating}/5</span>
+                            </span>
+                          )}
                           <div className="relative">
                             <select
                               value={o.status}
@@ -748,7 +758,7 @@ function OrdersPage() {
 
                   {preview.notes
                     .split("\n")
-                    .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                    .filter((line: string) => !line.startsWith("[تفضيل البديل:") && !line.startsWith("[تقييم الطلب:"))
                     .join("\n")
                     .trim() && (
                     <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
@@ -757,11 +767,44 @@ function OrdersPage() {
                         <strong>ملاحظات العميل:</strong>{" "}
                         {preview.notes
                           .split("\n")
-                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
+                          .filter((line: string) => !line.startsWith("[تفضيل البديل:") && !line.startsWith("[تقييم الطلب:"))
                           .join("\n")
                           .trim()}
                       </span>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {preview.rating && (
+                <div className="bg-amber-50/80 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-300/80 dark:border-amber-800/50 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+                      تقييم العميل للطلب:
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5" dir="ltr">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`h-3.5 w-3.5 ${
+                              s <= preview.rating!
+                                ? "fill-amber-400 text-amber-500"
+                                : "text-muted-foreground/30"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="font-bold text-foreground mr-1">
+                        {preview.rating} / 5
+                      </span>
+                    </div>
+                  </div>
+                  {preview.rating_feedback && (
+                    <p className="text-[11px] text-muted-foreground italic border-t border-amber-200/60 dark:border-amber-900/40 pt-1.5 leading-relaxed">
+                      "{preview.rating_feedback}"
+                    </p>
                   )}
                 </div>
               )}

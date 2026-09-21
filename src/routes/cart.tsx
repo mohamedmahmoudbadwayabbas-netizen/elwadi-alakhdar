@@ -168,6 +168,7 @@ function CartPage() {
     discount_value: number;
   } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [showCouponInput, setShowCouponInput] = useState(false);
 
   const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -1006,12 +1007,12 @@ function CartPage() {
                 <h3 className="mb-3 font-display text-base font-bold">ملخص الطلب</h3>
 
                 {/* كوبون الخصم */}
-                <div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3">
-                  <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-primary">
-                    <TicketPercent className="h-4 w-4" />
-                    كود الخصم
-                  </div>
-                  {coupon ? (
+                {coupon ? (
+                  <div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3">
+                    <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-primary">
+                      <TicketPercent className="h-4 w-4" />
+                      كود الخصم
+                    </div>
                     <div className="flex items-center justify-between gap-2 rounded-xl bg-background p-2">
                       <div className="text-xs">
                         <div className="font-black text-primary">{coupon.code}</div>
@@ -1029,7 +1030,24 @@ function CartPage() {
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  ) : (
+                  </div>
+                ) : !showCouponInput ? (
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCouponInput(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline cursor-pointer"
+                    >
+                      <TicketPercent className="h-3.5 w-3.5" />
+                      <span>لديك كود خصم؟</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3">
+                    <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-primary">
+                      <TicketPercent className="h-4 w-4" />
+                      كود الخصم
+                    </div>
                     <div className="flex gap-2">
                       <Input
                         value={couponInput}
@@ -1047,8 +1065,8 @@ function CartPage() {
                         {couponLoading ? "..." : "تطبيق"}
                       </Button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="space-y-2 text-sm">
                   <Row label="الإجمالي الفرعي" value={`${totalPrice.toFixed(2)} ج.م`} />
