@@ -18,6 +18,14 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+function isClientAbort(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  if (code === "ECONNRESET") return true;
+  const message = error instanceof Error ? error.message : String(error);
+  return message === "aborted" || message.includes("aborted");
+}
+
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
@@ -42,8 +50,17 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
+      // The preview may close its socket mid-stream (refresh/navigation).
+      // That surfaces as an "aborted" 500 — reply quietly instead of
+      // rendering an error page for a request nobody is reading.
+      if (request.signal?.aborted) {
+        return new Response(null, { status: 499 });
+      }
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
+      if (isClientAbort(error)) {
+        return new Response(null, { status: 499 });
+      }
       console.error(error);
       return new Response(renderErrorPage(), {
         status: 500,
