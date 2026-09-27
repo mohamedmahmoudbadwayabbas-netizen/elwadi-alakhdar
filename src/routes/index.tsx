@@ -85,8 +85,6 @@ export function HomePage() {
 
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
-  const [savedDeliveryTime, setSavedDeliveryTime] = useState("30 - 45 دقيقة ⚡");
-  const [currentBranch, setCurrentBranch] = useState("فرع الدقي الرئيسي");
 
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
