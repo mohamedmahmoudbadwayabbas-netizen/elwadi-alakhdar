@@ -108,55 +108,31 @@ export function HomePage() {
     };
   }, []);
 
-  // Clean, realistic Supermarket Hero Slides
+  // شرائح العرض: من البانرات الحقيقية فقط، وإلا شريحة واحدة من إعدادات المتجر
   const heroSlides = useMemo(() => {
-    const curatedSupermarketSlides = [
-      {
-        id: "supermarket-main-hero",
-        title: settings.hero_title || "الوادي الأخضر — سوبرماركت عائلتك 🛒",
-        subtitle:
-          settings.hero_subtitle ||
-          "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
-        image_url:
-          settings.hero_bg_image ||
-          settings.hero_image_url ||
-          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=85",
-        cta_text: "تسوّق الآن 🛒",
-        badge: "عروض السوبرماركت اليومية 🛒",
-      },
-      {
-        id: "supermarket-staples-hero",
-        title: "عروض التموين وتوفير الشهر 🍚🥫",
-        subtitle: "تخفيضات كبرى على الأرز، الزيوت، المكرونات والمعلبات بأسعار الجملة لبيتك.",
-        image_url:
-          "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=85",
-        cta_text: "تسوّق التموين 🥫",
-        badge: "أسعار الجملة والتوفير ⚡",
-      },
-      {
-        id: "supermarket-meat-dairy-hero",
-        title: "اللحوم البلدية والأجبان الطازجة 🥩🧀",
-        subtitle: "كندوز ومفروم بلدي طازج يومياً، وأشهى أنواع الأجبان الرومي والشيدر والزبدة الفلاحي.",
-        image_url:
-          "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=1600&q=85",
-        cta_text: "قسم اللحوم والألبان 🥩",
-        badge: "طازج يومياً معتمد 🛡️",
-      },
-    ];
-
-    if (!heroBanners || heroBanners.length === 0) {
-      return curatedSupermarketSlides;
+    if (heroBanners && heroBanners.length > 0) {
+      return heroBanners.map((b, idx) => ({
+        id: b.id || `banner-${idx}`,
+        title: b.title || settings.hero_title || BRAND_NAME_AR,
+        subtitle: b.subtitle || settings.hero_subtitle || "",
+        image_url: b.image_url || settings.hero_bg_image || settings.hero_image_url || "",
+        cta_text: b.cta_text || settings.hero_cta_text || "تسوّق الآن",
+        badge: "",
+      }));
     }
 
-    return heroBanners.map((b, idx) => ({
-      id: b.id || `banner-${idx}`,
-      title: b.title && !b.title.includes("خضار") ? b.title : curatedSupermarketSlides[idx % curatedSupermarketSlides.length].title,
-      subtitle: b.subtitle && !b.subtitle.includes("خضار") ? b.subtitle : curatedSupermarketSlides[idx % curatedSupermarketSlides.length].subtitle,
-      image_url: b.image_url || curatedSupermarketSlides[idx % curatedSupermarketSlides.length].image_url,
-      cta_text: b.cta_text || "تسوّق العرض 🛒",
-      badge: "عروض السوبرماركت ⚡",
-    }));
+    return [
+      {
+        id: "store-hero",
+        title: settings.hero_title || BRAND_NAME_AR,
+        subtitle: settings.hero_subtitle || "",
+        image_url: settings.hero_bg_image || settings.hero_image_url || "",
+        cta_text: settings.hero_cta_text || "تسوّق الآن",
+        badge: "",
+      },
+    ];
   }, [heroBanners, settings]);
+
 
   // Auto-slide effect every 6 seconds
   useEffect(() => {
