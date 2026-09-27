@@ -318,28 +318,38 @@ export function HomePage() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Quick Supermarket Guarantee Badges */}
-            <div className="hidden lg:flex flex-col gap-2.5 bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/15 text-xs text-white max-w-xs shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="font-black text-xs">سلع تموينية ولحوم طازجة</div>
-                  <div className="text-[10px] text-slate-300">أصناف مختارة بعناية يومياً</div>
-                </div>
-              </div>
+            {/* بيانات المتجر الحقيقية فقط */}
+            {(settings.min_order_amount > 0 || settings.whatsapp_number) && (
+              <div className="hidden lg:flex flex-col gap-2.5 bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/15 text-xs text-white max-w-xs shrink-0">
+                {settings.min_order_amount > 0 && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-black text-xs">الحد الأدنى للطلب</div>
+                      <div className="text-[10px] text-slate-300 tabular-nums" dir="ltr">
+                        {settings.min_order_amount} EGP
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500/20 text-teal-400">
-                  <Clock className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="font-black text-xs">توصيل سريع لباب بيتك</div>
-                  <div className="text-[10px] text-slate-300">{savedDeliveryTime}</div>
-                </div>
+                {settings.whatsapp_number && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500/20 text-teal-400">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-black text-xs">للاستفسار والطلب</div>
+                      <div className="text-[10px] text-slate-300 tabular-nums" dir="ltr">
+                        {settings.whatsapp_number}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Slide Navigation Dots */}
@@ -384,32 +394,32 @@ export function HomePage() {
           )}
         </div>
 
-        {/* ─── 2. STORE BRANCH & DELIVERY STATUS BAR ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-300">
-            <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        {/* ─── 2. شريط معلومات المتجر (بيانات حقيقية فقط) ─── */}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
+            <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <div className="truncate">
-              <span className="font-bold">الفرع الحالي: </span>
-              <span className="font-black text-emerald-700 dark:text-emerald-300">{currentBranch}</span>
+              <span className="font-bold">المتجر: </span>
+              <span className="font-bold text-primary">{settings.site_name || BRAND_NAME_AR}</span>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-teal-500/10 border border-teal-500/20 p-3 flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-300">
-            <Clock className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 animate-pulse" />
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
+            <Layers className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <div className="truncate">
-              <span className="font-bold">التوصيل المتوقع: </span>
-              <span className="font-black text-teal-700 dark:text-teal-300">{savedDeliveryTime}</span>
+              <span className="font-bold">الأصناف المتاحة: </span>
+              <span className="font-bold tabular-nums text-primary" dir="ltr">
+                {products.length}
+              </span>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-card border border-border/80 p-3 flex items-center justify-between text-xs text-foreground">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span className="font-bold">تغطية الطلبات:</span>
-            </div>
-            <span className="font-black text-[11px] text-muted-foreground">متاح الدفع كاش أو بطاقة 💳</span>
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <span className="font-bold">الدفع عند الاستلام متاح</span>
           </div>
         </div>
+
 
         {/* ─── 3. SUPERMARKET CATEGORIES PROMINENT HORIZONTAL CAROUSEL ─── */}
         <CategoryGrid
