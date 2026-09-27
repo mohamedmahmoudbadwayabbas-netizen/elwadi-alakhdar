@@ -1,15 +1,4 @@
-import {
-  Plus,
-  Minus,
-  Award,
-  Heart,
-  ShoppingCart,
-  Flame,
-  Scale,
-  Sparkles,
-  Leaf,
-  Eye,
-} from "lucide-react";
+import { Plus, Minus, Heart, ShoppingCart, Flame, Scale, Eye } from "lucide-react";
 import type { Product } from "@/lib/cart-context";
 import {
   useCart,
@@ -40,26 +29,26 @@ export function ProductCard({
     inCart?.selected_weight ?? (product.is_by_weight ? 0.5 : 1),
   );
 
-  const isTopSellerActive = Boolean(
-    isTopSeller ?? product.is_top_seller ?? product.is_popular,
-  );
+  const isTopSellerActive = Boolean(isTopSeller ?? product.is_top_seller ?? product.is_popular);
 
   const discount =
     product.old_price && product.old_price > product.price_per_unit
       ? Math.round(((product.old_price - product.price_per_unit) / product.old_price) * 100)
       : 0;
 
-  const outOfStock = (product.stock_quantity ?? 1) <= 0;
+  const stock = product.stock_quantity ?? 0;
+  const lowThreshold = product.low_stock_threshold ?? 5;
+  const outOfStock = stock <= 0;
+  const lowStock = !outOfStock && stock <= lowThreshold;
   const step = product.is_by_weight ? 0.25 : 1;
 
-  // Dynamic estimated price calculation
   const currentEstPrice = product.is_by_weight
     ? calculateEstimatedPrice(product, selectedWeight)
     : product.price_per_unit;
 
-  const displayUnit = product.is_by_weight
-    ? `/ ${formatWeightLabel(selectedWeight)}`
-    : `/ ${product.unit_label ?? "قطعة"}`;
+  const unitLabel = product.is_by_weight
+    ? formatWeightLabel(selectedWeight)
+    : (product.unit_label ?? "قطعة");
 
   const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -73,7 +62,7 @@ export function ProductCard({
       selected_weight_label: product.is_by_weight ? label : undefined,
     });
     flyToCart(e.currentTarget);
-    toast.success("تمت الإضافة للسلة 🛒", {
+    toast.success("تمت الإضافة للسلة", {
       description: `${product.name} (${label} — ${calculateEstimatedPrice(product, amount).toFixed(2)} ج.م)`,
     });
   };
@@ -83,7 +72,7 @@ export function ProductCard({
     setSelectedWeight(weight);
     if (qty > 0) {
       updateItemWeight(product.id, weight);
-      toast.success("تم تحديث الوزن في السلة ⚖️", {
+      toast.success("تم تحديث الوزن في السلة", {
         description: `${product.name}: ${label} (≈ ${calculateEstimatedPrice(product, weight).toFixed(2)} ج.م)`,
       });
     }
@@ -107,13 +96,11 @@ export function ProductCard({
     if (next <= 0) {
       removeItem(product.id);
       toast.info("تمت إزالة المنتج من السلة");
+    } else if (product.is_by_weight) {
+      updateItemWeight(product.id, next);
+      setSelectedWeight(next);
     } else {
-      if (product.is_by_weight) {
-        updateItemWeight(product.id, next);
-        setSelectedWeight(next);
-      } else {
-        updateQuantity(product.id, next);
-      }
+      updateQuantity(product.id, next);
     }
   };
 
@@ -121,69 +108,66 @@ export function ProductCard({
     e.stopPropagation();
     setIsLiked(!isLiked);
     if (!isLiked) {
-      toast.success("تمت الإضافة للمفضلة ❤️", { description: product.name });
+      toast.success("تمت الإضافة للمفضلة", { description: product.name });
     } else {
       toast.info("تمت الإزالة من المفضلة");
     }
   };
 
   return (
-    <div
-      className={cn(
-        "group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/40 bg-card text-card-foreground transition-all duration-300 hover:border-[#036233]/30 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]",
-      )}
-    >
-      {/* منطقة الصورة */}
-      <div className="relative aspect-square w-full overflow-hidden bg-emerald-50/30 dark:bg-emerald-950/20">
+    <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground transition-colors duration-200 hover:border-primary/40">
+      {/* صورة المنتج */}
+      <div className="relative aspect-square w-full overflow-hidden bg-muted">
         <Link
           to="/products/$productId"
           params={{ productId: product.id }}
-          className="block h-full w-full"
+          className="block h-full w-full focus-visible:outline-2 focus-visible:outline-ring"
         >
           {product.image_url ? (
             <img
               src={product.image_url}
-              alt={product.name}
+              alt={`${product.name} — ${product.unit_label ?? "قطعة"}`}
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className={cn(
+                "h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]",
+                outOfStock && "opacity-60 grayscale",
+              )}
             />
           ) : (
-            <div className="grid h-full w-full place-items-center bg-emerald-100/30 text-4xl">
-              🌿
+            <div className="grid h-full w-full place-items-center text-3xl text-muted-foreground">
+              🛒
             </div>
           )}
         </Link>
 
-        {/* تدرج ظلي خفيف لتعزيز وضوح الشارات */}
-        <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/25 via-transparent to-transparent opacity-80" />
-
-        {/* شارة الخصم والأكثر مبيعاً */}
-        <div className="absolute top-2.5 start-2.5 z-10 flex flex-col gap-1.5">
+        {/* شارات الخصم والأكثر مبيعاً */}
+        <div className="absolute top-2 start-2 z-10 flex flex-col items-start gap-1.5">
           {discount > 0 && (
-            <span className="rounded-full bg-[#E55300] px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
+            <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-accent-foreground">
               خصم {discount}%
             </span>
           )}
           {isTopSellerActive && discount === 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-black text-white shadow-sm">
-              <Flame className="h-3 w-3" /> مميز
+            <span className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+              <Flame className="h-3 w-3" aria-hidden="true" /> الأكثر طلباً
             </span>
           )}
         </div>
 
-        {/* أزرار الإجراء السريع (المعاينة والمفضلة) */}
+        {/* المفضلة والنظرة السريعة */}
         <div className="absolute top-2 end-2 z-10 flex flex-col gap-1">
           <button
             type="button"
             onClick={toggleWishlist}
-            aria-label="إضافة للمفضلة"
+            aria-label={isLiked ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+            aria-pressed={isLiked}
             className={cn(
-              "grid h-7 w-7 place-items-center rounded-xl bg-card/90 backdrop-blur-md transition-transform hover:scale-110 shadow-xs",
-              isLiked ? "text-rose-500 fill-rose-500" : "text-muted-foreground hover:text-rose-500",
+              "grid h-7 w-7 place-items-center rounded-full border border-border bg-card/90 backdrop-blur-sm transition-colors",
+              isLiked ? "text-destructive" : "text-muted-foreground hover:text-destructive",
             )}
           >
-            <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />
+            <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} aria-hidden="true" />
           </button>
 
           {onOpen && (
@@ -193,65 +177,74 @@ export function ProductCard({
                 e.stopPropagation();
                 onOpen(product);
               }}
-              aria-label="نظرة سريعة"
-              title="نظرة سريعة"
-              className="grid h-7 w-7 place-items-center rounded-xl bg-card/90 backdrop-blur-md text-muted-foreground hover:text-orange-500 transition-transform hover:scale-110 shadow-xs"
+              aria-label={`نظرة سريعة على ${product.name}`}
+              className="grid h-7 w-7 place-items-center rounded-full border border-border bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
 
-        {/* شارات منتجات الوزن */}
         {product.is_by_weight && (
-          <div className="absolute bottom-2 start-2 z-10">
-            <span className="flex items-center gap-1 rounded-md bg-emerald-950/80 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-bold text-emerald-200 border border-emerald-400/30">
-              <Scale className="h-2.5 w-2.5 text-emerald-400" /> بالوزن
-            </span>
-          </div>
+          <span className="absolute bottom-2 start-2 z-10 flex items-center gap-1 rounded-full border border-border bg-card/90 px-2 py-0.5 text-[10px] font-bold text-foreground backdrop-blur-sm">
+            <Scale className="h-2.5 w-2.5" aria-hidden="true" /> بالوزن
+          </span>
         )}
       </div>
 
-      {/* تفاصيل المنتج */}
-      <div className="flex flex-1 flex-col justify-between p-3 gap-2 text-right">
-        <div>
-          <Link
-            to="/products/$productId"
-            params={{ productId: product.id }}
-            className="block group-hover:text-emerald-600 transition-colors"
-          >
-            <h4 className="line-clamp-2 min-h-[2rem] text-xs sm:text-sm font-bold leading-snug text-foreground">
-              {product.name}
-            </h4>
-          </Link>
+      {/* التفاصيل */}
+      <div className="flex flex-1 flex-col gap-2 p-3 text-right">
+        <Link
+          to="/products/$productId"
+          params={{ productId: product.id }}
+          className="transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <h4 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-snug text-foreground sm:text-sm">
+            {product.name}
+          </h4>
+        </Link>
 
-          {/* السعر والوحدة */}
-          <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-border/40">
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm sm:text-base font-black text-[#036233] dark:text-emerald-400">
-                {currentEstPrice.toFixed(2)}
-              </span>
-              <span className="text-[10px] font-bold text-muted-foreground">ج.م</span>
-              <span className="text-[9px] text-muted-foreground font-semibold ms-0.5">
-                {displayUnit}
-              </span>
-            </div>
-            {product.old_price && product.old_price > product.price_per_unit && (
-              <span className="text-[10px] text-muted-foreground line-through decoration-[#E55300]/70">
-                {(product.old_price * (product.is_by_weight ? selectedWeight : 1)).toFixed(2)} ج.م
-              </span>
+        {/* حالة التوفر */}
+        <div>
+          <span
+            className={cn(
+              "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold",
+              outOfStock
+                ? "bg-destructive/10 text-destructive"
+                : lowStock
+                  ? "bg-accent/10 text-accent"
+                  : "bg-primary/10 text-primary",
             )}
-          </div>
+          >
+            {outOfStock ? "نفدت الكمية" : lowStock ? "كمية محدودة" : "متوفر"}
+          </span>
         </div>
 
-        {/* خيارات التحديد السريع للوزن */}
-        {product.is_by_weight && (
+        {/* السعر */}
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-border pt-2">
+          <span
+            className="text-base font-bold tabular-nums text-foreground sm:text-lg"
+            dir="ltr"
+          >
+            {currentEstPrice.toFixed(2)}
+          </span>
+          <span className="text-[10px] font-bold text-muted-foreground">ج.م / {unitLabel}</span>
+          {product.old_price && product.old_price > product.price_per_unit && (
+            <span
+              className="text-[11px] tabular-nums text-muted-foreground line-through"
+              dir="ltr"
+            >
+              {(product.old_price * (product.is_by_weight ? selectedWeight : 1)).toFixed(2)}
+            </span>
+          )}
+        </div>
+
+        {/* اختيار الوزن */}
+        {product.is_by_weight && !outOfStock && (
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground">
+            <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
               <span>اختر الوزن:</span>
-              <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-                {formatWeightLabel(selectedWeight)}
-              </span>
+              <span className="text-foreground">{formatWeightLabel(selectedWeight)}</span>
             </div>
             <div className="grid grid-cols-4 gap-1">
               {WEIGHT_OPTIONS.slice(0, 4).map((w) => {
@@ -260,12 +253,13 @@ export function ProductCard({
                   <button
                     key={w.value}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={(e) => handleQuickWeightSelect(e, w.value, w.label)}
                     className={cn(
-                      "px-1 py-0.5 rounded text-[9px] font-bold border transition-all text-center active:scale-95",
+                      "rounded-md border px-1 py-0.5 text-center text-[10px] font-bold transition-colors active:scale-95",
                       isSelected
-                        ? "bg-[#036233] text-white border-[#036233] shadow-xs"
-                        : "bg-secondary/60 hover:bg-[#036233]/5 hover:text-[#036233] text-muted-foreground border-border/50",
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-secondary text-muted-foreground hover:text-primary",
                     )}
                   >
                     {w.label}
@@ -276,28 +270,28 @@ export function ProductCard({
           </div>
         )}
 
-        {/* زر الإضافة البرتقالي الجذاب أو عداد الكمية */}
-        <div className="mt-auto pt-2">
+        {/* الإضافة للسلة */}
+        <div className="mt-auto pt-1">
           {qty > 0 ? (
-            <div className="flex h-10 items-center justify-between rounded-2xl border border-[#036233]/30 bg-[#036233]/5 dark:bg-[#036233]/10 dark:border-[#036233]/50 px-2 shadow-xs">
+            <div className="flex h-10 items-center justify-between rounded-xl border border-primary/40 bg-primary/5 px-2">
               <button
                 type="button"
                 onClick={handleDec}
-                className="grid h-7 w-7 place-items-center rounded-xl bg-white dark:bg-black text-[#036233] hover:bg-[#036233] hover:text-white transition active:scale-90 shadow-sm border border-[#036233]/10"
+                aria-label="تقليل الكمية"
+                className="grid h-7 w-7 place-items-center rounded-lg border border-border bg-card text-primary transition-colors hover:bg-primary hover:text-primary-foreground active:scale-90"
               >
-                <Minus className="h-3 w-3" />
+                <Minus className="h-3 w-3" aria-hidden="true" />
               </button>
-              <div className="text-center">
-                <span className="text-xs font-black text-[#036233] dark:text-emerald-300 block">
-                  {product.is_by_weight ? formatWeightLabel(qty) : `${qty}`}
-                </span>
-              </div>
+              <span className="text-xs font-bold tabular-nums text-primary" dir="ltr">
+                {product.is_by_weight ? formatWeightLabel(qty) : qty}
+              </span>
               <button
                 type="button"
                 onClick={handleInc}
-                className="grid h-7 w-7 place-items-center rounded-xl bg-[#036233] text-white hover:bg-[#036233]/90 transition active:scale-90 shadow-sm"
+                aria-label="زيادة الكمية"
+                className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:opacity-90 active:scale-90"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3 w-3" aria-hidden="true" />
               </button>
             </div>
           ) : (
@@ -305,12 +299,12 @@ export function ProductCard({
               type="button"
               disabled={outOfStock}
               onClick={handleAdd}
-              className="flex w-full h-10 items-center justify-center gap-1.5 rounded-2xl bg-[#036233] hover:bg-[#036233]/90 text-white font-black text-xs transition-all duration-200 active:scale-95 shadow-[0_4px_14px_rgba(3,98,51,0.25)] disabled:opacity-50 cursor-pointer"
+              className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
             >
-              <ShoppingCart className="h-3.5 w-3.5" />
+              {!outOfStock && <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />}
               <span>
                 {outOfStock
-                  ? "نفدت الكمية"
+                  ? "غير متوفر حالياً"
                   : product.is_by_weight
                     ? `أضف (${formatWeightLabel(selectedWeight)})`
                     : "أضف للسلة"}

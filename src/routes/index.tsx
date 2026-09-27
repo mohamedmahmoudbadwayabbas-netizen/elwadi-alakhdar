@@ -85,8 +85,6 @@ export function HomePage() {
 
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
-  const [savedDeliveryTime, setSavedDeliveryTime] = useState("30 - 45 دقيقة ⚡");
-  const [currentBranch, setCurrentBranch] = useState("فرع الدقي الرئيسي");
 
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -108,55 +106,31 @@ export function HomePage() {
     };
   }, []);
 
-  // Clean, realistic Supermarket Hero Slides
+  // شرائح العرض: من البانرات الحقيقية فقط، وإلا شريحة واحدة من إعدادات المتجر
   const heroSlides = useMemo(() => {
-    const curatedSupermarketSlides = [
-      {
-        id: "supermarket-main-hero",
-        title: settings.hero_title || "الوادي الأخضر — سوبرماركت عائلتك 🛒",
-        subtitle:
-          settings.hero_subtitle ||
-          "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
-        image_url:
-          settings.hero_bg_image ||
-          settings.hero_image_url ||
-          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=85",
-        cta_text: "تسوّق الآن 🛒",
-        badge: "عروض السوبرماركت اليومية 🛒",
-      },
-      {
-        id: "supermarket-staples-hero",
-        title: "عروض التموين وتوفير الشهر 🍚🥫",
-        subtitle: "تخفيضات كبرى على الأرز، الزيوت، المكرونات والمعلبات بأسعار الجملة لبيتك.",
-        image_url:
-          "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=85",
-        cta_text: "تسوّق التموين 🥫",
-        badge: "أسعار الجملة والتوفير ⚡",
-      },
-      {
-        id: "supermarket-meat-dairy-hero",
-        title: "اللحوم البلدية والأجبان الطازجة 🥩🧀",
-        subtitle: "كندوز ومفروم بلدي طازج يومياً، وأشهى أنواع الأجبان الرومي والشيدر والزبدة الفلاحي.",
-        image_url:
-          "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=1600&q=85",
-        cta_text: "قسم اللحوم والألبان 🥩",
-        badge: "طازج يومياً معتمد 🛡️",
-      },
-    ];
-
-    if (!heroBanners || heroBanners.length === 0) {
-      return curatedSupermarketSlides;
+    if (heroBanners && heroBanners.length > 0) {
+      return heroBanners.map((b, idx) => ({
+        id: b.id || `banner-${idx}`,
+        title: b.title || settings.hero_title || BRAND_NAME_AR,
+        subtitle: b.subtitle || settings.hero_subtitle || "",
+        image_url: b.image_url || settings.hero_bg_image || settings.hero_image_url || "",
+        cta_text: b.cta_text || settings.hero_cta_text || "تسوّق الآن",
+        badge: "",
+      }));
     }
 
-    return heroBanners.map((b, idx) => ({
-      id: b.id || `banner-${idx}`,
-      title: b.title && !b.title.includes("خضار") ? b.title : curatedSupermarketSlides[idx % curatedSupermarketSlides.length].title,
-      subtitle: b.subtitle && !b.subtitle.includes("خضار") ? b.subtitle : curatedSupermarketSlides[idx % curatedSupermarketSlides.length].subtitle,
-      image_url: b.image_url || curatedSupermarketSlides[idx % curatedSupermarketSlides.length].image_url,
-      cta_text: b.cta_text || "تسوّق العرض 🛒",
-      badge: "عروض السوبرماركت ⚡",
-    }));
+    return [
+      {
+        id: "store-hero",
+        title: settings.hero_title || BRAND_NAME_AR,
+        subtitle: settings.hero_subtitle || "",
+        image_url: settings.hero_bg_image || settings.hero_image_url || "",
+        cta_text: settings.hero_cta_text || "تسوّق الآن",
+        badge: "",
+      },
+    ];
   }, [heroBanners, settings]);
+
 
   // Auto-slide effect every 6 seconds
   useEffect(() => {
@@ -238,26 +212,25 @@ export function HomePage() {
       .slice(0, 8);
   }, [products]);
 
-  // 3. Daily Fresh Shelf (Vegetables, Fruits, Fresh Meat)
-  const freshProduceShelf = useMemo(() => {
-    return products
-      .filter((p) => {
-        const cat = categories.find((c) => c.id === p.category_id);
-        const slug = cat?.slug || "";
-        return slug === "vegetables-fruits" || slug === "meat-poultry" || slug === "dairy-cheese";
-      })
-      .slice(0, 8);
-  }, [products]);
+  // 3. رف الطازج (لحوم، دواجن، ألبان، خضروات وفواكه) — بمطابقة أسماء الأقسام الفعلية
+  const FRESH_KEYWORDS = ["لحوم", "دواجن", "ألبان", "أجبان", "خضروات", "فواكه"];
 
-  // 4. Pantry & Staples Shelf (Rice, Oil, Canned, Pasta)
+  const isFreshCategory = (categoryId?: string | null) => {
+    if (!categoryId) return false;
+    const cat = categories.find((c) => c.id === categoryId);
+    const label = `${cat?.name ?? ""} ${cat?.slug ?? ""}`;
+    return FRESH_KEYWORDS.some((k) => label.includes(k));
+  };
+
+  const freshProduceShelf = useMemo(() => {
+    return products.filter((p) => isFreshCategory(p.category_id)).slice(0, 8);
+  }, [products, categories]);
+
+  // 4. رف البقالة والتموين والمنظفات (بقية الأقسام)
   const pantryStaplesShelf = useMemo(() => {
-    return products
-      .filter((p) => {
-        const slug = categories.find((c) => c.id === p.category_id)?.slug || "";
-        return slug !== "vegetables-fruits" && slug !== "meat-poultry";
-      })
-      .slice(0, 8);
-  }, [products]);
+    return products.filter((p) => !isFreshCategory(p.category_id)).slice(0, 8);
+  }, [products, categories]);
+
 
   if (loading) {
     return <HomePageSkeleton />;
@@ -304,10 +277,12 @@ export function HomePage() {
                 className="space-y-3.5 max-w-2xl text-white"
               >
                 {/* Badge */}
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/25 px-3.5 py-1 text-xs font-black text-emerald-300 border border-emerald-400/40 backdrop-blur-md">
-                  <Sparkles className="h-3.5 w-3.5 text-orange-400 animate-pulse" />
-                  <span>{heroSlides[currentSlideIndex]?.badge}</span>
-                </div>
+                {heroSlides[currentSlideIndex]?.badge && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/25 px-3.5 py-1 text-xs font-black text-emerald-300 border border-emerald-400/40 backdrop-blur-md">
+                    <Sparkles className="h-3.5 w-3.5 text-orange-400" />
+                    <span>{heroSlides[currentSlideIndex]?.badge}</span>
+                  </div>
+                )}
 
                 {/* Main Headline */}
                 <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
@@ -341,28 +316,38 @@ export function HomePage() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Quick Supermarket Guarantee Badges */}
-            <div className="hidden lg:flex flex-col gap-2.5 bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/15 text-xs text-white max-w-xs shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="font-black text-xs">سلع تموينية ولحوم طازجة</div>
-                  <div className="text-[10px] text-slate-300">أصناف مختارة بعناية يومياً</div>
-                </div>
-              </div>
+            {/* بيانات المتجر الحقيقية فقط */}
+            {(settings.min_order_amount > 0 || settings.whatsapp_number) && (
+              <div className="hidden lg:flex flex-col gap-2.5 bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/15 text-xs text-white max-w-xs shrink-0">
+                {settings.min_order_amount > 0 && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-black text-xs">الحد الأدنى للطلب</div>
+                      <div className="text-[10px] text-slate-300 tabular-nums" dir="ltr">
+                        {settings.min_order_amount} EGP
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500/20 text-teal-400">
-                  <Clock className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="font-black text-xs">توصيل سريع لباب بيتك</div>
-                  <div className="text-[10px] text-slate-300">{savedDeliveryTime}</div>
-                </div>
+                {settings.whatsapp_number && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500/20 text-teal-400">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-black text-xs">للاستفسار والطلب</div>
+                      <div className="text-[10px] text-slate-300 tabular-nums" dir="ltr">
+                        {settings.whatsapp_number}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Slide Navigation Dots */}
@@ -407,32 +392,32 @@ export function HomePage() {
           )}
         </div>
 
-        {/* ─── 2. STORE BRANCH & DELIVERY STATUS BAR ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-300">
-            <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        {/* ─── 2. شريط معلومات المتجر (بيانات حقيقية فقط) ─── */}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
+            <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <div className="truncate">
-              <span className="font-bold">الفرع الحالي: </span>
-              <span className="font-black text-emerald-700 dark:text-emerald-300">{currentBranch}</span>
+              <span className="font-bold">المتجر: </span>
+              <span className="font-bold text-primary">{settings.site_name || BRAND_NAME_AR}</span>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-teal-500/10 border border-teal-500/20 p-3 flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-300">
-            <Clock className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 animate-pulse" />
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
+            <Layers className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <div className="truncate">
-              <span className="font-bold">التوصيل المتوقع: </span>
-              <span className="font-black text-teal-700 dark:text-teal-300">{savedDeliveryTime}</span>
+              <span className="font-bold">الأصناف المتاحة: </span>
+              <span className="font-bold tabular-nums text-primary" dir="ltr">
+                {products.length}
+              </span>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-card border border-border/80 p-3 flex items-center justify-between text-xs text-foreground">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span className="font-bold">تغطية الطلبات:</span>
-            </div>
-            <span className="font-black text-[11px] text-muted-foreground">متاح الدفع كاش أو بطاقة 💳</span>
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <span className="font-bold">الدفع عند الاستلام متاح</span>
           </div>
         </div>
+
 
         {/* ─── 3. SUPERMARKET CATEGORIES PROMINENT HORIZONTAL CAROUSEL ─── */}
         <CategoryGrid
