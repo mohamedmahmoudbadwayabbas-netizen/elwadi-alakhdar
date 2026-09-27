@@ -214,26 +214,25 @@ export function HomePage() {
       .slice(0, 8);
   }, [products]);
 
-  // 3. Daily Fresh Shelf (Vegetables, Fruits, Fresh Meat)
-  const freshProduceShelf = useMemo(() => {
-    return products
-      .filter((p) => {
-        const cat = categories.find((c) => c.id === p.category_id);
-        const slug = cat?.slug || "";
-        return slug === "vegetables-fruits" || slug === "meat-poultry" || slug === "dairy-cheese";
-      })
-      .slice(0, 8);
-  }, [products]);
+  // 3. رف الطازج (لحوم، دواجن، ألبان، خضروات وفواكه) — بمطابقة أسماء الأقسام الفعلية
+  const FRESH_KEYWORDS = ["لحوم", "دواجن", "ألبان", "أجبان", "خضروات", "فواكه"];
 
-  // 4. Pantry & Staples Shelf (Rice, Oil, Canned, Pasta)
+  const isFreshCategory = (categoryId?: string | null) => {
+    if (!categoryId) return false;
+    const cat = categories.find((c) => c.id === categoryId);
+    const label = `${cat?.name ?? ""} ${cat?.slug ?? ""}`;
+    return FRESH_KEYWORDS.some((k) => label.includes(k));
+  };
+
+  const freshProduceShelf = useMemo(() => {
+    return products.filter((p) => isFreshCategory(p.category_id)).slice(0, 8);
+  }, [products, categories]);
+
+  // 4. رف البقالة والتموين والمنظفات (بقية الأقسام)
   const pantryStaplesShelf = useMemo(() => {
-    return products
-      .filter((p) => {
-        const slug = categories.find((c) => c.id === p.category_id)?.slug || "";
-        return slug !== "vegetables-fruits" && slug !== "meat-poultry";
-      })
-      .slice(0, 8);
-  }, [products]);
+    return products.filter((p) => !isFreshCategory(p.category_id)).slice(0, 8);
+  }, [products, categories]);
+
 
   if (loading) {
     return <HomePageSkeleton />;
@@ -280,10 +279,12 @@ export function HomePage() {
                 className="space-y-3.5 max-w-2xl text-white"
               >
                 {/* Badge */}
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/25 px-3.5 py-1 text-xs font-black text-emerald-300 border border-emerald-400/40 backdrop-blur-md">
-                  <Sparkles className="h-3.5 w-3.5 text-orange-400 animate-pulse" />
-                  <span>{heroSlides[currentSlideIndex]?.badge}</span>
-                </div>
+                {heroSlides[currentSlideIndex]?.badge && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/25 px-3.5 py-1 text-xs font-black text-emerald-300 border border-emerald-400/40 backdrop-blur-md">
+                    <Sparkles className="h-3.5 w-3.5 text-orange-400" />
+                    <span>{heroSlides[currentSlideIndex]?.badge}</span>
+                  </div>
+                )}
 
                 {/* Main Headline */}
                 <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
