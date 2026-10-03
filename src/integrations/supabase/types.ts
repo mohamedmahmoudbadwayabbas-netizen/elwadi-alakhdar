@@ -327,6 +327,7 @@ export type Database = {
           purchase_count: number
           reviews_count: number
           stock_quantity: number
+          unit: string | null
           unit_label: string
           updated_at: string
           views_count: number
@@ -351,6 +352,7 @@ export type Database = {
           purchase_count?: number
           reviews_count?: number
           stock_quantity?: number
+          unit?: string | null
           unit_label?: string
           updated_at?: string
           views_count?: number
@@ -375,6 +377,7 @@ export type Database = {
           purchase_count?: number
           reviews_count?: number
           stock_quantity?: number
+          unit?: string | null
           unit_label?: string
           updated_at?: string
           views_count?: number
