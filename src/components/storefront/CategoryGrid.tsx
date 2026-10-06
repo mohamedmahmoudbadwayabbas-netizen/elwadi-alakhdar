@@ -64,7 +64,7 @@ export function CategoryGrid({
           >
             <Grid2X2 className="h-6 w-6" />
             <span className="text-xs font-bold">كل المنتجات</span>
-            {totalProductsCount > 0 && <span className="text-[10px] font-normal text-muted-foreground">{totalProductsCount} صنف</span>}
+            {totalProductsCount > 0 && <span className="text-[10px] font-normal text-muted-foreground"><bdi dir="ltr" className="tabular-nums">{totalProductsCount}</bdi> صنف</span>}
           </Button>
           {categories.map((c, index) => {
           const isActive = active === c.id || active === c.slug;
@@ -91,7 +91,7 @@ export function CategoryGrid({
               </div>
               <div className="flex w-full min-w-0 flex-col px-2 py-2">
                 <span className="truncate text-xs font-bold">{c.name_ar || c.name}</span>
-                {count > 0 && <span className="text-[10px] font-normal text-muted-foreground">{count} صنف</span>}
+                {count > 0 && <span className="text-[10px] font-normal text-muted-foreground"><bdi dir="ltr" className="tabular-nums">{count}</bdi> صنف</span>}
               </div>
             </Button>
           );

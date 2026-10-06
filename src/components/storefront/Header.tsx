@@ -142,7 +142,7 @@ export function Header() {
                   </div>
                   {totalCount > 0 && (
                     <Badge className="bg-[#036233] text-white text-[10px] px-1.5 py-0.5">
-                      {totalCount}
+                      <bdi dir="ltr" className="tabular-nums">{totalCount}</bdi>
                     </Badge>
                   )}
                 </Link>
@@ -282,7 +282,7 @@ export function Header() {
             <ShoppingBag className="h-5 w-5" />
             {totalCount > 0 && (
               <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-[#E55300] hover:bg-[#E55300]/90 px-1 text-[10px] font-black text-white shadow-sm border-2 border-background">
-                {totalCount}
+                <bdi dir="ltr" className="tabular-nums">{totalCount}</bdi>
               </Badge>
             )}
           </Link>

@@ -11,6 +11,7 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { flyToCart } from "@/lib/fly-to-cart";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function ProductCard({
   product,
@@ -29,7 +30,7 @@ export function ProductCard({
     inCart?.selected_weight ?? (product.is_by_weight ? 0.5 : 1),
   );
 
-  const isTopSellerActive = Boolean(isTopSeller ?? product.is_top_seller ?? product.is_popular);
+  const isTopSellerActive = Boolean(isTopSeller ?? (product.is_top_seller || product.is_popular));
 
   const discount =
     product.old_price && product.old_price > product.price_per_unit
@@ -52,6 +53,7 @@ export function ProductCard({
 
   const handleAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    if (outOfStock) return;
     const amount = product.is_by_weight ? selectedWeight : 1;
     const label = product.is_by_weight
       ? formatWeightLabel(selectedWeight)
@@ -69,6 +71,7 @@ export function ProductCard({
 
   const handleQuickWeightSelect = (e: React.MouseEvent, weight: number, label: string) => {
     e.stopPropagation();
+    if (outOfStock) return;
     setSelectedWeight(weight);
     if (qty > 0) {
       updateItemWeight(product.id, weight);
@@ -80,6 +83,7 @@ export function ProductCard({
 
   const handleInc = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    if (outOfStock) return;
     if (product.is_by_weight) {
       const next = +(qty + 0.25).toFixed(3);
       updateItemWeight(product.id, next);
@@ -145,7 +149,7 @@ export function ProductCard({
         <div className="absolute top-2 start-2 z-10 flex flex-col items-start gap-1.5">
           {discount > 0 && (
             <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-accent-foreground">
-              خصم {discount}%
+              خصم <bdi dir="ltr">{discount}%</bdi>
             </span>
           )}
           {isTopSellerActive && discount === 0 && (
@@ -157,7 +161,7 @@ export function ProductCard({
 
         {/* المفضلة والنظرة السريعة */}
         <div className="absolute top-2 end-2 z-10 flex flex-col gap-1">
-          <button
+          <Button
             type="button"
             onClick={toggleWishlist}
             aria-label={isLiked ? "إزالة من المفضلة" : "إضافة للمفضلة"}
@@ -168,10 +172,10 @@ export function ProductCard({
             )}
           >
             <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} aria-hidden="true" />
-          </button>
+          </Button>
 
           {onOpen && (
-            <button
+            <Button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -181,7 +185,7 @@ export function ProductCard({
               className="grid h-7 w-7 place-items-center rounded-full border border-border bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary"
             >
               <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -221,14 +225,14 @@ export function ProductCard({
         </div>
 
         {/* السعر */}
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-border pt-2">
+        <div dir="ltr" className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-border pt-2 text-left tabular-nums">
           <span
             className="text-base font-bold tabular-nums text-foreground sm:text-lg"
             dir="ltr"
           >
             {currentEstPrice.toFixed(2)}
           </span>
-          <span className="text-[10px] font-bold text-muted-foreground">ج.م / {unitLabel}</span>
+          <span className="text-[10px] font-bold text-muted-foreground">EGP / <bdi dir="ltr">{unitLabel}</bdi></span>
           {product.old_price && product.old_price > product.price_per_unit && (
             <span
               className="text-[11px] tabular-nums text-muted-foreground line-through"
@@ -244,13 +248,13 @@ export function ProductCard({
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
               <span>اختر الوزن:</span>
-              <span className="text-foreground">{formatWeightLabel(selectedWeight)}</span>
+              <span dir="ltr" className="text-foreground tabular-nums">{formatWeightLabel(selectedWeight)}</span>
             </div>
-            <div className="grid grid-cols-4 gap-1">
+            <div dir="ltr" className="grid grid-cols-4 gap-1 tabular-nums">
               {WEIGHT_OPTIONS.slice(0, 4).map((w) => {
                 const isSelected = Math.abs(selectedWeight - w.value) < 0.01;
                 return (
-                  <button
+                  <Button
                     key={w.value}
                     type="button"
                     aria-pressed={isSelected}
@@ -263,7 +267,7 @@ export function ProductCard({
                     )}
                   >
                     {w.label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -273,29 +277,30 @@ export function ProductCard({
         {/* الإضافة للسلة */}
         <div className="mt-auto pt-1">
           {qty > 0 ? (
-            <div className="flex h-10 items-center justify-between rounded-xl border border-primary/40 bg-primary/5 px-2">
-              <button
+            <div dir="ltr" className="flex h-10 items-center justify-between rounded-xl border border-primary/40 bg-primary/5 px-2 tabular-nums">
+              <Button
                 type="button"
                 onClick={handleDec}
                 aria-label="تقليل الكمية"
                 className="grid h-7 w-7 place-items-center rounded-lg border border-border bg-card text-primary transition-colors hover:bg-primary hover:text-primary-foreground active:scale-90"
               >
                 <Minus className="h-3 w-3" aria-hidden="true" />
-              </button>
+              </Button>
               <span className="text-xs font-bold tabular-nums text-primary" dir="ltr">
                 {product.is_by_weight ? formatWeightLabel(qty) : qty}
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={handleInc}
+                disabled={outOfStock}
                 aria-label="زيادة الكمية"
                 className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:opacity-90 active:scale-90"
               >
                 <Plus className="h-3 w-3" aria-hidden="true" />
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
               disabled={outOfStock}
               onClick={handleAdd}
@@ -306,10 +311,10 @@ export function ProductCard({
                 {outOfStock
                   ? "غير متوفر حالياً"
                   : product.is_by_weight
-                    ? `أضف (${formatWeightLabel(selectedWeight)})`
+                    ? <>أضف (<bdi dir="ltr">{formatWeightLabel(selectedWeight)}</bdi>)</>
                     : "أضف للسلة"}
               </span>
-            </button>
+            </Button>
           )}
         </div>
       </div>
