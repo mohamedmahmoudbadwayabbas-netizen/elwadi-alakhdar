@@ -32,7 +32,8 @@ export function ProductModal({
   if (!product) return null;
   const step = product.is_by_weight ? 0.25 : 1;
   const min = product.is_by_weight ? 0.25 : 1;
-  const outOfStock = (product.stock_quantity ?? 1) <= 0;
+  const outOfStock = (product.stock_quantity ?? 0) <= 0;
+  const hasDiscount = product.old_price != null && product.old_price > product.price_per_unit;
 
   return (
     <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
@@ -42,30 +43,31 @@ export function ProductModal({
             <img
               src={product.image_url}
               alt={product.name}
-              className="h-full w-full object-cover"
+              className={`h-full w-full object-cover ${outOfStock ? "opacity-50 grayscale" : ""}`}
             />
           ) : (
             <div className="grid h-full w-full place-items-center text-6xl">🌿</div>
           )}
           {Boolean(
-            (product as any).isTopSeller || (product as any).is_top_seller || product.is_featured,
+            product.is_popular || product.is_top_seller,
           ) && (
-            <span className="absolute top-3 end-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-black text-white shadow">
+            <span className="absolute top-3 end-3 rounded-full bg-primary px-3 py-1 text-xs font-black text-primary-foreground">
               الأكثر مبيعاً 🔥
             </span>
           )}
-          {product.is_on_sale && (
+          {hasDiscount && (
             <span className="absolute top-3 start-3 rounded-full sale-gradient px-3 py-1 text-xs font-black text-sale-foreground shadow">
               عرض خاص
             </span>
           )}
+          {outOfStock && <span className="absolute bottom-3 start-3 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground">نفدت الكمية</span>}
         </div>
         <div className="p-5">
           <DialogHeader className="space-y-1 text-start">
             <DialogTitle className="font-display text-xl font-bold">{product.name}</DialogTitle>
             <p className="text-xs text-muted-foreground">
               {product.is_by_weight
-                ? `السعر: ${product.price_per_unit.toFixed(2)} ج.م / كجم`
+                ? <>السعر: <bdi dir="ltr" className="tabular-nums">{product.price_per_unit.toFixed(2)} EGP / كجم</bdi></>
                 : product.unit_label}
             </p>
           </DialogHeader>
@@ -76,7 +78,7 @@ export function ProductModal({
             </p>
           )}
 
-          {product.is_by_weight && (
+          {product.is_by_weight && !outOfStock && (
             <div className="mt-4">
               <WeightSelector
                 product={product}
@@ -89,19 +91,19 @@ export function ProductModal({
 
           <div className="mt-4 flex items-center justify-between">
             <div>
-              <div className="font-display text-2xl font-bold text-primary">
+              <div dir="ltr" className="font-display text-2xl font-bold text-primary text-left tabular-nums">
                 {calculateEstimatedPrice(product, qty).toFixed(2)}
                 <span className="ms-1 text-xs font-bold text-muted-foreground">ج.م</span>
               </div>
               <div className="text-[11px] text-muted-foreground font-semibold">
                 {product.is_by_weight
-                  ? `الوزن المحدد: ${formatWeightLabel(qty)}`
-                  : `${qty} ${product.unit_label}`}
+                  ? <>الوزن المحدد: <bdi dir="ltr">{formatWeightLabel(qty)}</bdi></>
+                  : <bdi dir="ltr">{qty} {product.unit_label}</bdi>}
               </div>
             </div>
 
-            {!product.is_by_weight && (
-              <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/40 p-1">
+            {!product.is_by_weight && !outOfStock && (
+              <div dir="ltr" className="flex items-center gap-1 rounded-full border border-border bg-secondary/40 p-1 tabular-nums">
                 <Button
                   aria-label="تقليل الكمية"
                   variant="ghost"
@@ -129,6 +131,7 @@ export function ProductModal({
             disabled={outOfStock}
             className="mt-5 h-12 w-full rounded-2xl hero-gradient text-base font-black text-primary-foreground shadow-card hover:opacity-95"
             onClick={(e) => {
+              if (outOfStock) return;
               const label = product.is_by_weight
                 ? formatWeightLabel(qty)
                 : `${qty} ${product.unit_label}`;

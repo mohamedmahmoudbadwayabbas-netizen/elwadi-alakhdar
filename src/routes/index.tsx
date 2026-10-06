@@ -44,6 +44,7 @@ import {
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { ProductModal } from "@/components/storefront/ProductModal";
 import { CategoryGrid } from "@/components/storefront/CategoryGrid";
+import { StickyCartBar } from "@/components/storefront/StickyCartBar";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -60,6 +61,8 @@ export const Route = createFileRoute("/")({
         content: "أجود السلع التموينية، لحوم بلدي، أجبان، ومستلزمات المنزل بأعلى جودة وتوصيل سريع.",
       },
       { property: "og:url", content: `${SITE_URL}/` },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/` }],
   }),
@@ -201,14 +204,14 @@ export function HomePage() {
   // 1. Hot Deals Shelf (Items with real discounts)
   const discountedDeals = useMemo(() => {
     return products
-.filter((p) => Boolean(p.old_price && p.old_price > p.price_per_unit))
+.filter((p) => p.old_price != null && p.old_price > p.price_per_unit)
       .slice(0, 8);
   }, [products]);
 
   // 2. Best Sellers in Your Area Shelf
-  const bestSellersInArea = useMemo(() => {
+  const popularProducts = useMemo(() => {
     return products
-      .filter((p) => p.is_featured)
+      .filter((p) => p.is_popular || p.is_top_seller)
       .slice(0, 8);
   }, [products]);
 
@@ -432,7 +435,7 @@ export function HomePage() {
         {searchQuery.trim() && (
           <div className="flex items-center justify-between rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-3 text-xs">
             <span className="font-bold text-emerald-900 dark:text-emerald-200">
-              نتائج البحث عن: <strong className="font-black">"{searchQuery}"</strong> ({filteredProducts.length} منتج)
+              نتائج البحث عن: <strong className="font-black">"{searchQuery}"</strong> (<bdi dir="ltr" className="tabular-nums">{filteredProducts.length}</bdi> منتج)
             </span>
             <button
               onClick={() => setSearchQuery("")}
@@ -484,7 +487,7 @@ export function HomePage() {
                       : "نتائج البحث"}
                   </span>
                   <span className="text-xs text-muted-foreground font-normal">
-                    ({filteredProducts.length} صنف)
+                    (<bdi dir="ltr" className="tabular-nums">{filteredProducts.length}</bdi> صنف)
                   </span>
                 </h3>
               </div>
@@ -534,7 +537,7 @@ export function HomePage() {
               )}
 
               {/* SHELF 2: BEST SELLERS & MOST POPULAR IN AREA */}
-              {bestSellersInArea.length > 0 && (
+              {popularProducts.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-border/70 pb-3">
                     <div className="flex items-center gap-2">
@@ -543,17 +546,17 @@ export function HomePage() {
                       </div>
                       <div>
                         <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          الأكثر طلباً في منطقتك ⭐
+                          الأكثر طلباً ⭐
                         </h3>
                         <span className="text-[11px] text-muted-foreground font-bold">
-                          السلع والمنتجات الأكثر شراءً وتقييماً من عملائنا
+                          منتجات شائعة من كتالوج المتجر
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
-                    {bestSellersInArea.map((product) => (
+                    {popularProducts.map((product) => (
                       <ProductCard
                         key={product.id}
                         product={product}
@@ -689,6 +692,8 @@ export function HomePage() {
           </div>
         </footer>
       </div>
+
+      <StickyCartBar />
 
       {/* Quick View Product Modal */}
       <ProductModal

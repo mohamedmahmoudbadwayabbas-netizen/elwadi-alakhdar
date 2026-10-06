@@ -29,7 +29,7 @@ export type HeroBanner = {
 export const PRODUCT_COLUMNS =
   "id,name,description,price_per_unit,old_price,image_url,category_id,stock_quantity,low_stock_threshold,unit_label,is_by_weight,is_popular,is_on_sale,is_featured,is_top_seller,avg_rating,reviews_count,views_count,purchase_count,cooking_tip,created_at";
 
-function normalizeProduct(row: any): Product {
+export function normalizeProduct(row: any): Product {
   return {
     ...row,
     price_per_unit: Number(row.price_per_unit ?? 0),

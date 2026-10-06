@@ -35,7 +35,7 @@ export function BottomNav() {
               <ShoppingBag className="h-5 w-5" />
               {totalCount > 0 && (
                 <span className="absolute -end-2 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-black text-accent-foreground">
-                  {totalCount}
+                  <bdi dir="ltr" className="tabular-nums">{totalCount}</bdi>
                 </span>
               )}
             </span>

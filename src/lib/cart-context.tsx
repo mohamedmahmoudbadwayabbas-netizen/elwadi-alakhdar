@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { playClickSound } from "@/lib/sounds";
 import { supabase } from "@/lib/supabase-loose";
 import { toast } from "sonner";
+import { PRODUCT_COLUMNS, normalizeProduct } from "@/lib/store-data-hooks";
 
 export type Product = {
   id: string;
@@ -57,10 +58,6 @@ type CartContextValue = {
 };
 const CartContext = createContext<CartContextValue | null>(null);
 
-const LIVE_PRODUCT_COLUMNS = "id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at";
-function mapDbProduct(row: any): Product {
-  return { ...row, price_per_unit: Number(row.price ?? 0), old_price: row.original_price == null ? null : Number(row.original_price), stock_quantity: Number(row.stock ?? 0), low_stock_threshold: 5, unit_label: "قطعة", is_by_weight: false, is_popular: Boolean(row.is_featured), is_on_sale: Number(row.original_price ?? 0) > Number(row.price ?? 0), avg_rating: row.rating ?? null, reviews_count: row.reviews_count ?? null, is_top_seller: false };
-}
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -75,12 +72,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.from("cart_items").select("id,user_id,product_id,quantity,created_at").eq("user_id", uid).order("created_at", { ascending: true });
       if (error) throw error;
       const productIds = [...new Set((data ?? []).map((r) => r.product_id).filter(Boolean))] as string[];
-      const { data: products, error: productError } = productIds.length ? await supabase.from("products").select(LIVE_PRODUCT_COLUMNS).in("id", productIds) : { data: [], error: null };
+      const { data: products, error: productError } = productIds.length ? await supabase.from("products").select(PRODUCT_COLUMNS).in("id", productIds) : { data: [], error: null };
       if (productError) throw productError;
-      const map = new Map((products ?? []).map((p) => [p.id, mapDbProduct(p)]));
-      setItems((data ?? []).filter((r) => r.product_id && map.has(r.product_id)).map((r) => {
-        const product = map.get(r.product_id!)!; const quantity = Number(r.quantity ?? 0);
-        return { product, quantity, estimated_price: calculateEstimatedPrice(product, quantity), substitution_preference: "call_me" as const };
+      const map = new Map((products ?? []).map((p) => [p.id, normalizeProduct(p)]));
+      setItems((data ?? []).flatMap((r) => {
+        const product = r.product_id ? map.get(r.product_id) : undefined;
+        if (!product) return [];
+        const quantity = Number(r.quantity ?? 0);
+        return [{ product, quantity, estimated_price: calculateEstimatedPrice(product, quantity), substitution_preference: "call_me" as const }];
       }));
     } catch (error: any) {
       setItems([]); toast.error(`تعذر تحميل سلة حسابك: ${error.message}`);

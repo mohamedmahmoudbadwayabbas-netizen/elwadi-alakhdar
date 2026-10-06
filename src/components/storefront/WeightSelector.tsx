@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "@/components/ui/button";
 import { Scale, Sparkles, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/lib/cart-context";
@@ -44,16 +45,16 @@ export function WeightSelector({
             اختر الوزن:
           </span>
           {showEstimatedPrice && (
-            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400">
+            <span dir="ltr" className="text-[11px] font-black text-primary tabular-nums">
               ≈ {currentEstimatedPrice.toFixed(2)} ج.م
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
+        <div dir="ltr" className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar tabular-nums">
           {WEIGHT_OPTIONS.map((opt) => {
             const isSelected = Math.abs(selectedWeight - opt.value) < 0.01;
             return (
-              <button
+              <Button
                 key={opt.value}
                 type="button"
                 onClick={(e) => {
@@ -68,7 +69,7 @@ export function WeightSelector({
                 )}
               >
                 {opt.label}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -93,7 +94,7 @@ export function WeightSelector({
               تحديد وزن الصنف (بالجرام / الكيلو)
             </h4>
             <p className="text-[10px] text-muted-foreground font-medium">
-              سعر الكيلو: {product.price_per_unit.toFixed(2)} ج.م
+              سعر الكيلو: <bdi dir="ltr" className="tabular-nums">{product.price_per_unit.toFixed(2)} EGP</bdi>
             </p>
           </div>
         </div>
@@ -101,7 +102,7 @@ export function WeightSelector({
         {showEstimatedPrice && (
           <div className="text-end">
             <div className="text-[10px] font-bold text-muted-foreground">السعر التقديري:</div>
-            <div className="font-display text-base font-black text-emerald-600 dark:text-emerald-400">
+            <div dir="ltr" className="font-display text-base font-black text-primary tabular-nums">
               {currentEstimatedPrice.toFixed(2)}{" "}
               <span className="text-[10px] font-bold text-muted-foreground">ج.م</span>
             </div>
@@ -110,12 +111,12 @@ export function WeightSelector({
       </div>
 
       {/* أزرار خيارات الوزن المسبقة */}
-      <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+      <div dir="ltr" className="grid grid-cols-5 gap-1.5 sm:gap-2 tabular-nums">
         {WEIGHT_OPTIONS.map((opt) => {
           const isSelected = Math.abs(selectedWeight - opt.value) < 0.01;
           const optPrice = calculateEstimatedPrice(product, opt.value);
           return (
-            <button
+            <Button
               key={opt.value}
               type="button"
               onClick={() => handleSelect(opt.value, opt.label)}
@@ -130,7 +131,7 @@ export function WeightSelector({
               <span className="text-[9px] font-bold text-muted-foreground mt-0.5">
                 {optPrice.toFixed(1)} ج
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -139,29 +140,29 @@ export function WeightSelector({
       <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/50">
         <span className="text-[11px] font-bold text-muted-foreground">
           الوزن المحدد:{" "}
-          <strong className="text-foreground">{formatWeightLabel(selectedWeight)}</strong>
+          <strong dir="ltr" className="inline-block text-foreground tabular-nums">{formatWeightLabel(selectedWeight)}</strong>
         </span>
 
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-secondary/50 p-1">
-          <button
+        <div dir="ltr" className="flex items-center gap-1.5 rounded-full border border-border bg-secondary/50 p-1 tabular-nums">
+          <Button
             type="button"
             aria-label="تقليل 250 جم"
             onClick={() => handleStep(-0.25)}
             className="grid h-7 w-7 place-items-center rounded-full hover:bg-background text-foreground transition-all active:scale-90"
           >
             <Minus className="h-3 w-3" />
-          </button>
+          </Button>
           <span className="min-w-16 text-center text-xs font-black text-foreground">
             {formatWeightLabel(selectedWeight)}
           </span>
-          <button
+          <Button
             type="button"
             aria-label="زيادة 250 جم"
             onClick={() => handleStep(0.25)}
             className="grid h-7 w-7 place-items-center rounded-full hover:bg-background text-foreground transition-all active:scale-90"
           >
             <Plus className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

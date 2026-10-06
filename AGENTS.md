@@ -10,3 +10,7 @@
 > the editor, so keep the branch in a working state.
 
 <!-- LOVABLE:END -->
+
+- Storefront product reads reuse PRODUCT_COLUMNS and normalizeProduct from store-data-hooks, including search and cart hydration, to prevent live-schema drift.
+- Numeric price groups and quantity controls use explicit LTR islands within RTL layouts so control order matches the Product Page.
+- The homepage sticky cart summary links to the existing cart route; no drawer is mounted, so opening cart context state alone is not a navigation action.

@@ -5,21 +5,14 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-context";
 import { useSearch } from "@/lib/search-context";
 import { searchProductsFuzzy } from "@/lib/fuzzy-search";
-import { supabase } from "@/integrations/supabase/client";
+import { useStoreProducts } from "@/lib/store-data-hooks";
+import type { Product } from "@/lib/cart-context";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { flyToCart } from "@/lib/fly-to-cart";
 import { motion, AnimatePresence } from "motion/react";
 
-type SearchProduct = {
-  id: string;
-  name: string;
-  price_per_unit: number;
-  old_price?: number | null;
-  image_url?: string | null;
-  unit_label?: string | null;
-  is_by_weight?: boolean;
-};
+type SearchProduct = Product;
 
 interface SmartSearchBarProps {
   className?: string;
@@ -36,7 +29,7 @@ export function SmartSearchBar({
 }: SmartSearchBarProps) {
   const { query, setQuery } = useSearch();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
-  const [allProducts, setAllProducts] = useState<SearchProduct[]>([]);
+  const { data: allProducts = [] } = useStoreProducts();
   const [results, setResults] = useState<SearchProduct[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,25 +46,6 @@ export function SmartSearchBar({
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
-
-  // Load product catalog for fast client-side fuzzy searching
-  useEffect(() => {
-    const fetchCatalog = async () => {
-      const { data } = await supabase
-        .from("products")
-.select("id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at")
-        .limit(200);
-
-      if (data) {
-        setAllProducts((data as any[]).map((p) => ({
-          ...p, price_per_unit: Number(p.price ?? 0), old_price: p.original_price == null ? null : Number(p.original_price),
-          unit_label: "قطعة", is_by_weight: false, is_on_sale: Number(p.original_price ?? 0) > Number(p.price ?? 0),
-          stock_quantity: Number(p.stock ?? 0), is_popular: Boolean(p.is_featured),
-        })) as SearchProduct[]);
-      }
-    };
-    fetchCatalog();
-  }, []);
 
   // Filter products whenever debouncedQuery changes
   useEffect(() => {
@@ -101,10 +75,11 @@ export function SmartSearchBar({
 
   const handleDirectAddToCart = (e: React.MouseEvent, product: SearchProduct) => {
     e.stopPropagation();
+    if ((product.stock_quantity ?? 0) <= 0) return;
     const targetQty = product.is_by_weight ? 0.5 : 1;
 
     // Optimistic UI update
-    addItem(product as any, targetQty);
+    addItem(product, targetQty);
 
     // Visual feedback badge animation
     setAddedIds((prev) => ({ ...prev, [product.id]: true }));
@@ -179,7 +154,7 @@ export function SmartSearchBar({
                 <div className="px-3 py-1.5 text-[11px] font-black text-muted-foreground flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <Sparkles className="h-3 w-3 text-emerald-500" /> نتائج البحث السريع (
-                    {results.length})
+                    <bdi dir="ltr" className="tabular-nums">{results.length}</bdi>)
                   </span>
                   <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                     تصحيح إملائي تلقائي 🎯
@@ -188,6 +163,7 @@ export function SmartSearchBar({
 
                 {results.map((product) => {
                   const isAdded = addedIds[product.id];
+                  const unavailable = (product.stock_quantity ?? 0) <= 0;
                   return (
                     <div
                       key={product.id}
@@ -201,7 +177,7 @@ export function SmartSearchBar({
                             <img
                               src={product.image_url}
                               alt={product.name}
-                              className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                              className={`h-full w-full object-cover group-hover:scale-110 transition-transform duration-300 ${unavailable ? "opacity-50 grayscale" : ""}`}
                             />
                           ) : (
                             <span className="text-lg">🌿</span>
@@ -212,25 +188,27 @@ export function SmartSearchBar({
                           <h4 className="text-xs font-black text-foreground truncate group-hover:text-primary transition-colors">
                             {product.name}
                           </h4>
-                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-bold mt-0.5">
+                          <div dir="ltr" className="flex flex-wrap items-center gap-2 text-left tabular-nums text-[11px] text-muted-foreground font-bold mt-0.5">
                             <span className="text-emerald-600 dark:text-emerald-400 font-black">
-                              {product.price_per_unit} ج.م
+                              {product.price_per_unit.toFixed(2)} EGP
                             </span>
                             {product.old_price && product.old_price > product.price_per_unit && (
                               <span className="line-through text-[10px] text-muted-foreground/70">
-                                {product.old_price} ج.م
+                                {product.old_price.toFixed(2)} EGP
                               </span>
                             )}
                             <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded-md">
                               {product.is_by_weight ? "بالوزن" : product.unit_label || "قطعة"}
                             </span>
                           </div>
+                          {unavailable && <span className="text-[10px] font-bold text-destructive">نفدت الكمية</span>}
                         </div>
                       </div>
 
                       {/* Direct Add-To-Cart Action Button */}
                       <Button
                         size="sm"
+                        disabled={unavailable}
                         type="button"
                         onClick={(e) => handleDirectAddToCart(e, product)}
                         className={`h-9 px-3 rounded-xl font-black text-xs gap-1 shrink-0 transition-all ${
