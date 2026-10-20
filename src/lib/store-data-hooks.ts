@@ -25,10 +25,10 @@ export type HeroBanner = {
   is_active: boolean;
 };
 
-// الأعمدة الحقيقية الموجودة فعلياً في جدول products
+// Use the live Supabase schema as the source of truth. normalizeProduct maps
+// these database names to the storefront's stable Product model.
 export const PRODUCT_COLUMNS =
   "id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at";
-
 function normalizeProduct(row: any): Product {
   const price = Number(row.price ?? row.price_per_unit ?? 0);
   const oldPrice = row.original_price != null ? Number(row.original_price) : (row.old_price != null ? Number(row.old_price) : null);
@@ -47,10 +47,12 @@ function normalizeProduct(row: any): Product {
     low_stock_threshold: Number(row.low_stock_threshold ?? 10),
     unit_label: row.unit_label ?? "قطعة",
     is_by_weight: Boolean(row.is_by_weight),
-    is_popular: Boolean(row.is_popular ?? isFeatured),
+    // Featured placement is not a sales signal. Keep popularity separate until
+    // the live schema exposes verified order metrics.
+    is_popular: Boolean(row.is_popular),
     is_on_sale: Boolean(row.is_on_sale ?? (oldPrice != null && oldPrice > price)),
     is_featured: isFeatured,
-    is_top_seller: Boolean(row.is_top_seller ?? isFeatured),
+    is_top_seller: Boolean(row.is_top_seller),
     avg_rating: row.rating != null ? Number(row.rating) : (row.avg_rating != null ? Number(row.avg_rating) : null),
     reviews_count: Number(row.reviews_count ?? 0),
   } as Product;
@@ -61,6 +63,7 @@ export async function fetchStoreProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select(PRODUCT_COLUMNS)
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(500);
 
@@ -96,6 +99,10 @@ export async function fetchStoreCategories(): Promise<Category[]> {
     ...c,
     name: c.name_ar || c.name,
     name_ar: c.name_ar ?? c.name,
+    image_url: c.image_url ?? null,
+    icon: null,
+    parent_id: null,
+    sort_order: null,
   })) as Category[];
 }
 
@@ -112,16 +119,26 @@ export function useStoreCategories() {
 // ── 3. Fetch & Cache Hero Banners (real Supabase data only) ──
 export async function fetchHeroBanners(): Promise<HeroBanner[]> {
   const { data, error } = await supabase
-    .from("hero_banners")
-    .select("id,image_url,title,subtitle,cta_text,link_url,sort_order,is_active")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+    .from("store_settings_public")
+    .select("id,hero_image_url,hero_bg_image,hero_title,hero_subtitle,hero_cta_text")
+    .limit(1)
+    .maybeSingle();
 
   if (error) {
     console.warn("Failed to fetch hero banners:", error.message);
     return [];
   }
-  return (data ?? []) as HeroBanner[];
+  if (!data || (!data.hero_image_url && !data.hero_bg_image)) return [];
+  return [{
+    id: data.id,
+    image_url: data.hero_image_url || data.hero_bg_image,
+    title: data.hero_title,
+    subtitle: data.hero_subtitle,
+    cta_text: data.hero_cta_text,
+    link_url: null,
+    sort_order: 0,
+    is_active: true,
+  }];
 }
 
 export function useHeroBanners() {
@@ -152,6 +169,7 @@ export function useStoreProduct(productId: string) {
       const { data, error } = await supabase
         .from("products")
         .select(PRODUCT_COLUMNS)
+        .eq("is_active", true)
         .eq("id", productId)
         .maybeSingle();
 

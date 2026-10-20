@@ -1,4 +1,4 @@
-import { Plus, Minus, Heart, ShoppingCart, Flame, Scale, Eye } from "lucide-react";
+import { Plus, Minus, ShoppingCart, Flame, Scale, Eye } from "lucide-react";
 import type { Product } from "@/lib/cart-context";
 import {
   useCart,
@@ -25,7 +25,6 @@ export function ProductCard({
   const { addItem, updateQuantity, updateItemWeight, removeItem, items } = useCart();
   const inCart = items.find((i) => i.product.id === product.id);
   const qty = inCart?.quantity ?? 0;
-  const [isLiked, setIsLiked] = useState(false);
   const [selectedWeight, setSelectedWeight] = useState<number>(
     inCart?.selected_weight ?? (product.is_by_weight ? 0.5 : 1),
   );
@@ -84,6 +83,10 @@ export function ProductCard({
   const handleInc = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (outOfStock) return;
+    if (!product.is_by_weight && qty >= stock) {
+      toast.info("وصلت للكمية المتاحة في المخزون");
+      return;
+    }
     if (product.is_by_weight) {
       const next = +(qty + 0.25).toFixed(3);
       updateItemWeight(product.id, next);
@@ -105,16 +108,6 @@ export function ProductCard({
       setSelectedWeight(next);
     } else {
       updateQuantity(product.id, next);
-    }
-  };
-
-  const toggleWishlist = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsLiked(!isLiked);
-    if (!isLiked) {
-      toast.success("تمت الإضافة للمفضلة", { description: product.name });
-    } else {
-      toast.info("تمت الإزالة من المفضلة");
     }
   };
 
@@ -159,21 +152,8 @@ export function ProductCard({
           )}
         </div>
 
-        {/* المفضلة والنظرة السريعة */}
+        {/* النظرة السريعة */}
         <div className="absolute top-2 end-2 z-10 flex flex-col gap-1">
-          <Button
-            type="button"
-            onClick={toggleWishlist}
-            aria-label={isLiked ? "إزالة من المفضلة" : "إضافة للمفضلة"}
-            aria-pressed={isLiked}
-            className={cn(
-              "grid h-7 w-7 place-items-center rounded-full border border-border bg-card/90 backdrop-blur-sm transition-colors",
-              isLiked ? "text-destructive" : "text-muted-foreground hover:text-destructive",
-            )}
-          >
-            <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} aria-hidden="true" />
-          </Button>
-
           {onOpen && (
             <Button
               type="button"
@@ -204,7 +184,7 @@ export function ProductCard({
           className="transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
         >
           <h4 className="line-clamp-2 min-h-[2rem] text-xs font-bold leading-snug text-foreground sm:text-sm">
-            {product.name}
+            {product.name_ar || product.name}
           </h4>
         </Link>
 
@@ -232,7 +212,9 @@ export function ProductCard({
           >
             {currentEstPrice.toFixed(2)}
           </span>
-          <span className="text-[10px] font-bold text-muted-foreground">EGP / <bdi dir="ltr">{unitLabel}</bdi></span>
+          <span className="text-[10px] font-bold text-muted-foreground">
+            <bdi dir="rtl">ج.م</bdi> / <bdi dir="rtl">{unitLabel}</bdi>
+          </span>
           {product.old_price && product.old_price > product.price_per_unit && (
             <span
               className="text-[11px] tabular-nums text-muted-foreground line-through"
@@ -292,7 +274,7 @@ export function ProductCard({
               <Button
                 type="button"
                 onClick={handleInc}
-                disabled={outOfStock}
+                disabled={outOfStock || (!product.is_by_weight && qty >= stock)}
                 aria-label="زيادة الكمية"
                 className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:opacity-90 active:scale-90"
               >

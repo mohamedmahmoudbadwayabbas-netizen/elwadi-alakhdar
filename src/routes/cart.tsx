@@ -445,7 +445,7 @@ function CartPage() {
         p_idempotency_key: attemptKey,
       } as any);
 
-      // توافق خلفي: لو نسخة الدالة الحالية لا تقبل مفتاح idempotency
+      // Support the currently deployed RPC signature until its migration adds idempotency.
       if (rpcError && (rpcError.code === "PGRST202" || /p_idempotency_key|could not find|does not exist/i.test(rpcError.message ?? ""))) {
         ({ data: rpcData, error: rpcError } = await supabase.rpc("create_order", baseArgs as any));
       }
@@ -635,7 +635,7 @@ function CartPage() {
                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         <div className="flex items-start justify-between gap-2">
                           <h5 className="line-clamp-2 text-sm font-bold leading-snug">
-                            {it.product.name}
+                            {it.product.name_ar || it.product.name}
                           </h5>
                           <button
                             aria-label="حذف"
@@ -649,6 +649,13 @@ function CartPage() {
                           {it.product.price_per_unit.toFixed(2)} ج.م{" "}
                           {it.product.is_by_weight ? "/ كجم" : `/ ${it.product.unit_label}`}
                         </div>
+                        {(it.product.stock_quantity ?? 0) <= 0 ? (
+                          <p className="text-[11px] font-bold text-destructive">نفد هذا المنتج. أزله من السلة للمتابعة.</p>
+                        ) : it.quantity > (it.product.stock_quantity ?? 0) ? (
+                          <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                            الكمية في السلة أكبر من المخزون الحالي ({it.product.stock_quantity}). قلل الكمية للمتابعة.
+                          </p>
+                        ) : null}
                         <div className="mt-auto flex items-center justify-between">
                           <div className="flex items-center gap-0.5 rounded-full border border-border bg-secondary/40 p-0.5">
                             <button
@@ -663,15 +670,16 @@ function CartPage() {
                             >
                               <Minus className="h-3.5 w-3.5" />
                             </button>
-                            <span className="min-w-14 text-center text-xs font-black">
+                            <span dir="ltr" className="min-w-14 text-center text-xs font-black tabular-nums">
                               {it.product.is_by_weight
                                 ? it.quantity >= 1
-                                  ? `${it.quantity} كجم`
-                                  : `${Math.round(it.quantity * 1000)} جم`
+                                  ? <>{it.quantity} <bdi dir="rtl">كجم</bdi></>
+                                  : <>{Math.round(it.quantity * 1000)} <bdi dir="rtl">جم</bdi></>
                                 : it.quantity}
                             </span>
                             <button
                               aria-label="زيادة"
+                              disabled={it.quantity >= (it.product.stock_quantity ?? 0)}
                               onClick={() =>
                                 updateQuantity(
                                   it.product.id,
@@ -1093,23 +1101,17 @@ function CartPage() {
 
                 {/* شارات الأمان والضمانات */}
                 <div className="mt-5 space-y-2 border-t border-border/60 pt-4 text-[11px] font-semibold text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                      🌿
+                  <div className="flex items-start gap-2">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                      ✓
                     </span>
-                    <span>منتجات طازجة من المزرعة إليك مباشرة</span>
+                    <span>السعر والمخزون يخضعان للتحقق عند إرسال الطلب.</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                      🚚
+                  <div className="flex items-start gap-2">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                      ✓
                     </span>
-                    <span>توصيل سريع للحفاظ على جودة الأغذية</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                      🛡️
-                    </span>
-                    <span>ضمان الجودة والطزاجة 100% أو الاستبدال</span>
+                    <span>اختر طريقة الاستلام والدفع المتاحة لهذا الطلب.</span>
                   </div>
                 </div>
               </Card>

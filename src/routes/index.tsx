@@ -1,45 +1,25 @@
 import { SITE_URL, BRAND_NAME_AR } from "@/lib/brand";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useCart, type Product } from "@/lib/cart-context";
+import { type Product } from "@/lib/cart-context";
 import { useSettings } from "@/lib/settings-context";
-import { useAuth } from "@/lib/auth-context";
 import { useSearch } from "@/lib/search-context";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import {
-  MapPin,
   Sparkles,
   SearchX,
   PackageOpen,
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Flame,
-  ShieldCheck,
-  Zap,
   ShoppingBag,
-  Clock,
-  CheckCircle2,
-  TrendingUp,
-  Award,
-  Layers,
-  Store,
-  Lightbulb,
-  Heart,
-  Scale,
+  SlidersHorizontal,
 } from "lucide-react";
 import { HomePageSkeleton } from "@/components/storefront/Skeletons";
 import { EmptyState } from "@/components/storefront/EmptyState";
 import { SmartSearchBar } from "@/components/storefront/SmartSearchBar";
 import { searchProductsFuzzy } from "@/lib/fuzzy-search";
-import { motion, AnimatePresence } from "motion/react";
 import {
   useStoreProducts,
   useStoreCategories,
   useHeroBanners,
-  type Category,
 } from "@/lib/store-data-hooks";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { ProductModal } from "@/components/storefront/ProductModal";
@@ -49,16 +29,16 @@ import { StickyCartBar } from "@/components/storefront/StickyCartBar";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "سوبرماركت الوادي الأخضر — تسوق البقالة والتموين واللحوم والأجبان 🛒" },
+      { title: "سوبرماركت الوادي الأخضر — تسوّق احتياجات البيت" },
       {
         name: "description",
         content:
-          "تسوّق جميع سلع السوبرماركت، المواد التموينية، اللحوم البلدية الطازجة، والأجبان والمنظفات بأسعار الجملة وتوصيل فوري لباب منزلك.",
+          "تصفّح المنتجات المتاحة في سوبرماركت الوادي الأخضر وابحث عن احتياجاتك اليومية.",
       },
-      { property: "og:title", content: "سوبرماركت الوادي الأخضر — سوبرماركت عائلتك" },
+      { property: "og:title", content: "سوبرماركت الوادي الأخضر — احتياجات البيت" },
       {
         property: "og:description",
-        content: "أجود السلع التموينية، لحوم بلدي، أجبان، ومستلزمات المنزل بأعلى جودة وتوصيل سريع.",
+        content: "ابحث عن المنتجات المتاحة وتصفّح الأقسام والأسعار المسجلة في المتجر.",
       },
       { property: "og:url", content: `${SITE_URL}/` },
       { property: "og:type", content: "website" },
@@ -71,14 +51,12 @@ export const Route = createFileRoute("/")({
 });
 
 export function HomePage() {
-  const navigate = useNavigate();
   const settings = useSettings();
-  const { user } = useAuth();
   const { query: searchQuery, setQuery: setSearchQuery } = useSearch();
 
   // Instant cached data queries
   const { data: productsData, isLoading: isProductsLoading } = useStoreProducts();
-  const { data: categoriesData, isLoading: isCategoriesLoading } = useStoreCategories();
+  const { data: categoriesData } = useStoreCategories();
   const { data: bannersData } = useHeroBanners();
 
   const products = useMemo(() => productsData ?? [], [productsData]);
@@ -89,8 +67,7 @@ export function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
 
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<"all" | "offers" | "featured">("all");
 
   // Read URL params & Delivery Estimations
   useEffect(() => {
@@ -109,40 +86,10 @@ export function HomePage() {
     };
   }, []);
 
-  // شرائح العرض: من البانرات الحقيقية فقط، وإلا شريحة واحدة من إعدادات المتجر
-  const heroSlides = useMemo(() => {
-    if (heroBanners && heroBanners.length > 0) {
-      return heroBanners.map((b, idx) => ({
-        id: b.id || `banner-${idx}`,
-        title: b.title || settings.hero_title || BRAND_NAME_AR,
-        subtitle: b.subtitle || settings.hero_subtitle || "",
-        image_url: b.image_url || settings.hero_bg_image || settings.hero_image_url || "",
-        cta_text: b.cta_text || settings.hero_cta_text || "تسوّق الآن",
-        badge: "",
-      }));
-    }
-
-    return [
-      {
-        id: "store-hero",
-        title: settings.hero_title || BRAND_NAME_AR,
-        subtitle: settings.hero_subtitle || "",
-        image_url: settings.hero_bg_image || settings.hero_image_url || "",
-        cta_text: settings.hero_cta_text || "تسوّق الآن",
-        badge: "",
-      },
-    ];
-  }, [heroBanners, settings]);
-
-
-  // Auto-slide effect every 6 seconds
-  useEffect(() => {
-    if (isPaused || heroSlides.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentSlideIndex((prev) => (prev + 1) % heroSlides.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [isPaused, heroSlides.length]);
+  const heroBanner = heroBanners[0];
+  const heroTitle = heroBanner?.title || settings.hero_title || "كل احتياجات البيت في مكان واحد";
+  const heroSubtitle = heroBanner?.subtitle || settings.hero_subtitle || "تصفّح المنتجات المتاحة واختر ما يناسب قائمتك.";
+  const heroImage = heroBanner?.image_url || settings.hero_bg_image || settings.hero_image_url;
 
   const handleSelectCategory = (catId: string | null) => {
     const target = catId ?? "all";
@@ -201,38 +148,14 @@ export function HomePage() {
     return list;
   }, [products, selectedCategory, searchQuery, categories]);
 
-  // 1. Hot Deals Shelf (Items with real discounts)
-  const discountedDeals = useMemo(() => {
-    return products
-.filter((p) => p.old_price != null && p.old_price > p.price_per_unit)
-      .slice(0, 8);
-  }, [products]);
-
-  // 2. Best Sellers in Your Area Shelf
-  const popularProducts = useMemo(() => {
-    return products
-      .filter((p) => p.is_popular || p.is_top_seller)
-      .slice(0, 8);
-  }, [products]);
-
-  // 3. رف الطازج (لحوم، دواجن، ألبان، خضروات وفواكه) — بمطابقة أسماء الأقسام الفعلية
-  const FRESH_KEYWORDS = ["لحوم", "دواجن", "ألبان", "أجبان", "خضروات", "فواكه"];
-
-  const isFreshCategory = (categoryId?: string | null) => {
-    if (!categoryId) return false;
-    const cat = categories.find((c) => c.id === categoryId);
-    const label = `${cat?.name ?? ""} ${cat?.slug ?? ""}`;
-    return FRESH_KEYWORDS.some((k) => label.includes(k));
-  };
-
-  const freshProduceShelf = useMemo(() => {
-    return products.filter((p) => isFreshCategory(p.category_id)).slice(0, 8);
-  }, [products, categories]);
-
-  // 4. رف البقالة والتموين والمنظفات (بقية الأقسام)
-  const pantryStaplesShelf = useMemo(() => {
-    return products.filter((p) => !isFreshCategory(p.category_id)).slice(0, 8);
-  }, [products, categories]);
+  const homeProducts = useMemo(() => {
+    if (selectedCategory !== "all" || searchQuery.trim()) return filteredProducts;
+    if (selectedCollection === "offers") {
+      return filteredProducts.filter((p) => p.old_price != null && p.old_price > p.price_per_unit);
+    }
+    if (selectedCollection === "featured") return filteredProducts.filter((p) => p.is_featured);
+    return filteredProducts;
+  }, [filteredProducts, selectedCollection, selectedCategory, searchQuery]);
 
 
   if (loading) {
@@ -242,184 +165,37 @@ export function HomePage() {
   return (
     <div className="min-h-screen bg-background pb-24 text-right font-sans" dir="rtl">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 space-y-6">
-        {/* ─── 1. CLEAN SUPERMARKET HERO BANNER ─── */}
-        <div
-          className="relative overflow-hidden rounded-3xl border border-border/80 shadow-lg bg-card group/hero"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-        >
-          {/* Crossfade Background */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={heroSlides[currentSlideIndex]?.id || currentSlideIndex}
-              initial={{ opacity: 0, scale: 1.03 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6, ease: "easeInOut" }}
-              className="absolute inset-0 z-0 overflow-hidden"
-            >
-              <div
-                className="h-full w-full bg-cover bg-center transition-transform duration-7000 ease-out hover:scale-105"
-                style={{
-                  backgroundImage: `url(${heroSlides[currentSlideIndex]?.image_url})`,
-                }}
-              />
-              {/* Premium Subtle Gradient Mask */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30" />
-            </motion.div>
-          </AnimatePresence>
-
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 sm:p-10 lg:p-12 gap-6 min-h-[280px] sm:min-h-[320px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={heroSlides[currentSlideIndex]?.id || currentSlideIndex}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.35 }}
-                className="space-y-3.5 max-w-2xl text-white"
-              >
-                {/* Badge */}
-                {heroSlides[currentSlideIndex]?.badge && (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/25 px-3.5 py-1 text-xs font-black text-emerald-300 border border-emerald-400/40 backdrop-blur-md">
-                    <Sparkles className="h-3.5 w-3.5 text-orange-400" />
-                    <span>{heroSlides[currentSlideIndex]?.badge}</span>
-                  </div>
-                )}
-
-                {/* Main Headline */}
-                <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
-                  {heroSlides[currentSlideIndex]?.title}
-                </h1>
-
-                {/* Subtitle */}
-                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-semibold max-w-xl">
-                  {heroSlides[currentSlideIndex]?.subtitle}
-                </p>
-
-                {/* Action Buttons with Emerald & Fresh Accents */}
-                <div className="pt-2 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => {
-                      handleSelectCategory("all");
-                      const el = document.getElementById("supermarket-shelves");
-                      el?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-3 text-xs sm:text-sm font-black text-white shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-emerald-600/30"
-                  >
-                    <span>{heroSlides[currentSlideIndex]?.cta_text}</span>
-                    <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                  </button>
-
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-300 bg-white/10 px-3.5 py-2.5 rounded-2xl backdrop-blur-sm border border-white/10">
-                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                    <span>ضمان الجودة والدفع عند الاستلام 🛡️</span>
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-
-            {/* بيانات المتجر الحقيقية فقط */}
-            {(settings.min_order_amount > 0 || settings.whatsapp_number) && (
-              <div className="hidden lg:flex flex-col gap-2.5 bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/15 text-xs text-white max-w-xs shrink-0">
-                {settings.min_order_amount > 0 && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-black text-xs">الحد الأدنى للطلب</div>
-                      <div className="text-[10px] text-slate-300 tabular-nums" dir="ltr">
-                        {settings.min_order_amount} EGP
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {settings.whatsapp_number && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500/20 text-teal-400">
-                      <Clock className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-black text-xs">للاستفسار والطلب</div>
-                      <div className="text-[10px] text-slate-300 tabular-nums" dir="ltr">
-                        {settings.whatsapp_number}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Slide Navigation Dots */}
-          {heroSlides.length > 1 && (
-            <div className="relative z-20 px-6 pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentSlideIndex((prev) => (prev > 0 ? prev - 1 : heroSlides.length - 1))
-                  }
-                  className="h-8 w-8 rounded-xl bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all"
-                  aria-label="السابق"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlideIndex((prev) => (prev + 1) % heroSlides.length)}
-                  className="h-8 w-8 rounded-xl bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all"
-                  aria-label="التالي"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                {heroSlides.map((slide, idx) => (
-                  <button
-                    key={slide.id || idx}
-                    type="button"
-                    onClick={() => setCurrentSlideIndex(idx)}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      idx === currentSlideIndex
-                        ? "w-6 bg-emerald-500 shadow-xs"
-                        : "w-2 bg-white/40 hover:bg-white/70"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+        <section className="relative isolate overflow-hidden rounded-[2rem] border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-emerald-500/10 px-5 py-8 sm:px-9 sm:py-10">
+          {heroImage && (
+            <div
+              className="absolute inset-y-0 start-0 -z-10 hidden w-2/5 bg-cover bg-center opacity-15 md:block"
+              style={{ backgroundImage: `url(${heroImage})` }}
+              aria-hidden="true"
+            />
           )}
-        </div>
-
-        {/* ─── 2. شريط معلومات المتجر (بيانات حقيقية فقط) ─── */}
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
-            <Store className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <div className="truncate">
-              <span className="font-bold">المتجر: </span>
-              <span className="font-bold text-primary">{settings.site_name || BRAND_NAME_AR}</span>
+          <div className="mx-auto max-w-3xl space-y-5 text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/80 px-3 py-1.5 text-xs font-bold text-primary">
+              <Sparkles className="h-4 w-4" aria-hidden="true" /> تسوّق أسهل، واختيارات أوضح
+            </span>
+            <h1 className="font-display text-2xl font-black leading-tight tracking-tight text-foreground sm:text-4xl">
+              {heroTitle}
+            </h1>
+            <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+              {heroSubtitle}
+            </p>
+            <div className="mx-auto max-w-2xl text-start">
+              <SmartSearchBar placeholder="ابحث عن منتج أو اكتب ما تحتاجه…" />
             </div>
+            <button
+              type="button"
+              onClick={() => document.getElementById("supermarket-shelves")?.scrollIntoView({ behavior: "smooth" })}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
+            >
+              <span>{heroBanner?.cta_text || settings.hero_cta_text || "تصفّح المنتجات"}</span>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
-
-          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
-            <Layers className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <div className="truncate">
-              <span className="font-bold">الأصناف المتاحة: </span>
-              <span className="font-bold tabular-nums text-primary" dir="ltr">
-                {products.length}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 text-xs text-foreground">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <span className="font-bold">الدفع عند الاستلام متاح</span>
-          </div>
-        </div>
+        </section>
 
 
         {/* ─── 3. SUPERMARKET CATEGORIES PROMINENT HORIZONTAL CAROUSEL ─── */}
@@ -448,7 +224,36 @@ export function HomePage() {
 
         {/* ─── 5. SUPERMARKET PRODUCT SHELVES ─── */}
         <div id="supermarket-shelves" className="space-y-10 pt-2">
-          {filteredProducts.length === 0 ? (
+          <div className="flex flex-col gap-4 border-b border-border/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="mb-1 text-xs font-bold text-primary">كتالوج المتجر</p>
+              <h2 className="font-display text-xl font-black text-foreground sm:text-2xl">
+                {searchQuery.trim() ? "نتائج البحث" : selectedCategory !== "all" ? "منتجات القسم" : "تصفّح المنتجات"}
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">اختيارات مبنية على المنتجات والأسعار المسجلة في المتجر.</p>
+            </div>
+            {!searchQuery.trim() && selectedCategory === "all" && (
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="تصفية المنتجات">
+                <SlidersHorizontal className="me-1 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                {([
+                  ["all", "الكل"],
+                  ["offers", "عروض فعلية"],
+                  ["featured", "اختيارات المتجر"],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSelectedCollection(value)}
+                    aria-pressed={selectedCollection === value}
+                    className={`rounded-full border px-3.5 py-2 text-xs font-bold transition ${selectedCollection === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {homeProducts.length === 0 ? (
             <EmptyState
               icon={
                 searchQuery ? (
@@ -457,16 +262,29 @@ export function HomePage() {
                   <PackageOpen className="h-8 w-8 text-emerald-600" />
                 )
               }
-              title={searchQuery ? "لم نجد نتائج مطابقة" : "لا توجد منتجات في هذا القسم"}
+              title={
+                searchQuery
+                  ? "لم نجد نتائج مطابقة"
+                  : selectedCollection === "offers"
+                    ? "لا توجد عروض مسجلة حاليًا"
+                    : selectedCollection === "featured"
+                      ? "لا توجد اختيارات مميزة حاليًا"
+                      : "لا توجد منتجات في هذا القسم"
+              }
               description={
                 searchQuery
                   ? `لم نجد منتجات تطابق "${searchQuery}" — جرّب البحث بكلمات أبسط مثل (طماطم، أرز، لحم).`
-                  : "هنضيف سلع ومنتجات جديدة في هذا القسم قريباً جداً 🌿"
+                  : selectedCollection === "offers"
+                    ? "ستظهر هنا المنتجات التي لها سعر سابق أعلى من السعر الحالي."
+                    : selectedCollection === "featured"
+                      ? "لم يحدد المتجر منتجات مميزة للعرض حتى الآن."
+                      : "لا توجد منتجات متاحة في هذا القسم حاليًا."
               }
               action={
                 <button
                   onClick={() => {
                     setSelectedCategory("all");
+                    setSelectedCollection("all");
                     setSearchQuery("");
                   }}
                   className="rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2.5 text-xs font-black text-white shadow-md hover:opacity-90 transition-opacity cursor-pointer"
@@ -475,208 +293,19 @@ export function HomePage() {
                 </button>
               }
             />
-          ) : selectedCategory !== "all" || searchQuery.trim() ? (
-            /* Direct Grid View when filtered */
+          ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                <h3 className="text-base font-black text-foreground flex items-center gap-2 font-display">
-                  <ShoppingBag className="h-5 w-5 text-emerald-600" />
-                  <span>
-                    {selectedCategory !== "all"
-                      ? categories.find((c) => c.id === selectedCategory || c.slug === selectedCategory)?.name || "المنتجات"
-                      : "نتائج البحث"}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-normal">
-                    (<bdi dir="ltr" className="tabular-nums">{filteredProducts.length}</bdi> صنف)
-                  </span>
-                </h3>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <ShoppingBag className="h-4 w-4 text-primary" aria-hidden="true" />
+                <span><bdi dir="ltr" className="tabular-nums">{homeProducts.length}</bdi> منتج</span>
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onOpen={(p) => setSelectedProductForModal(p)}
-                  />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+                {homeProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} onOpen={setSelectedProductForModal} />
                 ))}
               </div>
             </div>
-          ) : (
-            /* Supermarket Authentic Categorized Shelves */
-            <>
-              {/* SHELF 1: TODAY'S OFFERS & DISCOUNTS */}
-              {discountedDeals.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-orange-500/20 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="grid h-8 w-8 place-items-center rounded-xl bg-orange-500 text-white shadow-xs">
-                        <Flame className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          عروض وتخفيضات السوبرماركت اليومية 🔥
-                        </h3>
-                        <span className="text-[11px] text-muted-foreground font-bold">
-                          أقوى الخصومات والأسعار المخفضة المباشرة
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
-                    {discountedDeals.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onOpen={(p) => setSelectedProductForModal(p)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SHELF 2: BEST SELLERS & MOST POPULAR IN AREA */}
-              {popularProducts.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-600 text-white shadow-xs">
-                        <Award className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          الأكثر طلباً ⭐
-                        </h3>
-                        <span className="text-[11px] text-muted-foreground font-bold">
-                          منتجات شائعة من كتالوج المتجر
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
-                    {popularProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        isTopSeller={true}
-                        onOpen={(p) => setSelectedProductForModal(p)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SHELF 3: FRESH MEAT & DAIRY */}
-              {freshProduceShelf.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                        <Scale className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          قسم اللحوم البلدية والأجبان الطازجة 🥩🧀
-                        </h3>
-                        <span className="text-[11px] text-muted-foreground font-bold">
-                          تُجهز وتُقطع طازجة يومياً فور طلبك
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
-                    {freshProduceShelf.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onOpen={(p) => setSelectedProductForModal(p)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SHELF 4: PANTRY & STAPLES */}
-              {pantryStaplesShelf.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="grid h-8 w-8 place-items-center rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                        <ShoppingBag className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-foreground font-display leading-tight">
-                          مستلزمات البقالة والتموين والمنظفات 🥫🍚
-                        </h3>
-                        <span className="text-[11px] text-muted-foreground font-bold">
-                          الزيوت، الأرز، السكر، المكرونة والمنظفات الأساسية
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
-                    {pantryStaplesShelf.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onOpen={(p) => setSelectedProductForModal(p)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
           )}
-        </div>
-
-        {/* ─── 6. STORE MANAGER EXPERT ADVISORY (Real Practical Grocery Tips) ─── */}
-        <div className="rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-teal-500/5 p-6 sm:p-8 space-y-5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md">
-              <Lightbulb className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-foreground font-display leading-tight">
-                إرشادات مدير الفرع للتسوق الذكي وحفظ الأغذية 💡
-              </h3>
-              <p className="text-xs text-muted-foreground font-bold mt-0.5">
-                نصائح عملية معتمدة لضمان أقصى جودة وتوفير حقيقي في ميزانية منزلك
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-card border border-border/80 space-y-1.5">
-              <div className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                <span>🧀 حفظ الأجبان والألبان:</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground font-bold leading-relaxed">
-                تُحفظ الأجبان الطبيعية مغلفة بورق زبدة داخل علبة محكمة لمنع جفافها والحفاظ على نكهتها الطازجة.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-card border border-border/80 space-y-1.5">
-              <div className="text-xs font-black text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-                <span>🥩 طزاجة اللحوم البلدية:</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground font-bold leading-relaxed">
-                لحومنا البلدية تُذبح وتُجهز يومياً بإشراف بيطري. ننصح بحفظها فوراً في درجة حرارة -18 مئوية للحفاظ على قيمتها.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-card border border-border/80 space-y-1.5">
-              <div className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                <span>🥫 التوفير في التموين:</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground font-bold leading-relaxed">
-                شراء العبوات العائلية من الأرز، الزيت، والمنظفات يمنحك توفيراً يصل إلى 15% مقارنة بالعبوات الفردية الصغيرة.
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* ─── 7. FOOTER ─── */}
@@ -685,7 +314,7 @@ export function HomePage() {
             {settings.site_name || BRAND_NAME_AR} — سوبرماركت عائلتك 🛒
           </div>
           <p className="text-xs text-muted-foreground font-bold max-w-md mx-auto">
-            توصيل فوري لجميع الفروع والمناطق • جودة مضمونة وسلع تموينية ولحوم طازجة.
+            تصفّح المنتجات المتاحة واختر ما يناسب احتياجاتك.
           </p>
           <div className="text-[10px] text-muted-foreground/70 pt-2" dir="ltr">
             © 2026 Al-Wadi Supermarket. All rights reserved.

@@ -52,13 +52,12 @@ const DEFAULTS: StoreSettings = {
   background_color: "48 33% 97%",
   foreground_color: "120 18% 12%",
   font_family: "Tajawal",
-  announcement_text:
-    "🛒 سوبرماركت الوادي الأخضر — كل احتياجات بيتك وتموينك بتوصيل فوري لباب بيتك ⚡",
+  announcement_text: "🛒 سوبرماركت الوادي الأخضر — تصفّح المنتجات المتاحة واختر احتياجاتك.",
   announcement_enabled: true,
   announcement_bg_color: "142 76% 24%",
   whatsapp_number: null,
-  hero_title: "الوادي الأخضر — سوبرماركت عائلتك 🛒",
-  hero_subtitle: "أجود السلع التموينية والبقالة واللحوم والألبان بأفضل الأسعار وتوصيل فوري ⚡",
+  hero_title: "كل احتياجات البيت في مكان واحد",
+  hero_subtitle: "تصفّح المنتجات المتاحة واختر ما يناسب قائمتك.",
   hero_image_url: null,
   hero_cta_text: "تسوّق الآن 🛒",
   hero_bg_image:

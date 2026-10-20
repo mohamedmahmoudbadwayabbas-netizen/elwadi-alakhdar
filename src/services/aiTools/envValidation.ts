@@ -38,8 +38,8 @@ export const getSupabaseAnonKey = (): string | undefined => {
   const procEnv = typeof process !== "undefined" ? process?.env : undefined;
 
   const resolved =
-    (metaEnv ? metaEnv.VITE_SUPABASE_ANON_KEY || metaEnv.SUPABASE_ANON_KEY : undefined) ||
-    (procEnv ? procEnv.VITE_SUPABASE_ANON_KEY || procEnv.SUPABASE_ANON_KEY : undefined);
+    (metaEnv ? metaEnv.VITE_SUPABASE_PUBLISHABLE_KEY || metaEnv.VITE_SUPABASE_ANON_KEY || metaEnv.SUPABASE_PUBLISHABLE_KEY || metaEnv.SUPABASE_ANON_KEY : undefined) ||
+    (procEnv ? procEnv.VITE_SUPABASE_PUBLISHABLE_KEY || procEnv.VITE_SUPABASE_ANON_KEY || procEnv.SUPABASE_PUBLISHABLE_KEY || procEnv.SUPABASE_ANON_KEY : undefined);
 
   if (typeof resolved === "string" && resolved.trim().length > 0) {
     return resolved.trim();

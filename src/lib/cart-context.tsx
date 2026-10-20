@@ -92,7 +92,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.from("cart_items").select("id,user_id,product_id,quantity,created_at").eq("user_id", uid).order("created_at", { ascending: true });
       if (error) throw error;
       const productIds = [...new Set((data ?? []).map((r) => r.product_id).filter(Boolean))] as string[];
-      const { data: products, error: productError } = productIds.length ? await supabase.from("products").select(LIVE_PRODUCT_COLUMNS).in("id", productIds) : { data: [], error: null };
+      const { data: products, error: productError } = productIds.length ? await supabase.from("products").select(LIVE_PRODUCT_COLUMNS).eq("is_active", true).in("id", productIds) : { data: [], error: null };
       if (productError) throw productError;
       const map = new Map((products ?? []).map((p) => [p.id, mapDbProduct(p)]));
       setItems((data ?? []).filter((r) => r.product_id && map.has(r.product_id)).map((r) => {
@@ -131,16 +131,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CartContextValue>(() => {
     const addItem = (product: Product, quantity = 1, meta?: AddItemMeta) => {
+      if (!product.is_by_weight && (product.stock_quantity ?? 0) <= 0) {
+        toast.info("هذا المنتج غير متوفر حالياً");
+        return;
+      }
       playClickSound();
       setItems((prev) => {
         const existing = prev.find((i) => i.product.id === product.id);
-        const nextQty = +(existing ? existing.quantity + quantity : quantity).toFixed(3);
+        const requestedQty = existing ? existing.quantity + quantity : quantity;
+        const nextQty = +(!product.is_by_weight && Number.isFinite(product.stock_quantity)
+          ? Math.min(requestedQty, product.stock_quantity ?? requestedQty)
+          : requestedQty).toFixed(3);
         const item: CartItem = { product, quantity: nextQty, selected_weight: meta?.selected_weight ?? (product.is_by_weight ? nextQty : undefined), selected_weight_label: meta?.selected_weight_label ?? (product.is_by_weight ? formatWeightLabel(nextQty) : undefined), substitution_preference: meta?.substitution_preference ?? existing?.substitution_preference ?? "call_me", estimated_price: calculateEstimatedPrice(product, nextQty) };
         return existing ? prev.map((i) => i.product.id === product.id ? item : i) : [...prev, item];
       });
-      syncUserItem(product.id, quantity + (items.find((i) => i.product.id === product.id)?.quantity ?? 0));
+      const currentQty = items.find((i) => i.product.id === product.id)?.quantity ?? 0;
+      const requestedQty = currentQty + quantity;
+      syncUserItem(product.id, +(!product.is_by_weight && Number.isFinite(product.stock_quantity)
+        ? Math.min(requestedQty, product.stock_quantity ?? requestedQty)
+        : requestedQty).toFixed(3));
     };
-    const updateQuantity = (productId: string, quantity: number) => { setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity, estimated_price: calculateEstimatedPrice(i.product, quantity) } : i).filter((i) => i.quantity > 0)); syncUserItem(productId, quantity); };
+    const updateQuantity = (productId: string, quantity: number) => {
+      const item = items.find((i) => i.product.id === productId);
+      const next = item && !item.product.is_by_weight && Number.isFinite(item.product.stock_quantity)
+        ? Math.min(quantity, item.product.stock_quantity ?? quantity)
+        : quantity;
+      setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity: next, estimated_price: calculateEstimatedPrice(i.product, next) } : i).filter((i) => i.quantity > 0));
+      syncUserItem(productId, next);
+    };
     const updateItemPreference = (productId: string, preference: SubstitutionPreference) => setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, substitution_preference: preference } : i));
     const updateItemWeight = (productId: string, weightInKg: number) => { setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity: weightInKg, selected_weight: weightInKg, selected_weight_label: formatWeightLabel(weightInKg), estimated_price: calculateEstimatedPrice(i.product, weightInKg) } : i)); syncUserItem(productId, weightInKg); };
     const removeItem = (productId: string) => { setItems((prev) => prev.filter((i) => i.product.id !== productId)); syncUserItem(productId, 0); };
