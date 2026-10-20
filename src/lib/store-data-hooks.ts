@@ -27,23 +27,32 @@ export type HeroBanner = {
 
 // الأعمدة الحقيقية الموجودة فعلياً في جدول products
 export const PRODUCT_COLUMNS =
-  "id,name,description,price_per_unit,old_price,image_url,category_id,stock_quantity,low_stock_threshold,unit_label,is_by_weight,is_popular,is_on_sale,is_featured,is_top_seller,avg_rating,reviews_count,views_count,purchase_count,cooking_tip,created_at";
+  "id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at";
 
-export function normalizeProduct(row: any): Product {
+function normalizeProduct(row: any): Product {
+  const price = Number(row.price ?? row.price_per_unit ?? 0);
+  const oldPrice = row.original_price != null ? Number(row.original_price) : (row.old_price != null ? Number(row.old_price) : null);
+  const stock = Number(row.stock ?? row.stock_quantity ?? 0);
+  const isFeatured = Boolean(row.is_featured);
+
   return {
     ...row,
-    price_per_unit: Number(row.price_per_unit ?? 0),
-    old_price: row.old_price == null ? null : Number(row.old_price),
-    stock_quantity: Number(row.stock_quantity ?? 0),
+    name: row.name_ar || row.name || "منتج",
+    name_ar: row.name_ar ?? row.name ?? null,
+    description: row.description_ar || row.description || null,
+    description_ar: row.description_ar ?? row.description ?? null,
+    price_per_unit: price,
+    old_price: oldPrice,
+    stock_quantity: stock,
     low_stock_threshold: Number(row.low_stock_threshold ?? 10),
     unit_label: row.unit_label ?? "قطعة",
     is_by_weight: Boolean(row.is_by_weight),
-    is_popular: Boolean(row.is_popular),
-    is_on_sale: Boolean(row.is_on_sale),
-    is_featured: Boolean(row.is_featured),
-    is_top_seller: Boolean(row.is_top_seller),
-    avg_rating: row.avg_rating == null ? null : Number(row.avg_rating),
-    reviews_count: row.reviews_count ?? 0,
+    is_popular: Boolean(row.is_popular ?? isFeatured),
+    is_on_sale: Boolean(row.is_on_sale ?? (oldPrice != null && oldPrice > price)),
+    is_featured: isFeatured,
+    is_top_seller: Boolean(row.is_top_seller ?? isFeatured),
+    avg_rating: row.rating != null ? Number(row.rating) : (row.avg_rating != null ? Number(row.avg_rating) : null),
+    reviews_count: Number(row.reviews_count ?? 0),
   } as Product;
 }
 
@@ -76,14 +85,18 @@ export function useStoreProducts() {
 export async function fetchStoreCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id,name,slug,icon,image_url,parent_id,sort_order,created_at")
-    .order("sort_order", { ascending: true });
+    .select("id,name,name_ar,slug,image_url,created_at")
+    .order("created_at", { ascending: true });
 
   if (error) {
     console.warn("Failed to fetch categories:", error.message);
     return [];
   }
-  return (data ?? []) as Category[];
+  return (data ?? []).map((c: any) => ({
+    ...c,
+    name: c.name_ar || c.name,
+    name_ar: c.name_ar ?? c.name,
+  })) as Category[];
 }
 
 export function useStoreCategories() {

@@ -23,23 +23,47 @@ export const forceSyncAllToSupabase = createServerFn({ method: "POST" }).handler
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: existingCats } = await supabaseAdmin.from("categories").select("id").limit(1);
-    if (existingCats?.length) return { success: true, message: "Database already seeded." };
+    if (existingCats && existingCats.length > 0) return { success: true, message: "Database already seeded." };
 
-    const { data: insertedCats, error: catError } = await supabaseAdmin.from("categories").insert(CATEGORIES).select("id,slug");
-    if (catError) throw catError;
+    const { data: insertedCats, error: catError } = await supabaseAdmin
+      .from("categories")
+      .insert(CATEGORIES.map((c) => ({ ...c, name_ar: c.name })))
+      .select("id,slug");
+    if (catError) {
+      console.warn("Auto-seed categories notice:", catError.message);
+      return { success: false, error: catError.message };
+    }
     const catMap = new Map((insertedCats ?? []).map((c) => [c.slug, c.id]));
-    const products = PRODUCTS.map(([name, slug, price, stock, image_url]) => ({ name, category_id: catMap.get(slug) ?? null, price_per_unit: price, old_price: null, stock_quantity: stock, image_url, is_featured: false }));
+    const products = PRODUCTS.map(([name, slug, price, stock, image_url]) => ({
+      name,
+      name_ar: name,
+      category_id: catMap.get(slug) ?? null,
+      price,
+      stock,
+      image_url,
+      is_featured: false,
+      is_active: true,
+    }));
     const { error: productError } = await supabaseAdmin.from("products").insert(products);
-    if (productError) throw productError;
+    if (productError) {
+      console.warn("Auto-seed products notice:", productError.message);
+      return { success: false, error: productError.message };
+    }
     return { success: true, categoriesCount: insertedCats?.length ?? 0, productsCount: products.length };
   } catch (error: any) {
-    console.error("Seeding Error:", error);
-    return { success: false, error: error.message };
+    console.warn("Seeding notice (bypassed):", error?.message || error);
+    return { success: false, error: error?.message || String(error) };
   }
 });
 
 export const autoSeedDatabaseIfNeeded = createServerFn({ method: "POST" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: products } = await supabaseAdmin.from("products").select("id").limit(1);
-  if (!products?.length) await forceSyncAllToSupabase();
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: products, error } = await supabaseAdmin.from("products").select("id").limit(1);
+    if (!error && (!products || products.length === 0)) {
+      await forceSyncAllToSupabase();
+    }
+  } catch {
+    // Non-blocking background check
+  }
 });

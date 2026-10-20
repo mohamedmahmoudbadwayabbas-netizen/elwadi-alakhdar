@@ -201,7 +201,12 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
       is_on_sale: Number(row.original_price ?? 0) > Number(row.price ?? 0),
       is_top_seller: false,
     })) as Product[]);
-    setCats((c ?? []) as Category[]);
+    setCats(
+      (c ?? []).map((cat: any) => ({
+        id: cat.id,
+        name: cat.name_ar || cat.name || "قسم",
+      })) as Category[],
+    );
     setLoading(false);
   };
 
