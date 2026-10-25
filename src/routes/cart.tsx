@@ -487,7 +487,7 @@ function CartPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background"
+      className="elwadi-cart min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background"
       dir="rtl"
     >
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">

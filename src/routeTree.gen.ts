@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -50,6 +51,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistantRoute = AssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -184,6 +190,7 @@ const Char91DotmcpChar93InvokeToolToolRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/assistant'
     | '/auth'
     | '/cart'
     | '/categories'
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistant'
     | '/auth'
     | '/cart'
     | '/categories'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/admin'
+    | '/assistant'
     | '/auth'
     | '/cart'
     | '/categories'
@@ -363,6 +375,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
   CategoriesRoute: typeof CategoriesRoute
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistant': {
+      id: '/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -625,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   CartRoute: CartRoute,
   CategoriesRoute: CategoriesRoute,

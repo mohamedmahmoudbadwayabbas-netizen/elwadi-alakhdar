@@ -1,5 +1,5 @@
 import { SITE_URL, BRAND_NAME_AR } from "@/lib/brand";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { type Product } from "@/lib/cart-context";
 import { useSettings } from "@/lib/settings-context";
@@ -226,6 +226,11 @@ export function HomePage() {
               <span>{heroBanner?.cta_text || settings.hero_cta_text || "ابدأ التسوق"}</span>
               <ArrowLeft aria-hidden="true" />
             </button>
+            <Link to="/assistant" className="home-assistant-link">
+              <Sparkles aria-hidden="true" />
+              <span>خطّط قائمتك مع مساعد الوادي</span>
+              <ArrowLeft aria-hidden="true" />
+            </Link>
           </div>
 
           <div className="home-hero__visual">

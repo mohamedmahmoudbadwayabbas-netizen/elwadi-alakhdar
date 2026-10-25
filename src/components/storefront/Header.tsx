@@ -135,6 +135,18 @@ export function Header() {
                 </Link>
 
                 <Link
+                  to="/assistant"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-[#2f5d4b]/8 hover:bg-[#2f5d4b]/12 border border-[#2f5d4b]/15 text-xs font-bold transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-4 w-4 text-[#2f5d4b]" />
+                    <span>مساعد تخطيط قائمة التسوق</span>
+                  </div>
+                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                </Link>
+
+                <Link
                   to="/account"
                   onClick={() => setDrawerOpen(false)}
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
