@@ -389,7 +389,7 @@ function OrdersPage() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6 p-4 sm:p-6 pb-24"
+      className="admin-orders space-y-6 p-4 sm:p-6 pb-24"
       dir="rtl"
     >
       {/* Header */}
@@ -434,8 +434,21 @@ function OrdersPage() {
         </div>
       </div>
 
+      <section className="admin-orders__overview" aria-label="ملخص الطلبات">
+        <div className="admin-orders__overview-heading">
+          <div><span>مركز الطلبات</span><h2>كل طلبات المتجر في مكان واحد</h2><p>تابع الطلبات الجديدة، حدّث حالتها، وافتح التفاصيل عند الحاجة.</p></div>
+          <span className="admin-orders__live"><i /> تحديث مباشر</span>
+        </div>
+        <div className="admin-orders__metrics">
+          <article><span>إجمالي الطلبات</span><strong>{orders.length.toLocaleString("ar-EG")}</strong><small>كل الحالات</small></article>
+          <article><span>طلبات جديدة</span><strong>{(grouped.pending?.length ?? 0).toLocaleString("ar-EG")}</strong><small>بانتظار التأكيد</small></article>
+          <article><span>قيد التوصيل</span><strong>{(grouped.shipped?.length ?? 0).toLocaleString("ar-EG")}</strong><small>مع المندوب</small></article>
+          <article><span>إجمالي المبيعات</span><strong>{orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0).toLocaleString("ar-EG", { maximumFractionDigits: 0 })}<small> ج.م</small></strong><small>للطلبات المسجلة</small></article>
+        </div>
+      </section>
+
       {/* Control Bar: Search & Stats */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border border-border/70 p-3 rounded-2xl shadow-xs">
+      <div className="admin-orders__toolbar flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border border-border/70 p-3 rounded-2xl shadow-xs">
         <div className="relative w-full sm:w-80">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -509,7 +522,7 @@ function OrdersPage() {
                       hidden: { opacity: 0, y: 12 },
                       show: { opacity: 1, y: 0 },
                     }}
-                    className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs hover:border-primary/40 transition-all space-y-3"
+                    className="admin-orders__card rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs hover:border-primary/40 transition-all space-y-3"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
                       <div className="space-y-1">
@@ -555,7 +568,7 @@ function OrdersPage() {
                         </div>
                       </div>
 
-                      <div className="text-start sm:text-end bg-secondary/40 p-2.5 rounded-2xl border border-border/50 shrink-0">
+                      <div className="admin-orders__amount text-start sm:text-end bg-secondary/40 p-2.5 rounded-2xl border border-border/50 shrink-0">
                         <div className="text-[10px] text-muted-foreground font-bold">
                           إجمالي الطلب
                         </div>
@@ -696,7 +709,7 @@ function OrdersPage() {
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent
           dir="rtl"
-          className="figma-admin-detail max-w-lg rounded-3xl p-6 bg-card border-border shadow-2xl"
+          className="figma-admin-detail admin-orders__detail max-w-3xl rounded-3xl p-6 bg-card border-border shadow-2xl"
         >
           <DialogHeader>
             <DialogTitle className="font-display text-lg font-black flex items-center justify-between">
@@ -709,6 +722,16 @@ function OrdersPage() {
 
           {preview && (
             <div className="space-y-4 pt-2">
+              <div className={`admin-order-progress ${preview.status === "cancelled" ? "is-cancelled" : ""}`}>
+                <div className="admin-order-progress__heading"><b>مسار الطلب</b><span>{STATUSES.find((status) => status.key === preview.status)?.label ?? preview.status}</span></div>
+                <ol>
+                  {(["pending", "confirmed", "shipped", "delivered"] as const).map((step, index) => {
+                    const currentIndex = preview.status === "preparing" ? 1 : (["pending", "confirmed", "shipped", "delivered"] as string[]).indexOf(preview.status);
+                    const done = currentIndex >= index && preview.status !== "cancelled";
+                    return <li className={done ? "is-done" : ""} key={step}><i>{done ? "✓" : index + 1}</i><span>{["استلام الطلب", "تجهيز الطلب", "التوصيل", "تم التسليم"][index]}</span></li>;
+                  })}
+                </ol>
+              </div>
               <div className="bg-secondary/40 p-3 rounded-2xl border border-border/50 space-y-1 text-xs font-bold">
                 <p>
                   <strong>اسم العميل:</strong> {preview.customer_name}
