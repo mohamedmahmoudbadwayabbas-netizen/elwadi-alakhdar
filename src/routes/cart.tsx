@@ -561,6 +561,21 @@ function CartPage() {
             </Card>
           </div>
         ) : (
+          <>
+          <section className="cart-page-intro" aria-label="خطوات إتمام الطلب">
+            <div className="cart-page-intro__copy">
+              <span className="cart-page-intro__eyebrow"><ShoppingBag size={14} /> طلبك في طريقه للتجهيز</span>
+              <h2>سلة المشتريات</h2>
+              <p>راجع اختياراتك، ثم حدّد طريقة الاستلام والدفع المناسبة.</p>
+            </div>
+            <ol className="cart-checkout-steps">
+              <li className="is-complete"><span>١</span><b>السلة</b></li>
+              <i aria-hidden="true" />
+              <li className={form.customer_name && form.phone ? "is-complete" : "is-current"}><span>٢</span><b>بيانات التوصيل</b></li>
+              <i aria-hidden="true" />
+              <li><span>٣</span><b>تأكيد الطلب</b></li>
+            </ol>
+          </section>
           <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
             {/* العمود الأيمن: العناصر + بيانات الطلب */}
             <div className="space-y-5">
@@ -1127,6 +1142,7 @@ function CartPage() {
               </Card>
             </aside>
           </div>
+          </>
         )}
 
         {items.length > 0 && recommendedProducts.length > 0 && (

@@ -476,6 +476,72 @@
 .figma-admin-detail [class*="bg-secondary"] { background: #f1f1e8 !important; }
 .figma-admin-detail [class*="border-border"] { border-color: #e8e5d9 !important; }
 
+/* Stronger page composition for the Figma cart and operations dashboard. */
+.cart-page-intro {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin: .25rem 0 1.4rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid #e7e4d8;
+  border-radius: 1.25rem;
+  background: linear-gradient(110deg,#fffdf8 0%,#f1f1e6 100%);
+}
+.cart-page-intro__copy { min-width: 0; }
+.cart-page-intro__eyebrow { display: inline-flex; align-items: center; gap: .4rem; color: #62826c; font-size: .72rem; font-weight: 900; }
+.cart-page-intro h2 { margin: .35rem 0 .15rem; color: #234536; font-size: clamp(1.35rem,2vw,1.8rem); font-weight: 950; letter-spacing: -.03em; }
+.cart-page-intro p { margin: 0; color: #78847a; font-size: .78rem; }
+.cart-checkout-steps { display: flex; align-items: center; gap: .65rem; margin: 0; padding: 0; list-style: none; }
+.cart-checkout-steps li { display: inline-flex; align-items: center; gap: .4rem; color: #8b948a; white-space: nowrap; }
+.cart-checkout-steps li span { display: grid; width: 1.7rem; height: 1.7rem; place-items: center; border: 1px solid #d7ded2; border-radius: 50%; background: #fff; font-size: .7rem; font-weight: 900; }
+.cart-checkout-steps li b { font-size: .68rem; }
+.cart-checkout-steps li.is-current { color: #2f5d4b; }
+.cart-checkout-steps li.is-current span,.cart-checkout-steps li.is-complete span { color: #fff; border-color: #2f5d4b; background: #2f5d4b; }
+.cart-checkout-steps i { width: 1.7rem; height: 1px; background: #d7ded2; }
+.elwadi-cart main > .grid { align-items: start; }
+.elwadi-cart main .rounded-3xl.border { padding: clamp(1rem,2vw,1.4rem); }
+.elwadi-cart main .rounded-3xl.border > h2 { margin-bottom: 1rem; color: #234536; font-size: .98rem; }
+.elwadi-cart main li.rounded-2xl.border { min-height: 7.4rem; align-items: center; padding: .8rem; }
+.elwadi-cart main li.rounded-2xl.border > div:first-child { width: 5.2rem; height: 5.2rem; border: 1px solid #efeee7; background: #f5f3e9; }
+.elwadi-cart main li.rounded-2xl.border h5 { color: #284a39; font-size: .86rem; }
+.elwadi-cart main li.rounded-2xl.border button[aria-label="تقليل"],
+.elwadi-cart main li.rounded-2xl.border button[aria-label="زيادة"] { color: #315c48; background: #f2f4ec; }
+.elwadi-cart main li.rounded-2xl.border button[aria-label="حذف"] { color: #a06b5b; background: #f8f0eb; }
+.elwadi-cart main .rounded-3xl.border :is(input,textarea,button[role="combobox"]) { border-radius: .7rem; }
+.cart-recommendations { box-shadow: 0 12px 28px -26px #234536; }
+.cart-recommendation { transition: transform .18s ease,box-shadow .18s ease,border-color .18s ease; }
+.cart-recommendation:hover { transform: translateY(-3px); border-color: #cdd9cc; box-shadow: 0 10px 24px -20px #234536; }
+.elwadi-cart-footer { margin-top: 1rem; }
+
+.admin-dashboard { max-width: 1440px !important; color: #234536; }
+.admin-dashboard__hero { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.45rem 1.6rem; border: 1px solid #e8e5d9; border-radius: 22px; background: radial-gradient(circle at 8% 0%,#e9eedf 0,transparent 36%),linear-gradient(115deg,#fffdf8,#f5f2e8); box-shadow: 0 14px 32px -30px #234536; }
+.admin-dashboard__eyebrow { display: inline-flex; align-items: center; gap: .4rem; color: #52765c; font-size: .72rem; font-weight: 900; }
+.admin-dashboard__hero h2 { margin: .4rem 0 .2rem; color: #234536; font-size: clamp(1.3rem,2.4vw,1.8rem); font-weight: 950; letter-spacing: -.035em; }
+.admin-dashboard__hero p { margin: 0; color: #7b877c; font-size: .78rem; }
+.admin-dashboard__hero-meta { display: grid; justify-items: end; gap: .5rem; flex: 0 0 auto; }
+.admin-dashboard__hero-meta span { display: inline-flex; align-items: center; gap: .4rem; color: #416b4d; font-size: .7rem; font-weight: 850; }
+.admin-dashboard__hero-meta i { width: 7px; height: 7px; border-radius: 50%; background: #5f9b67; box-shadow: 0 0 0 4px #5f9b671c; }
+.admin-dashboard__hero-meta small { color: #8a9389; font-size: .68rem; }
+.admin-dashboard > div.flex.flex-col { padding-bottom: .85rem; border-color: #e6e2d7; }
+.admin-dashboard__kpis > div { position: relative; min-height: 116px; overflow: hidden; padding: 1.1rem 1.2rem; border-radius: 18px !important; background: linear-gradient(145deg,#fffefa,#fdfbf4) !important; box-shadow: 0 12px 28px -26px #234536 !important; }
+.admin-dashboard__kpis > div::after { position: absolute; inset-inline-end: -24px; bottom: -34px; width: 100px; height: 100px; border: 1px solid #5a84621b; border-radius: 50%; content: ""; box-shadow: 0 0 0 12px #5a84620a,0 0 0 24px #5a846207; pointer-events: none; }
+.admin-dashboard__kpis > div > div:last-child { position: relative; z-index: 1; color: #234536 !important; }
+.admin-dashboard__kpis > div > div:first-child { position: relative; z-index: 1; }
+.admin-dashboard__metric-icon { display: grid; width: 2rem; height: 2rem; place-items: center; color: #477253; border-radius: 11px; background: #edf2e8; }
+.admin-dashboard__metric-note { display: block; margin-top: .15rem; color: #8a9389; font-size: .65rem; }
+.admin-dashboard .recharts-cartesian-grid line { stroke: #e8e8dd; }
+.admin-dashboard .recharts-area-area { fill-opacity: .22; }
+.admin-dashboard [class*="space-y-2"] > div:hover { border-color: #cbd8c9 !important; }
+@media (max-width: 720px) {
+  .cart-page-intro { align-items: stretch; flex-direction: column; padding: 1rem; }
+  .cart-checkout-steps { justify-content: space-between; gap: .3rem; }
+  .cart-checkout-steps i { width: 1rem; }
+  .cart-checkout-steps li b { font-size: .61rem; }
+  .admin-dashboard__hero { align-items: start; flex-direction: column; padding: 1.1rem; }
+  .admin-dashboard__hero-meta { justify-items: start; }
+}
+
 .elwadi-main-header {
   background: #fff !important;
   border-bottom-color: #e8e5dc !important;

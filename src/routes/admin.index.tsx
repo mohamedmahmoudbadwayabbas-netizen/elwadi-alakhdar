@@ -389,7 +389,18 @@ function OverviewPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 font-sans">
+    <div className="admin-dashboard space-y-6 p-4 sm:p-6 font-sans">
+      <section className="admin-dashboard__hero">
+        <div>
+          <span className="admin-dashboard__eyebrow"><Activity size={14} /> مركز متابعة المتجر</span>
+          <h2>نظرة شاملة على أداء الوادي</h2>
+          <p>مؤشرات تشغيلية مباشرة تساعدك على متابعة الطلبات والمبيعات والمخزون.</p>
+        </div>
+        <div className="admin-dashboard__hero-meta">
+          <span><i /> البيانات متصلة مباشرة</span>
+          <small>{new Intl.DateTimeFormat("ar-EG", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</small>
+        </div>
+      </section>
       {/* 1. Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800 pb-4">
         <div>
@@ -440,7 +451,7 @@ function OverviewPage() {
       />
 
       {/* 3. STRICT KPI CARDS (3 Elements Only: Label, Value, Delta Badge) */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="admin-dashboard__kpis grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {/* Card 1: Revenue */}
         <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
           <div className="flex items-center justify-between">
@@ -493,6 +504,18 @@ function OverviewPage() {
           <div className="mt-2 text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
             <AnimatedCounter value={lowStock.length} decimals={0} suffix="صنف" />
           </div>
+        </Card>
+
+        {/* Card 4: Average order value */}
+        <Card className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-zinc-500">متوسط قيمة الطلب</span>
+            <span className="admin-dashboard__metric-icon"><ShoppingCart className="h-4 w-4" /></span>
+          </div>
+          <div className="mt-2 text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            <AnimatedCounter value={avgOrderValue} decimals={0} suffix="ج.م" />
+          </div>
+          <small className="admin-dashboard__metric-note">من إجمالي {filteredOrders.length.toLocaleString("ar-EG")} طلب</small>
         </Card>
       </div>
 
