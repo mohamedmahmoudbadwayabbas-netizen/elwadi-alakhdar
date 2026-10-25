@@ -29,7 +29,7 @@ export type HeroBanner = {
 // these database names to the storefront's stable Product model.
 export const PRODUCT_COLUMNS =
   "id,name,name_ar,description,description_ar,price,original_price,image_url,images,category_id,stock,rating,reviews_count,is_featured,is_active,created_at";
-function normalizeProduct(row: any): Product {
+export function normalizeProduct(row: any): Product {
   const price = Number(row.price ?? row.price_per_unit ?? 0);
   const oldPrice = row.original_price != null ? Number(row.original_price) : (row.old_price != null ? Number(row.old_price) : null);
   const stock = Number(row.stock ?? row.stock_quantity ?? 0);

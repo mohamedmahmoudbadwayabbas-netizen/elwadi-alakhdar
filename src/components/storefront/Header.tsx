@@ -45,7 +45,7 @@ export function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-background/70 backdrop-blur-3xl border-b border-white/20 dark:border-white/10 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
+    <header className="elwadi-main-header sticky top-0 z-40 bg-background/70 backdrop-blur-3xl border-b border-white/20 dark:border-white/10 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         {/* اليسار: القائمة المنزلقة الفاخرة للعملاء (Drawer) + البحث */}
         <div className="flex items-center gap-1.5">
@@ -75,30 +75,17 @@ export function Header() {
                       {siteName}
                     </h3>
                     <span className="text-[11px] text-[#036233] dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#036233] animate-pulse" />
-                      3 فروع متصلة • توصيل سريع
+                      هايبر ماركت لاحتياجات البيت
                     </span>
                   </div>
                 </div>
 
-                {/* Branches Pill Overview */}
-                <div className="p-2.5 rounded-2xl bg-secondary/50 border border-border/60 text-xs space-y-1.5">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center justify-between">
-                    <span>فروع السوبرماركت (3 فروع):</span>
-                    <span className="text-[#036233] font-bold">خدمة 24/7</span>
+                {settings.store_address && (
+                  <div className="flex items-start gap-2 rounded-2xl border border-border/60 bg-secondary/50 p-2.5 text-xs">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#036233]" aria-hidden="true" />
+                    <span className="font-bold leading-5 text-foreground">{settings.store_address}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-1 text-[10px] text-center font-bold">
-                    <div className="p-1 rounded-lg bg-background/80 border border-border/40 text-foreground">
-                      الدقي 🛒
-                    </div>
-                    <div className="p-1 rounded-lg bg-background/80 border border-border/40 text-foreground">
-                      مدينة نصر 🏬
-                    </div>
-                    <div className="p-1 rounded-lg bg-background/80 border border-border/40 text-foreground">
-                      المعادي 🚚
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Navigation Links inside Drawer for Customers */}
@@ -251,7 +238,7 @@ export function Header() {
               {siteName}
             </span>
             <span className="text-[9px] text-[#036233] dark:text-emerald-400 font-bold hidden sm:inline -mt-0.5">
-              3 فروع نشطة • توصيل فوري
+              هايبر ماركت لاحتياجات البيت
             </span>
           </div>
         </Link>

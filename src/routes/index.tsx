@@ -1,16 +1,21 @@
 import { SITE_URL, BRAND_NAME_AR } from "@/lib/brand";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type Product } from "@/lib/cart-context";
 import { useSettings } from "@/lib/settings-context";
 import { useSearch } from "@/lib/search-context";
 import {
-  Sparkles,
-  SearchX,
-  PackageOpen,
   ArrowLeft,
+  ArrowUpLeft,
+  Layers,
+  PackageOpen,
+  SearchX,
+  ShieldCheck,
   ShoppingBag,
+  ShoppingBasket,
   SlidersHorizontal,
+  Sparkles,
+  Store,
 } from "lucide-react";
 import { HomePageSkeleton } from "@/components/storefront/Skeletons";
 import { EmptyState } from "@/components/storefront/EmptyState";
@@ -29,16 +34,16 @@ import { StickyCartBar } from "@/components/storefront/StickyCartBar";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "سوبرماركت الوادي الأخضر — تسوّق احتياجات البيت" },
+      { title: "سوبرماركت الوادي الأخضر — سلة البيت الكاملة تبدأ بفكرة" },
       {
         name: "description",
         content:
-          "تصفّح المنتجات المتاحة في سوبرماركت الوادي الأخضر وابحث عن احتياجاتك اليومية.",
+          "تصفّح أقسام سوبرماركت الوادي الأخضر وابحث في المنتجات المسجلة بالمتجر لتجهّز احتياجات البيت.",
       },
       { property: "og:title", content: "سوبرماركت الوادي الأخضر — احتياجات البيت" },
       {
         property: "og:description",
-        content: "ابحث عن المنتجات المتاحة وتصفّح الأقسام والأسعار المسجلة في المتجر.",
+        content: "ابحث عن المنتجات المسجلة وتصفّح الأقسام المتاحة في المتجر.",
       },
       { property: "og:url", content: `${SITE_URL}/` },
       { property: "og:type", content: "website" },
@@ -46,15 +51,12 @@ export const Route = createFileRoute("/")({
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/` }],
   }),
-
   component: HomePage,
 });
 
 export function HomePage() {
   const settings = useSettings();
   const { query: searchQuery, setQuery: setSearchQuery } = useSearch();
-
-  // Instant cached data queries
   const { data: productsData, isLoading: isProductsLoading } = useStoreProducts();
   const { data: categoriesData } = useStoreCategories();
   const { data: bannersData } = useHeroBanners();
@@ -62,204 +64,259 @@ export function HomePage() {
   const products = useMemo(() => productsData ?? [], [productsData]);
   const categories = useMemo(() => categoriesData ?? [], [categoriesData]);
   const heroBanners = useMemo(() => bannersData ?? [], [bannersData]);
-  const loading = isProductsLoading && (!productsData || (productsData as Product[]).length === 0);
+  const loading =
+    isProductsLoading && (!productsData || (productsData as Product[]).length === 0);
 
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<"all" | "offers" | "featured">(
+    "all",
+  );
 
-  const [selectedCollection, setSelectedCollection] = useState<"all" | "offers" | "featured">("all");
-
-  // Read URL params & Delivery Estimations
   useEffect(() => {
-    const checkUrlCat = () => {
-      const params = new URLSearchParams(window.location.search);
-      const cat = params.get("category");
-      if (cat) setSelectedCategory(cat);
+    const syncCategoryFromUrl = () => {
+      const category = new URLSearchParams(window.location.search).get("category");
+      if (category) setSelectedCategory(category);
     };
-    checkUrlCat();
-    window.addEventListener("popstate", checkUrlCat);
-
-
-
-    return () => {
-      window.removeEventListener("popstate", checkUrlCat);
-    };
+    syncCategoryFromUrl();
+    window.addEventListener("popstate", syncCategoryFromUrl);
+    return () => window.removeEventListener("popstate", syncCategoryFromUrl);
   }, []);
 
   const heroBanner = heroBanners[0];
-  const heroTitle = heroBanner?.title || settings.hero_title || "كل احتياجات البيت في مكان واحد";
-  const heroSubtitle = heroBanner?.subtitle || settings.hero_subtitle || "تصفّح المنتجات المتاحة واختر ما يناسب قائمتك.";
-  const heroImage = heroBanner?.image_url || settings.hero_bg_image || settings.hero_image_url;
+  const heroTitle =
+    heroBanner?.title || settings.hero_title || "سلة البيت الكاملة تبدأ بفكرة.";
+  const heroSubtitle =
+    heroBanner?.subtitle ||
+    settings.hero_subtitle ||
+    "اكتب اسم منتج أو جزءًا من قائمتك، أو ابدأ من أحد أقسام الهايبر ماركت.";
+  const heroImage =
+    heroBanner?.image_url || settings.hero_image_url || "/home-hypermarket-aisle.jpg";
 
-  const handleSelectCategory = (catId: string | null) => {
-    const target = catId ?? "all";
+  const handleSelectCategory = (categoryId: string | null) => {
+    const target = categoryId ?? "all";
     setSelectedCategory(target);
+    setSelectedCollection("all");
+    setSearchQuery("");
+
     const url = new URL(window.location.href);
-    if (target && target !== "all") {
-      url.searchParams.set("category", target);
-    } else {
-      url.searchParams.delete("category");
-    }
+    if (target !== "all") url.searchParams.set("category", target);
+    else url.searchParams.delete("category");
     window.history.pushState({}, "", url.toString());
 
-    // Scroll smoothly to products area if a category was clicked
     if (target !== "all") {
-      const el = document.getElementById("supermarket-shelves");
-      el?.scrollIntoView({ behavior: "smooth" });
+      document.getElementById("supermarket-shelves")?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  // Main Categories Rail
-  const mainCategories = useMemo(() => categories, [categories]);
-
-  // Product count map per category
   const productsCountByCategory = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const p of products) {
-      if (p.category_id) {
-        counts[p.category_id] = (counts[p.category_id] || 0) + 1;
+    for (const product of products) {
+      if (product.category_id) {
+        counts[product.category_id] = (counts[product.category_id] || 0) + 1;
       }
     }
     return counts;
   }, [products]);
 
-  // Filtered Products (by category + search)
   const filteredProducts = useMemo(() => {
     let list = products;
 
     if (selectedCategory !== "all") {
-      const matchedCat = categories.find(
-        (c) => c.id === selectedCategory || c.slug === selectedCategory,
+      const category = categories.find(
+        (item) => item.id === selectedCategory || item.slug === selectedCategory,
       );
-      const targetId = matchedCat ? matchedCat.id : selectedCategory;
-      const targetSlug = matchedCat ? matchedCat.slug : selectedCategory;
+      const targetId = category ? category.id : selectedCategory;
+      const targetSlug = category ? category.slug : selectedCategory;
       list = list.filter(
-        (p) =>
-          p.category_id === targetId ||
-          p.category_id === targetSlug ||
-          p.category_id === selectedCategory,
+        (product) =>
+          product.category_id === targetId ||
+          product.category_id === targetSlug ||
+          product.category_id === selectedCategory,
       );
     }
 
-    if (searchQuery.trim()) {
-      list = searchProductsFuzzy(list, searchQuery, 0.35);
-    }
-
+    if (searchQuery.trim()) list = searchProductsFuzzy(list, searchQuery, 0.35);
     return list;
   }, [products, selectedCategory, searchQuery, categories]);
+
+  const hasOffers = useMemo(
+    () =>
+      filteredProducts.some(
+        (product) =>
+          product.old_price != null && product.old_price > product.price_per_unit,
+      ),
+    [filteredProducts],
+  );
+  const hasFeatured = useMemo(
+    () => filteredProducts.some((product) => product.is_featured),
+    [filteredProducts],
+  );
 
   const homeProducts = useMemo(() => {
     if (selectedCategory !== "all" || searchQuery.trim()) return filteredProducts;
     if (selectedCollection === "offers") {
-      return filteredProducts.filter((p) => p.old_price != null && p.old_price > p.price_per_unit);
+      return filteredProducts.filter(
+        (product) =>
+          product.old_price != null && product.old_price > product.price_per_unit,
+      );
     }
-    if (selectedCollection === "featured") return filteredProducts.filter((p) => p.is_featured);
+    if (selectedCollection === "featured") {
+      return filteredProducts.filter((product) => product.is_featured);
+    }
     return filteredProducts;
   }, [filteredProducts, selectedCollection, selectedCategory, searchQuery]);
 
+  if (loading) return <HomePageSkeleton />;
 
-  if (loading) {
-    return <HomePageSkeleton />;
-  }
+  const contentLabel = searchQuery.trim()
+    ? "نتائج البحث"
+    : selectedCategory !== "all"
+      ? "منتجات القسم"
+      : selectedCollection === "offers"
+        ? "منتجات عليها سعر سابق مسجل"
+        : selectedCollection === "featured"
+          ? "اختيارات المتجر"
+          : "تصفّح منتجات المتجر";
 
   return (
-    <div className="min-h-screen bg-background pb-24 text-right font-sans" dir="rtl">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 space-y-6">
-        <section className="relative isolate overflow-hidden rounded-[2rem] border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-emerald-500/10 px-5 py-8 sm:px-9 sm:py-10">
-          {heroImage && (
-            <div
-              className="absolute inset-y-0 start-0 -z-10 hidden w-2/5 bg-cover bg-center opacity-15 md:block"
-              style={{ backgroundImage: `url(${heroImage})` }}
-              aria-hidden="true"
-            />
-          )}
-          <div className="mx-auto max-w-3xl space-y-5 text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/80 px-3 py-1.5 text-xs font-bold text-primary">
-              <Sparkles className="h-4 w-4" aria-hidden="true" /> تسوّق أسهل، واختيارات أوضح
-            </span>
-            <h1 className="font-display text-2xl font-black leading-tight tracking-tight text-foreground sm:text-4xl">
-              {heroTitle}
-            </h1>
-            <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-              {heroSubtitle}
-            </p>
-            <div className="mx-auto max-w-2xl text-start">
-              <SmartSearchBar placeholder="ابحث عن منتج أو اكتب ما تحتاجه…" />
+    <main className="elwadi-homepage" dir="rtl">
+      <div className="elwadi-homepage__content">
+        <section className="home-hero" aria-labelledby="home-hero-title">
+          <div className="home-hero__copy">
+            <div className="home-eyebrow">
+              <Store aria-hidden="true" />
+              <span>هايبر ماركت الوادي الأخضر</span>
             </div>
-            <button
-              type="button"
-              onClick={() => document.getElementById("supermarket-shelves")?.scrollIntoView({ behavior: "smooth" })}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
-            >
-              <span>{heroBanner?.cta_text || settings.hero_cta_text || "تصفّح المنتجات"}</span>
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        </section>
+            <h1 id="home-hero-title">{heroTitle}</h1>
+            <p className="home-hero__subtitle">{heroSubtitle}</p>
 
-
-        {/* ─── 3. SUPERMARKET CATEGORIES PROMINENT HORIZONTAL CAROUSEL ─── */}
-        <CategoryGrid
-          categories={mainCategories}
-          active={selectedCategory}
-          onSelect={handleSelectCategory}
-          productsCountByCategory={productsCountByCategory}
-          totalProductsCount={products.length}
-        />
-
-        {/* ─── 4. SEARCH FEEDBACK IF ACTIVE ─── */}
-        {searchQuery.trim() && (
-          <div className="flex items-center justify-between rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-3 text-xs">
-            <span className="font-bold text-emerald-900 dark:text-emerald-200">
-              نتائج البحث عن: <strong className="font-black">"{searchQuery}"</strong> (<bdi dir="ltr" className="tabular-nums">{filteredProducts.length}</bdi> منتج)
-            </span>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="text-emerald-700 dark:text-emerald-300 font-bold hover:underline cursor-pointer"
-            >
-              إلغاء البحث ✕
-            </button>
-          </div>
-        )}
-
-        {/* ─── 5. SUPERMARKET PRODUCT SHELVES ─── */}
-        <div id="supermarket-shelves" className="space-y-10 pt-2">
-          <div className="flex flex-col gap-4 border-b border-border/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-1 text-xs font-bold text-primary">كتالوج المتجر</p>
-              <h2 className="font-display text-xl font-black text-foreground sm:text-2xl">
-                {searchQuery.trim() ? "نتائج البحث" : selectedCategory !== "all" ? "منتجات القسم" : "تصفّح المنتجات"}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">اختيارات مبنية على المنتجات والأسعار المسجلة في المتجر.</p>
+            <div className="home-search-card">
+              <div className="home-search-card__label">
+                <span className="home-search-card__sparkle"><Sparkles aria-hidden="true" /></span>
+                <span>ابحث في منتجات المتجر</span>
+              </div>
+              <SmartSearchBar
+                className="home-search-card__input"
+                placeholder="اكتب منتجًا أو كلمة من قائمتك…"
+              />
             </div>
-            {!searchQuery.trim() && selectedCategory === "all" && (
-              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="تصفية المنتجات">
-                <SlidersHorizontal className="me-1 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                {([
-                  ["all", "الكل"],
-                  ["offers", "عروض فعلية"],
-                  ["featured", "اختيارات المتجر"],
-                ] as const).map(([value, label]) => (
+
+            {categories.length > 0 && (
+              <div className="home-hero__shortcuts" aria-label="أقسام للبدء منها">
+                {categories.slice(0, 4).map((category) => (
                   <button
-                    key={value}
+                    key={category.id}
                     type="button"
-                    onClick={() => setSelectedCollection(value)}
-                    aria-pressed={selectedCollection === value}
-                    className={`rounded-full border px-3.5 py-2 text-xs font-bold transition ${selectedCollection === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                    onClick={() => handleSelectCategory(category.id)}
                   >
-                    {label}
+                    {category.name_ar || category.name}
                   </button>
                 ))}
               </div>
             )}
+
+            <button
+              type="button"
+              className="home-primary-action"
+              onClick={() =>
+                document.getElementById("home-departments")?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              <span>{heroBanner?.cta_text || settings.hero_cta_text || "ابدأ التسوق"}</span>
+              <ArrowLeft aria-hidden="true" />
+            </button>
           </div>
+
+          <div className="home-hero__visual">
+            <img
+              src={heroImage}
+              alt="ممر في هايبر ماركت يضم أقسامًا متنوعة من منتجات البيت"
+              fetchPriority="high"
+              decoding="async"
+            />
+          </div>
+        </section>
+
+        <section className="home-trust-strip" aria-label="معلومات التسوق">
+          <div>
+            <Layers aria-hidden="true" />
+            <span><strong>أقسام متعددة</strong><small>من احتياجات البيت اليومية</small></span>
+          </div>
+          <div>
+            <ShieldCheck aria-hidden="true" />
+            <span><strong>بيانات من المتجر</strong><small>الأسعار والتوفر حسب بيانات المنتجات</small></span>
+          </div>
+          <div>
+            <ShoppingBasket aria-hidden="true" />
+            <span><strong>قائمة على راحتك</strong><small>ابدأ بالبحث أو اختر القسم</small></span>
+          </div>
+        </section>
+
+        <section id="home-departments" className="home-section home-departments">
+          <CategoryGrid
+            categories={categories}
+            active={selectedCategory}
+            onSelect={handleSelectCategory}
+            productsCountByCategory={productsCountByCategory}
+          />
+        </section>
+
+        {searchQuery.trim() && (
+          <div className="home-search-feedback" role="status">
+            <span>
+              نتائج البحث عن: <strong>«{searchQuery}»</strong> ({filteredProducts.length} منتج)
+            </span>
+            <button type="button" onClick={() => setSearchQuery("")}>مسح البحث ×</button>
+          </div>
+        )}
+
+        <section id="supermarket-shelves" className="home-section home-products">
+          <div className="home-section-heading">
+            <div>
+              <span className="home-section-heading__eyebrow">من تشكيلة المتجر</span>
+              <h2>{contentLabel}</h2>
+              <p>تصفّح الأصناف المسجلة، وافتح المنتج لمعرفة تفاصيله أو إضافته للسلة.</p>
+            </div>
+            {!searchQuery.trim() && selectedCategory === "all" && (
+              <div className="home-product-filters" role="group" aria-label="تصفية المنتجات">
+                <SlidersHorizontal aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setSelectedCollection("all")}
+                  aria-pressed={selectedCollection === "all"}
+                >
+                  الكل
+                </button>
+                {hasOffers && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCollection("offers")}
+                    aria-pressed={selectedCollection === "offers"}
+                  >
+                    عروض مسجلة
+                  </button>
+                )}
+                {hasFeatured && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCollection("featured")}
+                    aria-pressed={selectedCollection === "featured"}
+                  >
+                    اختيارات المتجر
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {homeProducts.length === 0 ? (
             <EmptyState
               icon={
                 searchQuery ? (
                   <SearchX className="h-8 w-8 text-orange-600" />
                 ) : (
-                  <PackageOpen className="h-8 w-8 text-emerald-600" />
+                  <PackageOpen className="h-8 w-8 text-emerald-700" />
                 )
               }
               title={
@@ -273,62 +330,107 @@ export function HomePage() {
               }
               description={
                 searchQuery
-                  ? `لم نجد منتجات تطابق "${searchQuery}" — جرّب البحث بكلمات أبسط مثل (طماطم، أرز، لحم).`
-                  : selectedCollection === "offers"
-                    ? "ستظهر هنا المنتجات التي لها سعر سابق أعلى من السعر الحالي."
-                    : selectedCollection === "featured"
-                      ? "لم يحدد المتجر منتجات مميزة للعرض حتى الآن."
-                      : "لا توجد منتجات متاحة في هذا القسم حاليًا."
+                  ? `لم نجد منتجات تطابق «${searchQuery}». جرّب اسم منتج آخر أو اختر قسمًا.`
+                  : "ستظهر المنتجات هنا عند تسجيلها وإتاحتها في المتجر."
               }
               action={
-                <button
-                  onClick={() => {
-                    setSelectedCategory("all");
-                    setSelectedCollection("all");
-                    setSearchQuery("");
-                  }}
-                  className="rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2.5 text-xs font-black text-white shadow-md hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  تصفح كل المنتجات
-                </button>
+                searchQuery || selectedCollection !== "all" || selectedCategory !== "all" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setSelectedCollection("all");
+                      setSearchQuery("");
+                    }}
+                    className="home-reset-action"
+                  >
+                    عرض كل المنتجات
+                  </button>
+                ) : undefined
               }
             />
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                <ShoppingBag className="h-4 w-4 text-primary" aria-hidden="true" />
-                <span><bdi dir="ltr" className="tabular-nums">{homeProducts.length}</bdi> منتج</span>
+            <>
+              <div className="home-product-count">
+                <ShoppingBag aria-hidden="true" />
+                <span>{homeProducts.length} منتج</span>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="home-product-grid">
                 {homeProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} onOpen={setSelectedProductForModal} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onOpen={setSelectedProductForModal}
+                  />
                 ))}
               </div>
-            </div>
+            </>
           )}
-        </div>
+        </section>
 
-        {/* ─── 7. FOOTER ─── */}
-        <footer className="border-t border-border/70 pt-8 pb-4 text-center space-y-2">
-          <div className="text-sm font-black text-foreground font-display">
-            {settings.site_name || BRAND_NAME_AR} — سوبرماركت عائلتك 🛒
+        {categories.length > 0 && (
+          <section className="home-section home-discovery" aria-labelledby="home-discovery-title">
+            <div className="home-section-heading">
+              <div>
+                <span className="home-section-heading__eyebrow">ابدأ من احتياجك</span>
+                <h2 id="home-discovery-title">اكتشف أقسام البيت</h2>
+                <p>اختر قسمًا من تشكيلة المتجر للانتقال إلى منتجاته.</p>
+              </div>
+              <button
+                type="button"
+                className="home-text-action"
+                onClick={() => handleSelectCategory(null)}
+              >
+                كل الأقسام <ArrowUpLeft aria-hidden="true" />
+              </button>
+            </div>
+            <div className="home-discovery-grid">
+              {categories.slice(0, 2).map((category, index) => (
+                <button
+                  type="button"
+                  key={category.id}
+                  className="home-discovery-card"
+                  onClick={() => handleSelectCategory(category.id)}
+                >
+                  <span className="home-discovery-card__image">
+                    <img
+                      src={category.image_url || (index === 0 ? heroImage : settings.floating_element_image || heroImage)}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </span>
+                  <span className="home-discovery-card__body">
+                    <strong>{category.name_ar || category.name}</strong>
+                    <span>تصفّح المنتجات المسجلة في هذا القسم</span>
+                    <span className="home-discovery-card__link">عرض منتجات القسم <ArrowLeft aria-hidden="true" /></span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <footer className="home-footer">
+          <div className="home-footer__brand">
+            <span className="home-footer__logo"><Store aria-hidden="true" /></span>
+            <div>
+              <strong>{settings.site_name || BRAND_NAME_AR}</strong>
+              <p>هايبر ماركت لاحتياجات البيت من أقسام متعددة.</p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground font-bold max-w-md mx-auto">
-            تصفّح المنتجات المتاحة واختر ما يناسب احتياجاتك.
-          </p>
-          <div className="text-[10px] text-muted-foreground/70 pt-2" dir="ltr">
-            © 2026 Al-Wadi Supermarket. All rights reserved.
+          <div className="home-footer__bottom">
+            <span>تصفّح الأقسام والمنتجات المسجلة في المتجر.</span>
+            <span dir="ltr">© 2026 Al-Wadi Al-Akhdar</span>
           </div>
         </footer>
       </div>
 
       <StickyCartBar />
-
-      {/* Quick View Product Modal */}
       <ProductModal
         product={selectedProductForModal}
         onClose={() => setSelectedProductForModal(null)}
       />
-    </div>
+    </main>
   );
 }
