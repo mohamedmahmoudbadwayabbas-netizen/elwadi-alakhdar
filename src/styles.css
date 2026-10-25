@@ -628,7 +628,11 @@
 .admin-orders__status-pill.status-shipped { color: #fff; background: #315f4c; }
 .admin-orders__status-pill.status-delivered { color: #4f6255; background: #e5e9e3; }
 .admin-orders__status-pill.status-cancelled { color: #bd502d; border: 1px solid #bd502d; background: #fff; }
-.admin-order-details-layout { display: grid; grid-template-columns: minmax(250px,.75fr) minmax(0,1.4fr); gap: 1rem; max-height: calc(90dvh - 9rem); overflow-y: auto; padding: .25rem; }
+.admin-order-details-page { display: grid; gap: .8rem; }
+.admin-order-details-page__heading { display: flex; align-items: center; justify-content: space-between; padding: .2rem 0; }
+.admin-order-details-page__heading h2 { margin: .35rem 0 0; color: #315f4c; font-size: 1.25rem; font-weight: 950; }
+.admin-order-details-page__heading > div > button { padding: 0; border: 0; color: #55745d; background: transparent; font-size: .75rem; font-weight: 850; }
+.admin-order-details-layout { display: grid; grid-template-columns: minmax(250px,.75fr) minmax(0,1.4fr); align-items: start; gap: 1rem; padding: .25rem; }
 .admin-order-details-sidebar,.admin-order-details-main { display: grid; align-content: start; gap: .85rem; }
 .admin-order-details-sidebar > section,.admin-order-detail-summary,.admin-order-detail-notes,.admin-order-detail-activity { padding: 1rem; border: 1px solid #e9e7dd; border-radius: 17px; background: #fffefa; box-shadow: 0 5px 14px -14px #234536; }
 .admin-order-details-sidebar h3,.admin-order-detail-notes h3,.admin-order-detail-activity h3 { margin: 0 0 .8rem; color: #315f4c; font-size: .9rem; font-weight: 900; }
@@ -640,6 +644,7 @@
 .admin-order-detail-pair strong { color: #365545; }
 .admin-order-detail-actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .8rem; }
 .admin-order-detail-actions button { flex: 1; min-width: 5rem; height: 2.5rem; border-radius: 11px; font-size: .7rem; }
+.admin-order-detail-actions a,.admin-order-detail-actions > button { display: inline-flex; align-items: center; justify-content: center; flex: 1; min-width: 4.5rem; min-height: 2.35rem; padding: .35rem .55rem; border: 1px solid #dfe5d9; border-radius: 11px; color: #41634b; background: #fff; font-size: .68rem; font-weight: 800; text-decoration: none; }
 .admin-order-detail-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .admin-order-detail-summary > div:first-child { display: grid; gap: .3rem; }
 .admin-order-detail-summary small { color: #879187; font-size: .65rem; }
@@ -676,7 +681,7 @@
   .admin-orders__search { flex-basis: 100%; }
   .admin-orders__pagination { align-items: stretch; flex-direction: column; gap: .7rem; }
   .admin-orders__pagination > div { justify-content: space-between; }
-  .admin-order-details-layout { grid-template-columns: 1fr; max-height: calc(85dvh - 7rem); }
+  .admin-order-details-layout { grid-template-columns: 1fr; }
   .admin-order-details-sidebar { grid-template-columns: 1fr; }
   .admin-order-detail-summary { align-items: stretch; flex-direction: column; }
 }

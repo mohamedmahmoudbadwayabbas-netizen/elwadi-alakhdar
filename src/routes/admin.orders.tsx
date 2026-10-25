@@ -202,13 +202,13 @@ function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeOrderTab, setActiveOrderTab] = useState<"list" | "details">("list");
   const [dateFilter, setDateFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [driverFilter, setDriverFilter] = useState("all");
   const [page, setPage] = useState(1);
   const pageSize = 8;
   const [preview, setPreview] = useState<Order | null>(null);
-  const [detailsTemplateOpen, setDetailsTemplateOpen] = useState(false);
 
   // حوار تعيين السائق
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
@@ -268,6 +268,7 @@ function OrdersPage() {
     setOrders((p) =>
       p.map((o) => (o.id === id ? { ...o, status: newStatus, ...(driverInfo || {}) } : o)),
     );
+    setPreview((current) => current?.id === id ? { ...current, status: newStatus, ...(driverInfo || {}) } : current);
 
     try {
       const payload: any = { status: newStatus };
@@ -417,13 +418,14 @@ function OrdersPage() {
 
       {/* Control Bar: Search & Stats */}
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <div className="admin-orders__list-heading">
+        {activeOrderTab === "list" && <div className="admin-orders__list-heading">
           <div className="admin-orders__list-actions">
             <Button onClick={() => exportXlsx(visibleOrders)} variant="outline"><Download className="h-4 w-4" /> تصدير</Button>
             <Button onClick={() => toast.info("إنشاء الطلب يبدأ من سلة المتجر لضمان تسجيل الأصناف وعنوان العميل بشكل صحيح.")} className="hero-gradient text-primary-foreground"><ShoppingBag className="h-4 w-4" /> طلب جديد</Button>
           </div>
-          <div className="admin-orders__view-toggle"><button type="button" className="is-active">عرض الجدول</button><button type="button" disabled>عرض كروت</button></div>
-        </div>
+          <div className="admin-orders__view-toggle"><button type="button" className={activeOrderTab === "list" ? "is-active" : ""} onClick={() => setActiveOrderTab("list")}>قائمة الطلبات</button><button type="button" className={activeOrderTab === "details" ? "is-active" : ""} onClick={() => setActiveOrderTab("details")}>تفاصيل الطلب</button></div>
+        </div>}
+        {activeOrderTab === "list" && <>
         <TabsList className="admin-orders__status-tabs">
           <TabsTrigger value="all">الكل <span>{orders.length}</span></TabsTrigger>
           {STATUSES.filter((s) => ["pending", "confirmed", "shipped", "delivered", "cancelled"].includes(s.key)).map((s) => (
@@ -480,7 +482,7 @@ function OrdersPage() {
                           <td>{PAYMENT_LABELS[order.payment_method || "cod"] || order.payment_method}</td><td>{order.address || "—"}</td><td>{order.driver_name || "بدون موصل"}</td>
                           <td className="admin-orders-table__total">{Number(order.total_amount || 0).toFixed(2)} ج.م</td>
                           <td>{new Date(order.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}<small>{new Date(order.created_at).toLocaleDateString("ar-EG")}</small></td>
-                          <td><div className="admin-orders-table__actions"><Button size="icon" variant="ghost" onClick={() => setPreview(order)} title="التفاصيل"><Eye className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
+                          <td><div className="admin-orders-table__actions"><Button size="icon" variant="ghost" onClick={() => { setPreview(order); setActiveOrderTab("details"); }} title="التفاصيل"><Eye className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
                         </tr>
                       ))}
                       {visibleOrders.length === 0 && (
@@ -678,161 +680,18 @@ function OrdersPage() {
             )}
           </TabsContent>;
         })}
+        </>}
       </Tabs>
 
-      <Dialog open={detailsTemplateOpen} onOpenChange={setDetailsTemplateOpen}>
-        <DialogContent dir="rtl" className="figma-admin-detail admin-orders__detail max-w-6xl rounded-3xl p-6 bg-card border-border shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between gap-3 text-lg font-black">
-              <span>تفاصيل الطلب</span>
-              <span className="admin-orders__template-badge">معاينة التصميم · لا يوجد طلب محدد</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="admin-order-details-layout">
-            <aside className="admin-order-details-sidebar">
-              <section><h3>العميل</h3><b>اسم العميل</b><small>رقم الهاتف</small><div className="admin-order-detail-pair"><span>عدد الطلبات</span><strong>—</strong></div><div className="admin-order-detail-pair"><span>إجمالي الإنفاق</span><strong>— ج.م</strong></div><div className="admin-order-detail-actions"><Button variant="outline" disabled>اتصال</Button><Button variant="outline" disabled>واتساب</Button><Button variant="outline" disabled>عرض العميل</Button></div></section>
-              <section><h3>التوصيل</h3><small>العنوان</small><b>عنوان العميل</b><small>المنطقة</small><b>منطقة التوصيل</b><small>وقت التوصيل المتوقع</small><b>—</b><hr /><small>المندوب</small><b>لم يتم التعيين</b><Button className="w-full mt-3" variant="outline" disabled>تغيير المندوب</Button></section>
-              <section><h3>الدفع</h3><div className="admin-order-detail-pair"><span>طريقة الدفع</span><strong>الدفع عند الاستلام</strong></div><div className="admin-order-detail-pair"><span>حالة الدفع</span><strong>غير مدفوع</strong></div><div className="admin-order-detail-pair"><span>المبلغ المطلوب</span><strong>— ج.م</strong></div><Button className="w-full mt-3" disabled>تأكيد التحصيل</Button></section>
-            </aside>
-            <div className="admin-order-details-main">
-              <section className="admin-order-detail-summary"><div><bdi>#{"—"}</bdi><span className="admin-orders__status-pill">جديد</span><small>وقت الإنشاء: — · طريقة الدفع: الدفع عند الاستلام</small></div><div className="admin-order-detail-actions"><Button disabled>جاهز للتوصيل</Button><Button variant="outline" disabled>طباعة</Button><Button variant="outline" disabled>إلغاء الطلب</Button></div></section>
-              <section className="admin-order-progress"><div className="admin-order-progress__heading"><b>مسار الطلب</b></div><ol>{["جديد", "قيد التجهيز", "جاهز للتوصيل", "جاري التوصيل", "مكتمل"].map((label, index) => <li key={label}><i>{index + 1}</i><span>{label}</span><small>—</small></li>)}</ol></section>
-              <section className="admin-orders__template-items admin-order-detail-products"><div><b>المنتجات</b><span>— من — منتج</span></div><table><thead><tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th><th>إجراء</th></tr></thead><tbody><tr><td colSpan={5}>لا توجد أصناف للعرض حتى يُسجل طلب حقيقي.</td></tr></tbody></table><footer><b>المجموع الفرعي</b><strong>— ج.م</strong></footer><footer><b>رسوم التوصيل</b><strong>— ج.م</strong></footer><footer><b>الخصم</b><strong>— ج.م</strong></footer><footer><b>الإجمالي النهائي</b><strong>— ج.م</strong></footer></section>
-              <section className="admin-order-detail-notes"><h3>الملاحظات</h3><b>ملاحظات العميل</b><p>لا توجد ملاحظات من العميل.</p><b>ملاحظات الإدارة</b><textarea placeholder="أضف ملاحظة داخلية للفريق..." disabled /><Button variant="outline" disabled>حفظ</Button></section>
-              <section className="admin-order-detail-activity"><h3>سجل النشاط</h3><ol>{["تم إنشاء الطلب", "تم قبول الطلب", "بدأ التجهيز", "تم تعيين المندوب"].map((label) => <li key={label}><i /> <span>{label}</span><small>—</small></li>)}</ol></section>
-              <p className="admin-orders__template-note">هذه معاينة لتخطيط التفاصيل. لا توجد بيانات طلبات في قاعدة البيانات حتى الآن.</p>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={() => setDetailsTemplateOpen(false)} className="w-full rounded-xl hero-gradient text-primary-foreground font-bold text-xs">إغلاق المعاينة</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal 1: Details Preview Dialog */}
-      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent
-          dir="rtl"
-          className="figma-admin-detail admin-orders__detail max-w-6xl rounded-3xl p-6 bg-card border-border shadow-2xl"
-        >
-          <DialogHeader>
-            <DialogTitle className="font-display text-lg font-black flex items-center justify-between">
-              <span>تفاصيل الطلب #{preview?.id.slice(0, 8)}</span>
-              <span className="text-xs font-bold text-primary font-mono">
-                {preview?.created_at ? new Date(preview.created_at).toLocaleString("ar-EG") : ""}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-
-          {preview && (
-            <div className="space-y-4 pt-2">
-              <div className={`admin-order-progress ${preview.status === "cancelled" ? "is-cancelled" : ""}`}>
-                <div className="admin-order-progress__heading"><b>مسار الطلب</b><span>{STATUSES.find((status) => status.key === preview.status)?.label ?? preview.status}</span></div>
-                <ol>
-                  {(["pending", "confirmed", "shipped", "delivered"] as const).map((step, index) => {
-                    const currentIndex = preview.status === "preparing" ? 1 : (["pending", "confirmed", "shipped", "delivered"] as string[]).indexOf(preview.status);
-                    const done = currentIndex >= index && preview.status !== "cancelled";
-                    return <li className={done ? "is-done" : ""} key={step}><i>{done ? "✓" : index + 1}</i><span>{["استلام الطلب", "تجهيز الطلب", "التوصيل", "تم التسليم"][index]}</span></li>;
-                  })}
-                </ol>
-              </div>
-              <div className="bg-secondary/40 p-3 rounded-2xl border border-border/50 space-y-1 text-xs font-bold">
-                <p>
-                  <strong>اسم العميل:</strong> {preview.customer_name}
-                </p>
-                <p>
-                  <strong>رقم الهاتف:</strong> {preview.phone}
-                </p>
-                <p>
-                  <strong>عنوان التوصيل:</strong> {preview.address}
-                </p>
-              </div>
-
-              {preview.notes && (
-                <div className="space-y-1.5">
-                  {preview.notes.includes("الاتصال هاتفياً") ? (
-                    <div className="text-xs bg-amber-500/15 text-amber-900 dark:text-amber-200 p-2.5 rounded-xl border border-amber-500/30 font-bold flex items-center gap-2">
-                      <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
-                      <span>
-                        <strong>تعليمات التجهيز:</strong> الاتصال بالعميل قبل استبدال أي صنف
-                      </span>
-                    </div>
-                  ) : preview.notes.includes("أفضل بديل") ? (
-                    <div className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 p-2.5 rounded-xl border border-emerald-500/30 font-bold flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>
-                        <strong>تعليمات التجهيز:</strong> اختيار أفضل بديل متاح بنفس الجودة والسعر
-                      </span>
-                    </div>
-                  ) : preview.notes.includes("عدم الاستبدال") ? (
-                    <div className="text-xs bg-rose-500/15 text-rose-900 dark:text-rose-200 p-2.5 rounded-xl border border-rose-500/30 font-bold flex items-center gap-2">
-                      <Ban className="h-4 w-4 text-rose-600 shrink-0" />
-                      <span>
-                        <strong>تعليمات التجهيز:</strong> عدم استبدال أي صنف وحذف الناقص من الفاتورة
-                      </span>
-                    </div>
-                  ) : null}
-
-                  {preview.notes
-                    .split("\n")
-                    .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
-                    .join("\n")
-                    .trim() && (
-                    <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>
-                        <strong>ملاحظات العميل:</strong>{" "}
-                        {preview.notes
-                          .split("\n")
-                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
-                          .join("\n")
-                          .trim()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <span className="text-xs font-black text-foreground block">
-                  الأصناف المطلوبة ({preview.items?.length || 0}):
-                </span>
-                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                  {(preview.items || []).map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-background text-xs font-bold"
-                    >
-                      <div>
-                        <span className="text-foreground">{item.name}</span>
-                        <span className="text-muted-foreground block text-[10px]">
-                          {item.quantity} {item.unit_label || "قطعة"} ×{" "}
-                          {item.price_per_unit || (item.subtotal / (item.quantity || 1)).toFixed(2)}{" "}
-                          ج.م
-                        </span>
-                      </div>
-                      <span className="text-primary font-black font-mono">{item.subtotal} ج.م</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-t border-border/60 pt-3 flex justify-between items-center font-black">
-                <span>الإجمالي الكلي:</span>
-                <span className="text-xl text-primary font-mono">{preview.total_amount} ج.م</span>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              onClick={() => setPreview(null)}
-              className="w-full rounded-xl hero-gradient text-primary-foreground font-bold text-xs"
-            >
-              إغلاق
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {activeOrderTab === "details" && (
+        <OrderDetailsTab
+          order={preview}
+          onBack={() => setActiveOrderTab("list")}
+          onPrint={() => preview && printReceipt(preview)}
+          onCancel={() => preview && setStatus(preview.id, "cancelled")}
+          onStartDelivery={() => preview && handleStartDelivery(preview)}
+        />
+      )}
       {/* Modal 2: Assign Driver Modal */}
       <Dialog open={!!assigningOrder} onOpenChange={(o) => !o && setAssigningOrder(null)}>
         <DialogContent
@@ -905,6 +764,51 @@ function OrdersPage() {
   );
 }
 
+function OrderDetailsTab({
+  order,
+  onBack,
+  onPrint,
+  onCancel,
+  onStartDelivery,
+}: {
+  order: Order | null;
+  onBack: () => void;
+  onPrint: () => void;
+  onCancel: () => void;
+  onStartDelivery: () => void;
+}) {
+  const statusLabel = order ? STATUSES.find((status) => status.key === order.status)?.label.replace(/[^\u0600-\u06FF\s]/g, "").trim() : "جديد";
+  const steps = ["جديد", "قيد التجهيز", "جاهز للتوصيل", "جاري التوصيل", "مكتمل"];
+  const statusIndex = !order ? -1 : order.status === "pending" ? 0 : ["confirmed", "preparing"].includes(order.status) ? 1 : order.status === "shipped" ? 3 : order.status === "delivered" ? 4 : -1;
+  const itemSubtotal = order?.items?.reduce((sum, item) => sum + Number(item.subtotal || 0), 0) ?? 0;
+  const deliveryFee = Number(order?.delivery_fee ?? 0);
+  const discount = Math.max(0, itemSubtotal + deliveryFee - Number(order?.total_amount ?? 0));
+  const paymentLabel = PAYMENT_LABELS[order?.payment_method || "cod"] || "الدفع عند الاستلام";
+
+  return (
+    <section className="admin-order-details-page" dir="rtl">
+      <div className="admin-order-details-page__heading">
+        <div><button type="button" onClick={onBack}>‹ الطلبات</button><h2>تفاصيل الطلب {order ? `#${order.id.slice(0, 8)}` : ""}</h2></div>
+        <span className="admin-orders__status-pill">{statusLabel}</span>
+      </div>
+      <div className="admin-order-details-layout">
+        <aside className="admin-order-details-sidebar">
+          <section><h3>العميل</h3><b>{order?.customer_name || "بيانات العميل تظهر هنا"}</b><small>{order?.phone || "رقم الهاتف يظهر هنا"}</small><div className="admin-order-detail-pair"><span>عدد الطلبات</span><strong>—</strong></div><div className="admin-order-detail-pair"><span>إجمالي الإنفاق</span><strong>— ج.م</strong></div><div className="admin-order-detail-actions"><a href={order?.phone ? `tel:${order.phone}` : undefined}>اتصال</a><a href={order?.phone ? `https://wa.me/${order.phone.replace(/\D/g, "")}` : undefined} target="_blank" rel="noreferrer">واتساب</a><button type="button" disabled>عرض العميل</button></div></section>
+          <section><h3>التوصيل</h3><small>العنوان</small><b>{order?.address || "عنوان العميل يظهر هنا"}</b><small>المنطقة</small><b>{order?.address ? "منطقة التوصيل" : "—"}</b><small>وقت التوصيل المتوقع</small><b>—</b><hr /><small>المندوب</small><b>{order?.driver_name || "لم يتم تعيين مندوب"}</b>{order && order.status === "confirmed" && <Button className="w-full mt-3" variant="outline" onClick={onStartDelivery}>تغيير المندوب</Button>}</section>
+          <section><h3>الدفع</h3><div className="admin-order-detail-pair"><span>طريقة الدفع</span><strong>{order ? paymentLabel : "الدفع عند الاستلام"}</strong></div><div className="admin-order-detail-pair"><span>حالة التحصيل</span><strong>{order ? "بانتظار التأكيد" : "غير مدفوع"}</strong></div><div className="admin-order-detail-pair"><span>المبلغ المطلوب</span><strong>{order ? `${Number(order.total_amount).toFixed(2)} ج.م` : "— ج.م"}</strong></div><Button className="w-full mt-3" disabled>تأكيد التحصيل</Button></section>
+        </aside>
+        <div className="admin-order-details-main">
+          <section className="admin-order-detail-summary"><div><bdi>#{order?.id.slice(0, 8) ?? "—"}</bdi><span className={`admin-orders__status-pill ${order ? `status-${order.status}` : ""}`}>{statusLabel}</span><small>وقت الإنشاء: {order?.created_at ? new Date(order.created_at).toLocaleString("ar-EG") : "—"} · طريقة الدفع: {paymentLabel}</small></div><div className="admin-order-detail-actions">{order?.status === "confirmed" && <Button onClick={onStartDelivery}>جاهز للتوصيل</Button>}<Button variant="outline" onClick={onPrint} disabled={!order}><Printer size={15} /> طباعة</Button><Button variant="outline" onClick={onCancel} disabled={!order || ["cancelled", "delivered"].includes(order.status)}>إلغاء الطلب</Button></div></section>
+          <section className={`admin-order-progress ${order?.status === "cancelled" ? "is-cancelled" : ""}`}><div className="admin-order-progress__heading"><b>مسار الطلب</b></div><ol>{steps.map((label, index) => { const done = statusIndex >= index; return <li className={done ? "is-done" : ""} key={label}><i>{done ? "✓" : index + 1}</i><span>{label}</span><small>{index === 0 && order ? new Date(order.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "—"}</small></li>; })}</ol></section>
+          <section className="admin-orders__template-items admin-order-detail-products"><div><b>المنتجات</b><span>{order ? `${order.items?.length ?? 0} من ${order.items?.length ?? 0} منتج` : "— من — منتج"}</span></div><table><thead><tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th><th>إجراء</th></tr></thead><tbody>{order?.items?.length ? order.items.map((item, index) => <tr key={`${item.name}-${index}`}><td>{item.name}</td><td>{Number(item.price_per_unit ?? item.subtotal / Math.max(1, item.quantity)).toFixed(2)} ج.م</td><td>{item.quantity} {item.unit_label || "قطعة"}</td><td>{Number(item.subtotal).toFixed(2)} ج.م</td><td>—</td></tr>) : <tr><td colSpan={5}>{order ? "لا توجد أصناف مسجلة لهذا الطلب." : "ستظهر أصناف الطلب هنا بعد اختيار طلب مسجل."}</td></tr>}</tbody></table><footer><b>المجموع الفرعي</b><strong>{order ? `${itemSubtotal.toFixed(2)} ج.م` : "— ج.م"}</strong></footer><footer><b>رسوم التوصيل</b><strong>{order ? `${deliveryFee.toFixed(2)} ج.م` : "— ج.م"}</strong></footer><footer><b>الخصم</b><strong>{order ? `${discount.toFixed(2)} ج.م` : "— ج.م"}</strong></footer><footer><b>الإجمالي النهائي</b><strong>{order ? `${Number(order.total_amount).toFixed(2)} ج.م` : "— ج.م"}</strong></footer></section>
+          <section className="admin-order-detail-notes"><h3>الملاحظات</h3><b>ملاحظات العميل</b><p>{order?.notes || "لا توجد ملاحظات من العميل."}</p><b>ملاحظات الإدارة</b><textarea placeholder="أضف ملاحظة داخلية للفريق..." disabled /><Button variant="outline" disabled>حفظ</Button></section>
+          <section className="admin-order-detail-activity"><h3>سجل النشاط</h3>{order ? <ol><li><i /><span>تم إنشاء الطلب</span><small>{new Date(order.created_at).toLocaleString("ar-EG")}</small></li></ol> : <p>سيظهر سجل تغييرات حالة الطلب هنا بعد تسجيل الطلب.</p>}</section>
+          {!order && <p className="admin-orders__template-note">اختر «التفاصيل» من أي صف في قائمة الطلبات لعرض بياناته هنا. لا توجد طلبات حقيقية في قاعدة البيانات حاليًا.</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
 // مكون محاكي الخريطة التفاعلية اللحظية لتتبع الموصل
 const DEFAULT_STORE_POS: [number, number] = [30.0444, 31.2357];
 const DEFAULT_TARGET_POS: [number, number] = [30.052, 31.248];
