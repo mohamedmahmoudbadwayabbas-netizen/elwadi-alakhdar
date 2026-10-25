@@ -661,8 +661,8 @@ export async function toolUpdateThemeColors(
   args: { primary?: string; accent?: string; mode?: string; palette?: string },
   ctx?: ToolExecutionContext,
 ): Promise<ToolExecutionResult> {
-  const primary = args.primary || "#036233";
-  const accent = args.accent || "#E85D2F";
+  const primary = args.primary || "#2F5D4B";
+  const accent = args.accent || "#B6502E";
   const mode = args.mode === "dark" ? "dark" : args.mode === "light" ? "light" : undefined;
   const pointId = createRollbackPoint("updateThemeColors", `تحديث الألوان: ${primary}`, ctx?.layout || null);
 

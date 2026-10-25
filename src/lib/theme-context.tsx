@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeStoreIdentity, STORE_IDENTITY } from "@/lib/store-identity";
 
 export type ThemeSettings = {
   id?: string;
@@ -19,9 +20,9 @@ export type ThemeSettings = {
 const DEFAULTS: ThemeSettings = {
   marble_bg_url: null,
   dark_marble_bg_url: null,
-  primary_hex: "#036233",
-  accent_hex: "#E85D2F",
-  card_radius_px: 24,
+  primary_hex: STORE_IDENTITY.green,
+  accent_hex: STORE_IDENTITY.rust,
+  card_radius_px: 12,
   hero_grid_images: [],
   hero_title: "كل احتياجات البيت في مكان واحد",
   hero_subtitle: "تصفّح المنتجات المتاحة واختر ما يناسب قائمتك.",
@@ -97,20 +98,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         applyTokens(DEFAULTS);
         return;
       }
-      const d = data as any;
-      const merged: ThemeSettings = {
+      const d = normalizeStoreIdentity(data as Record<string, unknown>) as any;
+      const merged = normalizeStoreIdentity({
         ...DEFAULTS,
         id: d.id ?? DEFAULTS.id,
         primary_hex: d.primary_color ?? DEFAULTS.primary_hex,
         accent_hex: d.accent_color ?? DEFAULTS.accent_hex,
-        card_radius_px: 24,
+        card_radius_px: 12,
         hero_title: d.hero_title ?? DEFAULTS.hero_title,
         hero_subtitle: d.hero_subtitle ?? DEFAULTS.hero_subtitle,
         hero_cta_text: d.hero_cta_text ?? DEFAULTS.hero_cta_text,
         hero_grid_images: d.hero_image_url ? [d.hero_image_url] : [],
         auth_bg_url: d.login_bg_pattern ?? DEFAULTS.auth_bg_url,
         cart_empty_bg_url: d.cart_empty_bg ?? DEFAULTS.cart_empty_bg_url,
-      };
+      }) as ThemeSettings;
       setTheme(merged);
       applyTokens(merged);
     };

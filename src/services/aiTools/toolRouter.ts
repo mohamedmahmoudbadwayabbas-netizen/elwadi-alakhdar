@@ -323,11 +323,11 @@ export function routeCommandToTool(
   }
   if (c.includes("ألوان") || c.includes("اللون") || c.includes("ثيم") || c.includes("الوضع الليلي") || c.includes("الداكن")) {
     const mode = c.includes("داكن") || c.includes("ليلي") || c.includes("dark") ? "dark" : "light";
-    let prim = "#036233";
+    let prim = "#2F5D4B";
     if (c.includes("أزرق") || c.includes("blue")) prim = "#1E40AF";
     else if (c.includes("برتقالي") || c.includes("amber")) prim = "#D97706";
     else if (c.includes("بنفسجي") || c.includes("purple")) prim = "#7C3AED";
-    return { tool: "updateThemeColors", args: { primary: prim, accent: "#E85D2F", mode } };
+    return { tool: "updateThemeColors", args: { primary: prim, accent: "#B6502E", mode } };
   }
   if (c.includes("أضف منتج") || c.includes("إضافة منتج") || c.includes("منتج جديد")) {
     const priceMatch = command.match(/\d+/);

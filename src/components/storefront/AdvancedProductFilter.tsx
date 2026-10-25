@@ -178,7 +178,7 @@ export function AdvancedProductFilter({
                 "px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer",
                 filters.selectedBrand === brand ||
                   (!filters.selectedBrand && brand === "جميع الماركات")
-                  ? "bg-emerald-600 text-white shadow-xs"
+                  ? "bg-primary text-primary-foreground shadow-xs"
                   : "bg-secondary/70 hover:bg-secondary text-foreground",
               )}
             >
@@ -221,15 +221,15 @@ export function AdvancedProductFilter({
             className={cn(
               "flex items-center justify-between p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer",
               filters.onlyOnSale
-                ? "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                ? "border-accent bg-accent/10 text-accent"
                 : "border-border bg-card hover:bg-secondary/50 text-foreground",
             )}
           >
             <span className="flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5 text-rose-500" />
+              <Flame className="h-3.5 w-3.5 text-accent" />
               <span>عروض خاصة</span>
             </span>
-            {filters.onlyOnSale && <Check className="h-3.5 w-3.5 text-rose-600" />}
+            {filters.onlyOnSale && <Check className="h-3.5 w-3.5 text-accent" />}
           </button>
 
           <button
@@ -383,11 +383,11 @@ export function AdvancedProductFilter({
             className={cn(
               "h-8 px-2.5 rounded-lg text-[11px] font-black transition-all shrink-0 flex items-center gap-1 cursor-pointer border",
               filters.onlyOnSale
-                ? "border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                ? "border-accent bg-accent/10 text-accent"
                 : "border-border bg-secondary/50 text-muted-foreground hover:text-foreground",
             )}
           >
-            <Flame className="h-3 w-3 text-rose-500" />
+            <Flame className="h-3 w-3 text-accent" />
             <span>عروض خاصة</span>
           </button>
 

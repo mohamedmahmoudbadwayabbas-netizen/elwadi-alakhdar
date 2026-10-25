@@ -207,8 +207,8 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
       parameters: {
         type: "object",
         properties: {
-          primary: str("Primary color hex, e.g. #036233"),
-          accent: str("Accent color hex, e.g. #E85D2F"),
+          primary: str("Primary color hex, e.g. #2F5D4B"),
+          accent: str("Accent color hex, e.g. #B6502E"),
           mode: str("light | dark"),
           palette: str("Optional palette key: emerald | dark_green | amber_warm | royal_blue | clean_slate"),
         },

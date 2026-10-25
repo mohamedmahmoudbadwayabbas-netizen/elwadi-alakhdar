@@ -1,5 +1,6 @@
 import { NumberInput } from "@/components/ui/number-input";
 import { createFileRoute } from "@tanstack/react-router";
+import { normalizeStoreIdentity, STORE_IDENTITY } from "@/lib/store-identity";
 import { lazy, Suspense, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase-loose";
 import { Button } from "@/components/ui/button";
@@ -99,14 +100,14 @@ const DEFAULT_SETTINGS: Settings = {
   site_name: "الوادي الأخضر",
   logo_url: null,
   favicon_url: null,
-  primary_color: "142 76% 24%",
-  accent_color: "18 85% 55%",
-  background_color: "48 33% 97%",
-  foreground_color: "120 18% 12%",
+  primary_color: STORE_IDENTITY.greenHsl,
+  accent_color: STORE_IDENTITY.rustHsl,
+  background_color: STORE_IDENTITY.creamHsl,
+  foreground_color: STORE_IDENTITY.inkHsl,
   announcement_text:
     "🛒 سوبرماركت الوادي الأخضر — كل احتياجات بيتك وتموينك بتوصيل فوري لباب بيتك ⚡",
   announcement_enabled: true,
-  announcement_bg_color: "142 76% 24%",
+  announcement_bg_color: STORE_IDENTITY.greenHsl,
   ga4_id: null,
   meta_pixel_id: null,
   min_order_amount: 100,
@@ -131,11 +132,11 @@ const DEFAULT_SETTINGS: Settings = {
 // الثيمات الجاهزة للاختيار السريع
 const COLOR_PRESETS = [
   {
-    name: "الغابة الخضراء 🌲",
-    primary: "142 76% 24%",
-    accent: "18 85% 55%",
-    bg: "48 33% 97%",
-    fg: "120 18% 12%",
+    name: "هوية الوادي الأخضر",
+    primary: STORE_IDENTITY.greenHsl,
+    accent: STORE_IDENTITY.rustHsl,
+    bg: STORE_IDENTITY.creamHsl,
+    fg: STORE_IDENTITY.inkHsl,
   },
   {
     name: "الزمرد الحديث 💎",
@@ -187,7 +188,7 @@ function SettingsPage() {
     void supabase.from("store_settings").select("*").limit(1).maybeSingle().then(({ data, error }) => {
       if (!mounted) return;
       if (error) { toast.error(`تعذر تحميل إعدادات المتجر: ${error.message}`); setS(DEFAULT_SETTINGS); }
-      else setS({ ...DEFAULT_SETTINGS, ...(data ?? {}) } as Settings);
+      else setS(normalizeStoreIdentity({ ...DEFAULT_SETTINGS, ...(data ?? {}) }) as Settings);
       setLoading(false);
       setTimeout(() => { isInitialLoadRef.current = false; }, 500);
     });
@@ -1003,7 +1004,7 @@ function ColorField({
         <Input
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="142 76% 24%"
+          placeholder="153 33% 27%"
           className="h-10 rounded-xl font-mono text-xs font-bold bg-background/90 dir-ltr text-right"
         />
       </div>

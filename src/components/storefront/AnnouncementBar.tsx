@@ -1,4 +1,5 @@
 import { useSettings } from "@/lib/settings-context";
+import { STORE_IDENTITY } from "@/lib/store-identity";
 import { useState, useEffect } from "react";
 
 export function AnnouncementBar() {
@@ -15,7 +16,7 @@ export function AnnouncementBar() {
     ? s.announcement_bg_color.startsWith("#") || s.announcement_bg_color.startsWith("rgb")
       ? s.announcement_bg_color
       : `hsl(${s.announcement_bg_color})`
-    : "#036233";
+    : STORE_IDENTITY.green;
 
   return (
     <div

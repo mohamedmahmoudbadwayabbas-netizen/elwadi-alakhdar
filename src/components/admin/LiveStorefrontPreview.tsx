@@ -22,6 +22,7 @@ import {
   Check,
 } from "lucide-react";
 import { useStoreProducts, useStoreCategories } from "@/lib/store-data-hooks";
+import { STORE_IDENTITY } from "@/lib/store-identity";
 
 export interface PreviewSettings {
   site_name?: string | null;
@@ -63,10 +64,10 @@ export function LiveStorefrontPreview({ s, className = "" }: LiveStorefrontPrevi
   const [cartCount, setCartCount] = useState<number>(2);
   const [addedItemName, setAddedItemName] = useState<string | null>(null);
 
-  const primary = s.primary_color || "142 76% 24%";
-  const accent = s.accent_color || "18 85% 55%";
-  const bg = s.background_color || "48 33% 97%";
-  const fg = s.foreground_color || "120 18% 12%";
+  const primary = s.primary_color || STORE_IDENTITY.greenHsl;
+  const accent = s.accent_color || STORE_IDENTITY.rustHsl;
+  const bg = s.background_color || STORE_IDENTITY.creamHsl;
+  const fg = s.foreground_color || STORE_IDENTITY.inkHsl;
   const annBg = s.announcement_bg_color || primary;
 
   const catStyle = s.categories_style || "grid";

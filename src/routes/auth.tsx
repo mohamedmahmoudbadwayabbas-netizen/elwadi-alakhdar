@@ -171,12 +171,12 @@ export function AuthPage() {
         <Link to="/" className="mb-6 flex items-center justify-center gap-2.5">
           <div
             className="grid h-12 w-12 place-items-center rounded-2xl text-white shadow-lg shadow-emerald-900/10"
-            style={{ background: "linear-gradient(135deg, #036233, #024a26)" }}
+            style={{ background: "var(--gradient-hero)" }}
           >
             <Leaf className="h-6 w-6" />
           </div>
           <div>
-            <div className="font-display text-xl font-extrabold" style={{ color: "#036233" }}>
+            <div className="font-display text-xl font-extrabold" style={{ color: "var(--brand-green)" }}>
               سوبرماركت الوادي الأخضر
             </div>
             <div className="text-[11px] font-semibold text-muted-foreground">
@@ -394,7 +394,7 @@ export function AuthPage() {
                 type="submit"
                 disabled={busy}
                 className="mt-4 h-11 w-full rounded-2xl text-sm font-black text-white shadow-md shadow-emerald-700/20"
-                style={{ background: "linear-gradient(135deg, #036233, #024a26)" }}
+                style={{ background: "var(--gradient-hero)" }}
               >
                 {busy ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -458,7 +458,7 @@ export function AuthPage() {
                     type="submit"
                     disabled={busy}
                     className="mt-4 h-11 w-full rounded-2xl text-sm font-black text-white shadow-md shadow-emerald-700/20"
-                    style={{ background: "linear-gradient(135deg, #036233, #024a26)" }}
+                    style={{ background: "var(--gradient-hero)" }}
                   >
                     {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : "إرسال رمز التحقق (OTP)"}
                   </Button>
@@ -500,7 +500,7 @@ export function AuthPage() {
                     type="submit"
                     disabled={busy || otpCode.length < 4}
                     className="mt-4 h-11 w-full rounded-2xl text-sm font-black text-white shadow-md shadow-emerald-700/20"
-                    style={{ background: "linear-gradient(135deg, #036233, #024a26)" }}
+                    style={{ background: "var(--gradient-hero)" }}
                   >
                     {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : "تأكيد الدخول"}
                   </Button>
@@ -546,3 +546,4 @@ export function AuthPage() {
 }
 
 export default AuthPage;
+

@@ -160,8 +160,8 @@ The Al-Wadi AI Engine operates directly on the following Supabase database table
 
 7. \`store_settings\` (Global Branding & Visual Configuration)
    - \`store_settings.site_name\` (text, store branding name)
-   - \`store_settings.primary_color\` (text, HEX color, e.g. #036233)
-   - \`store_settings.accent_color\` (text, HEX color, e.g. #E85D2F)
+   - \`store_settings.primary_color\` (text, HEX color, e.g. #2F5D4B)
+   - \`store_settings.accent_color\` (text, HEX color, e.g. #B6502E)
    - \`store_settings.announcement_text\` (text, global top banner alert)
    - \`store_settings.announcement_enabled\` (boolean)
    - \`store_settings.announcement_bg_color\` (text)

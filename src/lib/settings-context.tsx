@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeStoreIdentity, STORE_IDENTITY } from "@/lib/store-identity";
 
 export type StoreSettings = {
   id?: string;
@@ -42,19 +43,19 @@ export type StoreSettings = {
   hero_style?: "gradient" | "image" | "split";
 };
 
-// ⚠️ القيم دي بقت HSL نصي زي "142 76% 24%" مش Hex — لازم تتطابق مع admin.settings.tsx
+// Store brand defaults use the approved Figma palette in HSL tokens.
 const DEFAULTS: StoreSettings = {
   site_name: "الوادي الأخضر",
   logo_url: null,
   favicon_url: null,
-  primary_color: "142 76% 24%",
-  accent_color: "18 85% 55%",
-  background_color: "48 33% 97%",
-  foreground_color: "120 18% 12%",
+  primary_color: STORE_IDENTITY.greenHsl,
+  accent_color: STORE_IDENTITY.rustHsl,
+  background_color: STORE_IDENTITY.creamHsl,
+  foreground_color: STORE_IDENTITY.inkHsl,
   font_family: "Tajawal",
   announcement_text: "🛒 سوبرماركت الوادي الأخضر — تصفّح المنتجات المتاحة واختر احتياجاتك.",
   announcement_enabled: true,
-  announcement_bg_color: "142 76% 24%",
+  announcement_bg_color: STORE_IDENTITY.greenHsl,
   whatsapp_number: null,
   hero_title: "كل احتياجات البيت في مكان واحد",
   hero_subtitle: "تصفّح المنتجات المتاحة واختر ما يناسب قائمتك.",
@@ -96,13 +97,14 @@ const SettingsContext = createContext<{
 function applyTheme(s: StoreSettings) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const setHsl = (name: string, value: string | null | undefined) => {
-    if (value) root.style.setProperty(name, `hsl(${value})`);
+  const setColor = (name: string, value: string | null | undefined) => {
+    if (!value) return;
+    root.style.setProperty(name, value.trim().startsWith("#") ? value : `hsl(${value})`);
   };
-  setHsl("--primary", s.primary_color);
-  setHsl("--accent", s.accent_color);
-  if (s.background_color) setHsl("--background", s.background_color);
-  if (s.foreground_color) setHsl("--foreground", s.foreground_color);
+  setColor("--primary", s.primary_color);
+  setColor("--accent", s.accent_color);
+  setColor("--background", s.background_color);
+  setColor("--foreground", s.foreground_color);
   if (s.card_radius) {
     const radMap: Record<string, string> = {
       "rounded-xl": "0.75rem",
@@ -138,7 +140,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
       if (!mounted) return;
       if (error) console.warn("[Settings] Supabase error:", error.message);
-      const merged = { ...DEFAULTS, ...((data as any) ?? {}) } as StoreSettings;
+      const merged = normalizeStoreIdentity({ ...DEFAULTS, ...((data as any) ?? {}) }) as StoreSettings;
       for (const key of Object.keys(merged) as (keyof StoreSettings)[]) {
         if (merged[key] === null && DEFAULTS[key] !== null && DEFAULTS[key] !== undefined) (merged as any)[key] = DEFAULTS[key];
       }

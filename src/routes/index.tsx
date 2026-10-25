@@ -319,9 +319,9 @@ export function HomePage() {
             <EmptyState
               icon={
                 searchQuery ? (
-                  <SearchX className="h-8 w-8 text-orange-600" />
+                  <SearchX className="h-8 w-8 text-accent" />
                 ) : (
-                  <PackageOpen className="h-8 w-8 text-emerald-700" />
+                  <PackageOpen className="h-8 w-8 text-primary" />
                 )
               }
               title={

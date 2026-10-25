@@ -428,7 +428,7 @@ function AdminCoPilotPage() {
                 return (
                   <div key={msg.id} className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
                     {/* Avatar */}
-                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full shadow-sm border border-white/20 ${isUser ? "bg-secondary text-foreground" : "bg-[#E55300] text-white"}`}>
+                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full shadow-sm border border-white/20 ${isUser ? "bg-secondary text-foreground" : "bg-primary text-white"}`}>
                       {isUser ? <Bot className="h-4 w-4" strokeWidth={1.5} /> : <Sparkles className="h-4 w-4" strokeWidth={1.5} />}
                     </div>
 
@@ -440,7 +440,7 @@ function AdminCoPilotPage() {
                         <span>{msg.timestamp}</span>
                       </div>
 
-                      <div className={`rounded-3xl p-4 text-xs sm:text-sm leading-relaxed shadow-[0_4px_24px_rgba(0,0,0,0.04)] ${isUser ? "bg-[#036233] text-white rounded-tr-sm font-medium" : "bg-card/80 backdrop-blur-xl text-foreground border border-white/20 dark:border-white/10 rounded-tl-sm"}`}>
+                      <div className={`rounded-3xl p-4 text-xs sm:text-sm leading-relaxed shadow-[0_4px_24px_rgba(0,0,0,0.04)] ${isUser ? "bg-primary text-white rounded-tr-sm font-medium" : "bg-card/80 backdrop-blur-xl text-foreground border border-white/20 dark:border-white/10 rounded-tl-sm"}`}>
                         {msg.attachedFile && (
                           <div className="mb-2.5 inline-flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-2.5 py-1 rounded-md text-xs font-mono">
                             <Paperclip className="h-3 w-3" strokeWidth={1.5} />
@@ -513,7 +513,7 @@ function AdminCoPilotPage() {
                             }
                             handleSendMessage(starter.prompt, starter.targetFile ? PROJECT_FILES_REGISTRY.find((f) => f.path === starter.targetFile) : null);
                           }}
-                          className="p-3 rounded-3xl border border-white/20 dark:border-white/10 bg-card/60 backdrop-blur-xl hover:border-[#036233]/50 transition-colors text-right cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.03)] group flex items-start justify-between gap-2"
+                          className="p-3 rounded-3xl border border-white/20 dark:border-white/10 bg-card/60 backdrop-blur-xl hover:border-primary/50 transition-colors text-right cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.03)] group flex items-start justify-between gap-2"
                         >
                           <div className="space-y-0.5 min-w-0">
                             <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">{starter.title}</span>
@@ -534,7 +534,7 @@ function AdminCoPilotPage() {
           {/* Input Area */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 via-background/80 to-transparent p-4 pb-[calc(env(safe-area-inset-bottom,24px)+1rem)] lg:pb-6 pt-12 z-10">
             <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto relative group">
-              <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/10 pointer-events-none transition-colors group-focus-within:border-[#036233]/50 dark:group-focus-within:border-[#036233]/50 group-focus-within:ring-2 group-focus-within:ring-[#036233]/20" />
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/10 pointer-events-none transition-colors group-focus-within:border-primary/50 dark:group-focus-within:border-primary/50 group-focus-within:ring-2 group-focus-within:ring-primary/20" />
               <div className="relative flex flex-col p-2">
                 {attachedFile && (
                   <div className="mx-2 mt-1 mb-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/50">
@@ -568,7 +568,7 @@ function AdminCoPilotPage() {
                       dir="auto"
                     />
                   </div>
-                  <button type="submit" disabled={isProcessing || (!chatInput.trim() && !attachedFile)} className="mb-1 shrink-0 grid h-10 w-10 place-items-center rounded-full bg-[#E55300] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E55300]/90 transition-colors shadow-[0_4px_16px_rgba(229,83,0,0.3)]">
+                  <button type="submit" disabled={isProcessing || (!chatInput.trim() && !attachedFile)} className="mb-1 shrink-0 grid h-10 w-10 place-items-center rounded-full bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shadow-[0_4px_16px_rgba(47,93,75,0.3)]">
                     <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.5} />
                   </button>
                 </div>

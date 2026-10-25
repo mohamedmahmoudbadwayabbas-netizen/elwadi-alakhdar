@@ -74,7 +74,7 @@ export function Header() {
                     <h3 className="font-display font-black text-base text-foreground leading-tight">
                       {siteName}
                     </h3>
-                    <span className="text-[11px] text-[#036233] dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                    <span className="text-[11px] text-primary dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
                       هايبر ماركت لاحتياجات البيت
                     </span>
                   </div>
@@ -82,7 +82,7 @@ export function Header() {
 
                 {settings.store_address && (
                   <div className="flex items-start gap-2 rounded-2xl border border-border/60 bg-secondary/50 p-2.5 text-xs">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#036233]" aria-hidden="true" />
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                     <span className="font-bold leading-5 text-foreground">{settings.store_address}</span>
                   </div>
                 )}
@@ -100,7 +100,7 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Store className="h-4 w-4 text-[#036233]" />
+                    <Store className="h-4 w-4 text-primary" />
                     <span>الرئيسية وعروض اليوم</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -112,7 +112,7 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Layers className="h-4 w-4 text-[#036233]" />
+                    <Layers className="h-4 w-4 text-primary" />
                     <span>أقسام وسلع السوبرماركت</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -124,11 +124,11 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <ShoppingBag className="h-4 w-4 text-[#036233]" />
+                    <ShoppingBag className="h-4 w-4 text-primary" />
                     <span>سلة المشتريات</span>
                   </div>
                   {totalCount > 0 && (
-                    <Badge className="bg-[#036233] text-white text-[10px] px-1.5 py-0.5">
+                    <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5">
                       <bdi dir="ltr" className="tabular-nums">{totalCount}</bdi>
                     </Badge>
                   )}
@@ -152,7 +152,7 @@ export function Header() {
                   className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-bold transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-[#036233]" />
+                    <User className="h-4 w-4 text-primary" />
                     <span>حسابي وطلباتي السابقة</span>
                   </div>
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -183,13 +183,13 @@ export function Header() {
                     <Link
                       to="/admin/copilot"
                       onClick={() => setDrawerOpen(false)}
-                      className="flex items-center justify-between p-3 rounded-2xl bg-[#036233]/10 hover:bg-[#036233]/15 border border-[#036233]/20 text-xs font-black text-[#036233] dark:text-emerald-300 transition-all"
+                      className="flex items-center justify-between p-3 rounded-2xl bg-primary/10 hover:bg-primary/15 border border-primary/20 text-xs font-black text-primary dark:text-emerald-300 transition-all"
                     >
                       <div className="flex items-center gap-3">
                         <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
                         <span>{siteName} AI (المساعد الذكي)</span>
                       </div>
-                      <Badge className="bg-[#036233]/20 text-[#036233] dark:text-emerald-200 border-0 text-[9px]">
+                      <Badge className="bg-primary/20 text-primary dark:text-emerald-200 border-0 text-[9px]">
                         Gemini
                       </Badge>
                     </Link>
@@ -202,7 +202,7 @@ export function Header() {
                 {user ? (
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 truncate">
-                      <User className="h-4 w-4 text-[#036233]" />
+                      <User className="h-4 w-4 text-primary" />
                       <span className="truncate font-bold text-[11px]">{user.email}</span>
                     </div>
                     <button
@@ -249,7 +249,7 @@ export function Header() {
             <span className="truncate text-base font-black tracking-tight text-foreground sm:text-lg font-display">
               {siteName}
             </span>
-            <span className="text-[9px] text-[#036233] dark:text-emerald-400 font-bold hidden sm:inline -mt-0.5">
+            <span className="text-[9px] text-primary dark:text-emerald-400 font-bold hidden sm:inline -mt-0.5">
               هايبر ماركت لاحتياجات البيت
             </span>
           </div>
@@ -285,7 +285,7 @@ export function Header() {
           >
             <ShoppingBag className="h-5 w-5" />
             {totalCount > 0 && (
-              <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-[#E55300] hover:bg-[#E55300]/90 px-1 text-[10px] font-black text-white shadow-sm border-2 border-background">
+              <Badge className="absolute -top-1 -end-1 h-5 min-w-5 justify-center rounded-full bg-primary px-1 text-[10px] font-black text-primary-foreground shadow-sm border-2 border-background">
                 <bdi dir="ltr" className="tabular-nums">{totalCount}</bdi>
               </Badge>
             )}
