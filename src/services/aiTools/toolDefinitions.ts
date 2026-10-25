@@ -587,7 +587,8 @@ export const GEMINI_TOOL_DECLARATIONS = AI_TOOL_SUITE.map((t) => t.declaration);
  * Fails safe: if role/context is unknown, returns only read-only tools.
  */
 export function getActiveTools(context?: { page?: string; userRole?: string }) {
-  const role = context?.userRole || "customer";
+  const rawRole = (context?.userRole || "customer").toLowerCase();
+  const role = rawRole === "super_admin" ? "admin" : rawRole;
   const page = context?.page || "global";
 
   // Non-admins/moderators get safe read-only tools — includes catalog search

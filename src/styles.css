@@ -474,6 +474,12 @@
 .elwadi-assistant__empty b { color: #283c31; }
 .elwadi-assistant__empty span { font-size: .8rem; }
 .elwadi-assistant__empty a { color: var(--assistant-brand); font-size: .8rem; font-weight: 900; }
+.elwadi-assistant__conversation { display: grid; gap: .65rem; margin-top: 1rem; }
+.elwadi-assistant__reply { max-width: 92%; padding: .8rem 1rem; border: 1px solid var(--brand-border); border-radius: 14px; background: #fff; }
+.elwadi-assistant__reply.is-user { justify-self: start; color: #fff; border-color: var(--assistant-brand); background: var(--assistant-brand); }
+.elwadi-assistant__reply > div { display: flex; align-items: center; gap: .4rem; color: var(--assistant-brand); font-size: .76rem; }
+.elwadi-assistant__reply.is-user > div { color: #fff; }
+.elwadi-assistant__reply p { margin: .45rem 0 0; font-size: .82rem; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 850px) { .elwadi-assistant__layout { grid-template-columns: 1fr; } .elwadi-assistant__summary { position: static; order: -1; } }
 @media (max-width: 600px) { .elwadi-assistant { padding-inline: .8rem; } .elwadi-assistant__header { height: 64px; } .elwadi-assistant__back { font-size: 0; gap: 0; } .elwadi-assistant__brand b { font-size: .8rem; } .elwadi-assistant__cart { font-size: .72rem; padding: .5rem .6rem; } .elwadi-assistant__layout { margin-top: 1.2rem; gap: 1rem; } .elwadi-assistant__products { grid-template-columns: 1fr; } .elwadi-assistant__product { padding: .6rem; } .elwadi-assistant__input-row { flex-direction: column; } .elwadi-assistant__input-row button { justify-content: center; } }
 

@@ -300,8 +300,10 @@ export async function toolManageProduct(
 
   try {
     if (action === "create") {
-      const name = String(data.name || "منتج جديد");
-      const price = Number(data.price ?? data.price_per_unit ?? 0);
+      const name = String(data.name_ar || data.name || "").trim();
+      const price = Number(data.price ?? data.price_per_unit);
+      if (!name) throw new Error("اسم المنتج مطلوب.");
+      if (!Number.isFinite(price) || price <= 0) throw new Error("سعر المنتج يجب أن يكون أكبر من صفر.");
       const originalPrice = data.original_price ?? data.old_price;
       const payload = {
         name,
@@ -873,6 +875,7 @@ export async function toolSearchProducts(
       .from("products")
       .select("id, name, name_ar, price, original_price, stock, category_id, is_featured, is_active")
       .ilike("name", `%${query}%`)
+      .eq("is_active", true)
       .limit(limit);
 
     if (args.categoryId) {

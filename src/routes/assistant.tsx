@@ -8,6 +8,7 @@ import type { Product } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StickyCartBar } from "@/components/storefront/StickyCartBar";
+import { runAdminCoPilotChat, type ChatMessage } from "@/services/gemini36Service";
 
 export const Route = createFileRoute("/assistant")({ component: ShoppingAssistantPage });
 
@@ -19,6 +20,9 @@ function ShoppingAssistantPage() {
   const [request, setRequest] = useState("");
   const [submittedRequest, setSubmittedRequest] = useState("");
   const [addedIds, setAddedIds] = useState<string[]>([]);
+  const [assistantError, setAssistantError] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
   const matches = useMemo(() => {
     if (!submittedRequest.trim()) {
@@ -36,6 +40,40 @@ function ShoppingAssistantPage() {
   const add = (product: Product) => {
     addItem(product);
     setAddedIds((ids) => ids.includes(product.id) ? ids : [...ids, product.id]);
+  };
+
+  const askAssistant = async (prompt = request) => {
+    const cleanPrompt = prompt.trim();
+    if (!cleanPrompt || isThinking) return;
+    setRequest(cleanPrompt);
+    setSubmittedRequest(cleanPrompt);
+    setAssistantError("");
+    setIsThinking(true);
+    const userMessage: ChatMessage = {
+      id: `customer-${Date.now()}`,
+      role: "user",
+      content: cleanPrompt,
+      timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
+    };
+    try {
+      const response = await runAdminCoPilotChat(cleanPrompt, chatHistory, {
+        model: "gemini-2.5-flash",
+        role: "copywriter",
+        page: "assistant",
+        userRole: "customer",
+      });
+      const reply: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: response.text,
+        timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
+      };
+      setChatHistory((messages) => [...messages, userMessage, reply]);
+    } catch {
+      setAssistantError("تعذر الوصول إلى مساعد التسوق الآن. جرّب البحث في المنتجات المتاحة أدناه.");
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   return (
@@ -57,11 +95,15 @@ function ShoppingAssistantPage() {
           <div className="elwadi-assistant__composer">
             <label htmlFor="shopping-request">ما الذي تحتاجه اليوم؟</label>
             <div className="elwadi-assistant__input-row">
-              <Input id="shopping-request" value={request} onChange={(event) => setRequest(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); setSubmittedRequest(request); } }} placeholder="مثال: لبن، خبز، قهوة، منظف أرضيات..." />
-              <Button type="button" onClick={() => setSubmittedRequest(request)}><Search size={17} /> ابحث في المنتجات</Button>
+              <Input id="shopping-request" value={request} onChange={(event) => setRequest(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void askAssistant(); } }} placeholder="مثال: فطار لأربع أشخاص بميزانية 250 جنيه..." />
+              <Button type="button" disabled={isThinking || !request.trim()} onClick={() => void askAssistant()}>{isThinking ? <LoaderCircle size={17} className="animate-spin" /> : <Sparkles size={17} />} اسأل مساعد التسوق</Button>
             </div>
-            <div className="elwadi-assistant__suggestions">{suggestions.map((suggestion) => <button key={suggestion} onClick={() => { setRequest(suggestion); setSubmittedRequest(suggestion); }}>{suggestion}</button>)}</div>
+            <div className="elwadi-assistant__suggestions">{suggestions.map((suggestion) => <button key={suggestion} onClick={() => { setRequest(suggestion); void askAssistant(suggestion); }}>{suggestion}</button>)}</div>
           </div>
+
+          {isThinking && <div className="elwadi-assistant__loading"><LoaderCircle className="animate-spin" /> أبحث في منتجات المتجر وأرتّب اقتراحًا مناسبًا…</div>}
+          {assistantError && <div className="elwadi-assistant__empty" role="status">{assistantError}</div>}
+          {chatHistory.length > 0 && <div className="elwadi-assistant__conversation" aria-live="polite">{chatHistory.map((message) => <article className={`elwadi-assistant__reply is-${message.role}`} key={message.id}><div>{message.role === "assistant" ? <Sparkles size={17} /> : null}<b>{message.role === "assistant" ? "مساعد التسوق" : "أنت"}</b></div><p>{message.content}</p></article>)}</div>}
 
           <div className="elwadi-assistant__results-head">
             <div><h2>{submittedRequest ? "نتائج من كتالوج المتجر" : "اختيارات من المتجر"}</h2><p>{matches.length} منتجات متاحة للإضافة</p></div>

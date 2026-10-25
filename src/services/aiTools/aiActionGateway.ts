@@ -39,6 +39,9 @@ const READ_TOOLS = new Set<AiToolName>([
 export function classifyAiRisk(toolName: AiToolName, input: Record<string, unknown>): AiRiskLevel {
   if (DESTRUCTIVE_TOOLS.has(toolName) || input.action === "delete") return "DESTRUCTIVE";
   if (READ_TOOLS.has(toolName)) return "READ";
+  // Direct admin catalog changes are routine write operations. Deletion stays
+  // destructive and behind explicit approval.
+  if (toolName === "manageProduct" || toolName === "manageCategories") return "LOW_WRITE";
   if (HIGH_WRITE_TOOLS.has(toolName)) return "HIGH_WRITE";
   return "LOW_WRITE";
 }
@@ -110,9 +113,10 @@ export async function executeAIAction(
   const risk = classifyAiRisk(toolName, input);
   const auditId = `audit-${actionId}`;
   const base = { actionId, toolName, auditId };
-  if (!actor) return { ...base, success: false, status: "rejected", error: "لا يوجد مستخدم موثق في Supabase Auth." };
-  const action: AiAction = { ...base, actor, input, risk, context };
-  if (risk !== "READ" && !["admin", "super_admin", "staff"].includes(actor.role)) {
+  if (!actor && risk !== "READ") return { ...base, success: false, status: "rejected", error: "لا يوجد مستخدم موثق في Supabase Auth." };
+  const actionActor = actor ?? { userId: "anonymous", role: "customer" };
+  const action: AiAction = { ...base, actor: actionActor, input, risk, context };
+  if (risk !== "READ" && !["admin", "super_admin"].includes(actionActor.role)) {
     return { ...base, success: false, status: "rejected", error: "هذا الإجراء يتطلب صلاحية تشغيل موثقة من قاعدة البيانات." };
   }
   if (risk === "HIGH_WRITE" || risk === "DESTRUCTIVE") {
@@ -122,11 +126,11 @@ export async function executeAIAction(
     const result = await executor();
     const verification = await verifyAction(action, result);
     const success = result.ok && verification.verified;
-    console.info("[AI_ACTION_AUDIT]", { ...base, actor: actor.userId, role: actor.role, risk, status: success ? "completed" : "failed", verification });
+    console.info("[AI_ACTION_AUDIT]", { ...base, actor: actionActor.userId, role: actionActor.role, risk, status: success ? "completed" : "failed", verification });
     return { ...base, success, status: success ? "completed" : "failed", data: result.data, error: success ? undefined : result.error || result.messageAr || verification.details, verification };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[AI_ACTION_AUDIT]", { ...base, actor: actor.userId, risk, status: "failed", error: message });
+    console.error("[AI_ACTION_AUDIT]", { ...base, actor: actionActor.userId, role: actionActor.role, risk, status: "failed", error: message });
     return { ...base, success: false, status: "failed", error: message, verification: { verified: false, details: "executor-threw" } };
   }
 }

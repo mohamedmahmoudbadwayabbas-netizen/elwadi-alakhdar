@@ -168,6 +168,13 @@ const ROLE_PROMPTS: Record<GeminiRoleChoice, string> = {
     "أنت كاتب محتوى إبداعي متخصص في السوبرماركت والأغذية الفاخرة (Copywriter). تكتب بأسلوب مصري راقٍ وشهي وجذاب.",
 };
 
+const CUSTOMER_SHOPPING_DIRECTIVE = `
+أنت مساعد تسوق ذكي لعملاء سوبرماركت الوادي الأخضر. ساعد العميل في تخطيط الوجبات وقوائم المشتريات وفق عدد الأشخاص والميزانية والتفضيلات التي يذكرها.
+استخدم أدوات البحث والقراءة المتاحة للعثور على المنتجات وأسعارها الحالية قبل اقتراحها. لا تخترع منتجاً أو سعراً أو توافراً. إذا لم تذكر الميزانية أو عدد الأشخاص وكان ذلك مهماً، اسأل سؤالاً موجزاً؛ وإلا اقترح خطة أولية واضحة.
+وازن القائمة داخل الميزانية مع ذكر الكميات التقريبية والتكلفة المحسوبة اعتماداً على نتائج المتجر، واشرح أي بدائل عند عدم توفر عنصر. لا تضف شيئاً إلى السلة ولا تنفذ أي تغيير؛ اعرض الاقتراح ودع العميل يضيف المنتجات بنفسه.
+تحدث بالعربية الطبيعية وباختصار، وقدّم الإجابة على هيئة خطة وجبة وقائمة منتجات وإجمالي تقريبي مع توضيح حدود التقدير.
+`;
+
 // Production model fallback sequence
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
   "gemini-3.7-flash",
@@ -325,6 +332,8 @@ export async function runAdminCoPilotChat(
   let useGrounding: boolean;
   let attachedFile: { path: string; name: string } | undefined;
   let ctx: ToolExecutionContext | undefined;
+  let page = "global";
+  let userRole = "customer";
 
   if (typeof messageOrParams === "string") {
     message = messageOrParams;
@@ -335,6 +344,8 @@ export async function runAdminCoPilotChat(
     useGrounding = Boolean(opts.useGrounding || opts.enableSearchGrounding);
     attachedFile = opts.attachedFile;
     ctx = opts.ctx;
+    page = opts.page || page;
+    userRole = opts.userRole || userRole;
   } else {
     message = messageOrParams.message;
     history = messageOrParams.history || [];
@@ -343,7 +354,11 @@ export async function runAdminCoPilotChat(
     useGrounding = Boolean(messageOrParams.useGrounding || messageOrParams.enableSearchGrounding);
     attachedFile = messageOrParams.attachedFile;
     ctx = messageOrParams.ctx;
+    page = messageOrParams.page || page;
+    userRole = messageOrParams.userRole || userRole;
   }
+
+  const customerExperience = page === "assistant" && userRole === "customer";
 
   // 1. Check if GenAI is configured
   const ai = getGenAI();
@@ -361,7 +376,7 @@ export async function runAdminCoPilotChat(
 
     for (const currentModel of modelsToTry) {
       try {
-        const systemInstruction = `
+        const systemInstruction = customerExperience ? CUSTOMER_SHOPPING_DIRECTIVE : `
 ${AUTONOMOUS_ADMIN_COPILOT_DIRECTIVE}
 ${ROLE_PROMPTS[selectedRole]}
 ${SUPABASE_SCHEMA_CONTEXT_INSTRUCTION}
@@ -398,7 +413,7 @@ actually returned a confirmed success result back to you.
         });
 
         // Execute Gemini call with dynamic tool routing
-        const activeTools = getActiveTools({ page: maybeOptions?.page, userRole: maybeOptions?.userRole });
+        const activeTools = getActiveTools({ page, userRole });
 
         const config: any = {
           systemInstruction,
@@ -555,6 +570,14 @@ actually returned a confirmed success result back to you.
       roleUsed: selectedRole,
       toolResult: res,
       toolResults: [res],
+    };
+  }
+
+  if (customerExperience) {
+    return {
+      text: "مساعد التخطيط بالذكاء الاصطناعي غير متاح الآن. يمكنك استخدام البحث في منتجات المتجر أدناه، وسأعرض لك المنتجات المتاحة وأسعارها الحالية.",
+      modelUsed: "customer-assistant-unavailable",
+      roleUsed: selectedRole,
     };
   }
 

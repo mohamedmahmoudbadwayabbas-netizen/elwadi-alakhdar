@@ -89,6 +89,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSettings } from "@/lib/settings-context";
 import { BRAND_NAME_AR } from "@/lib/brand";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/copilot")({
   head: () => ({
@@ -134,6 +135,7 @@ const STARTER_PROMPTS = [
 ];
 
 function AdminCoPilotPage() {
+  const { role } = useAuth();
   const settings = useSettings();
   const storeName = settings.site_name || BRAND_NAME_AR;
   const aiAssistantName = "مساعد الوادي";
@@ -244,6 +246,7 @@ function AdminCoPilotPage() {
         model: selectedModel,
         role: selectedRole,
         page: "admin.copilot",
+        userRole: role,
         enableSearchGrounding: enableGoogleSearch || selectedRole === "market_researcher",
         currentLayout: layoutConfig,
         kpis,
