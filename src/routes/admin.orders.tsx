@@ -197,6 +197,7 @@ function OrdersPage() {
   const [tab, setTab] = useState<string>("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [preview, setPreview] = useState<Order | null>(null);
+  const [detailsTemplateOpen, setDetailsTemplateOpen] = useState(false);
 
   // حوار تعيين السائق
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
@@ -415,6 +416,14 @@ function OrdersPage() {
 
         <div className="flex items-center gap-2">
           <Button
+            onClick={() => setDetailsTemplateOpen(true)}
+            variant="outline"
+            className="rounded-2xl border-border font-bold text-xs gap-2 h-10"
+          >
+            <Eye className="h-4 w-4" />
+            <span>معاينة شاشة التفاصيل</span>
+          </Button>
+          <Button
             onClick={() => exportXlsx(orders)}
             variant="outline"
             className="rounded-2xl border-border font-bold text-xs gap-2 h-10"
@@ -493,18 +502,6 @@ function OrdersPage() {
           <TabsContent key={s.key} value={s.key}>
             {loading ? (
               <OrderSkeletonList />
-            ) : (grouped[s.key] ?? []).length === 0 ? (
-              <div className="rounded-3xl border-2 border-dashed border-border p-12 text-center space-y-3 bg-card/40">
-                <div className="mx-auto h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
-                  <ShoppingBag className="h-6 w-6" />
-                </div>
-                <h3 className="font-display text-base font-bold text-foreground">
-                  لا توجد طلبات في هذه الحالة حالياً
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  عند استلام أية طلبات جديدة ستظهر فوراً في هذه القائمة
-                </p>
-              </div>
             ) : (
               <motion.div
                 variants={{
@@ -515,6 +512,31 @@ function OrdersPage() {
                 animate="show"
                 className="space-y-3"
               >
+                <div className="admin-orders-table-wrap">
+                  <table className="admin-orders-table">
+                    <thead>
+                      <tr>
+                        <th>رقم الطلب</th><th>العميل</th><th>تاريخ الطلب</th><th>الأصناف</th><th>الإجمالي</th><th>الحالة</th><th>الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(grouped[s.key] ?? []).map((order) => (
+                        <tr key={order.id}>
+                          <td><bdi className="admin-orders-table__id">#{order.id.slice(0, 8)}</bdi></td>
+                          <td><strong>{order.customer_name || "عميل"}</strong><small>{order.phone}</small></td>
+                          <td>{new Date(order.created_at).toLocaleString("ar-EG")}</td>
+                          <td>{order.items?.length ?? 0} أصناف</td>
+                          <td className="admin-orders-table__total">{Number(order.total_amount || 0).toFixed(2)} ج.م</td>
+                          <td><select aria-label={`حالة الطلب ${order.id.slice(0, 8)}`} value={order.status} onChange={(event) => setStatus(order.id, event.target.value)}>{STATUSES.map((status) => <option key={status.key} value={status.key}>{status.label}</option>)}</select></td>
+                          <td><div className="admin-orders-table__actions"><Button size="sm" variant="outline" onClick={() => setPreview(order)}><Eye className="h-3.5 w-3.5" /> التفاصيل</Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة الإيصال"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
+                        </tr>
+                      ))}
+                      {(grouped[s.key] ?? []).length === 0 && (
+                        <tr className="admin-orders-table__empty"><td colSpan={7}><ShoppingBag size={20} /><b>لا توجد طلبات في هذه الحالة</b><span>ستظهر الطلبات هنا فور تسجيل أول طلب.</span></td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
                 {(grouped[s.key] ?? []).map((o) => (
                   <motion.div
                     key={o.id}
@@ -704,6 +726,32 @@ function OrdersPage() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Dialog open={detailsTemplateOpen} onOpenChange={setDetailsTemplateOpen}>
+        <DialogContent dir="rtl" className="figma-admin-detail admin-orders__detail max-w-3xl rounded-3xl p-6 bg-card border-border shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-3 text-lg font-black">
+              <span>تفاصيل الطلب</span>
+              <span className="admin-orders__template-badge">معاينة التصميم · لا يوجد طلب محدد</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="admin-order-progress">
+            <div className="admin-order-progress__heading"><b>مسار الطلب</b><span>يبدأ بعد تسجيل الطلب</span></div>
+            <ol>{["استلام الطلب", "تجهيز الطلب", "التوصيل", "تم التسليم"].map((label, index) => <li key={label}><i>{index + 1}</i><span>{label}</span></li>)}</ol>
+          </div>
+          <div className="admin-orders__template-grid">
+            <section><span>بيانات العميل</span><b>تظهر بيانات العميل هنا</b><small>الاسم ورقم الهاتف</small></section>
+            <section><span>عنوان التوصيل</span><b>يظهر عنوان التوصيل هنا</b><small>الفرع ومنطقة التوصيل</small></section>
+          </div>
+          <section className="admin-orders__template-items">
+            <div><b>الأصناف المطلوبة</b><span>الكمية والسعر والإجمالي</span></div>
+            <p>ستظهر أصناف الطلب هنا بعد تسجيل أول طلب.</p>
+            <footer><b>إجمالي الطلب</b><strong>— ج.م</strong></footer>
+          </section>
+          <p className="admin-orders__template-note">هذه معاينة لهيكل شاشة التفاصيل. لا توجد بيانات طلبات في قاعدة البيانات حتى الآن.</p>
+          <DialogFooter><Button onClick={() => setDetailsTemplateOpen(false)} className="w-full rounded-xl hero-gradient text-primary-foreground font-bold text-xs">إغلاق المعاينة</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal 1: Details Preview Dialog */}
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
