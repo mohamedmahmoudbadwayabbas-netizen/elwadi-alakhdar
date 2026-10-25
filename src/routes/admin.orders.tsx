@@ -16,7 +16,6 @@ import {
   Printer,
   Download,
   Eye,
-  ArrowRightCircle,
   X,
   Truck,
   CheckCircle2,
@@ -26,7 +25,6 @@ import {
   User,
   Search,
   RefreshCw,
-  AlertCircle,
   Play,
   Pause,
   Navigation,
@@ -34,8 +32,6 @@ import {
   Sparkles,
   ShoppingBag,
   Radio,
-  PhoneCall,
-  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -423,7 +419,6 @@ function OrdersPage() {
             <Button onClick={() => exportXlsx(visibleOrders)} variant="outline"><Download className="h-4 w-4" /> تصدير</Button>
             <Button onClick={() => toast.info("إنشاء الطلب يبدأ من سلة المتجر لضمان تسجيل الأصناف وعنوان العميل بشكل صحيح.")} className="hero-gradient text-primary-foreground"><ShoppingBag className="h-4 w-4" /> طلب جديد</Button>
           </div>
-          <div className="admin-orders__view-toggle"><button type="button" className={activeOrderTab === "list" ? "is-active" : ""} onClick={() => setActiveOrderTab("list")}>قائمة الطلبات</button><button type="button" className={activeOrderTab === "details" ? "is-active" : ""} onClick={() => setActiveOrderTab("details")}>تفاصيل الطلب</button></div>
         </div>}
         {activeOrderTab === "list" && <>
         <TabsList className="admin-orders__status-tabs">
@@ -482,7 +477,7 @@ function OrdersPage() {
                           <td>{PAYMENT_LABELS[order.payment_method || "cod"] || order.payment_method}</td><td>{order.address || "—"}</td><td>{order.driver_name || "بدون موصل"}</td>
                           <td className="admin-orders-table__total">{Number(order.total_amount || 0).toFixed(2)} ج.م</td>
                           <td>{new Date(order.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}<small>{new Date(order.created_at).toLocaleDateString("ar-EG")}</small></td>
-                          <td><div className="admin-orders-table__actions"><Button size="icon" variant="ghost" onClick={() => { setPreview(order); setActiveOrderTab("details"); }} title="التفاصيل"><Eye className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
+                          <td><div className="admin-orders-table__actions"><Button size="sm" variant="outline" onClick={() => { setPreview(order); setActiveOrderTab("details"); }} title="تفاصيل الطلب"><Eye className="h-4 w-4" />تفاصيل الطلب</Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
                         </tr>
                       ))}
                       {visibleOrders.length === 0 && (
@@ -491,190 +486,6 @@ function OrdersPage() {
                     </tbody>
                   </table>
                 </div>
-                {false && (grouped[s.key] ?? []).map((o) => (
-                  <motion.div
-                    key={o.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 12 },
-                      show: { opacity: 1, y: 0 },
-                    }}
-                    className="admin-orders__card rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs hover:border-primary/40 transition-all space-y-3"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-black text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-lg border border-primary/20">
-                            #{o.id.slice(0, 8)}
-                          </span>
-                          <h3 className="font-display text-base font-black text-foreground">
-                            {o.customer_name}
-                          </h3>
-                          <div className="relative">
-                            <select
-                              value={o.status}
-                              onChange={(e) => setStatus(o.id, e.target.value)}
-                              className={`text-[11px] font-black px-3 py-1 rounded-xl border appearance-none cursor-pointer pe-7 transition-all ${s.color}`}
-                            >
-                              {STATUSES.map((st) => (
-                                <option
-                                  key={st.key}
-                                  value={st.key}
-                                  className="bg-card text-foreground font-bold"
-                                >
-                                  {st.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="absolute end-2 top-1/2 -translate-y-1/2 pointer-events-none text-[10px]">
-                              ▼
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-bold">
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3.5 w-3.5 text-emerald-500" /> {o.phone}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5 text-amber-500" /> {o.address}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5 text-blue-500" />{" "}
-                            {new Date(o.created_at).toLocaleString("ar-EG")}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="admin-orders__amount text-start sm:text-end bg-secondary/40 p-2.5 rounded-2xl border border-border/50 shrink-0">
-                        <div className="text-[10px] text-muted-foreground font-bold">
-                          إجمالي الطلب
-                        </div>
-                        <div className="font-display text-lg font-black text-primary">
-                          {Number(o.total_amount || 0).toFixed(2)} ج.م
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-extrabold">
-                          {o.items?.length ?? 0} أصناف مختلفة
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Order Notes / Substitution Policy / Driver Info */}
-                    {o.notes && (
-                      <div className="space-y-1.5">
-                        {o.notes.includes("الاتصال هاتفياً") ? (
-                          <div className="text-xs bg-amber-500/15 text-amber-900 dark:text-amber-200 p-2.5 rounded-xl border border-amber-500/30 font-bold flex items-center gap-2">
-                            <PhoneCall className="h-4 w-4 text-amber-600 shrink-0" />
-                            <span>
-                              <strong>تعليمات التجهيز:</strong> اتصل هاتفياً بالعميل ({o.phone}) عند
-                              نقص أي صنف لاعتماد البديل 📞
-                            </span>
-                          </div>
-                        ) : o.notes.includes("أفضل بديل") ? (
-                          <div className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 p-2.5 rounded-xl border border-emerald-500/30 font-bold flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>
-                              <strong>تعليمات التجهيز:</strong> استبدل الأصناف الناقصة بأفضل بديل
-                              متاح بنفس السعر والجودة تلقائياً ⚡
-                            </span>
-                          </div>
-                        ) : o.notes.includes("عدم الاستبدال") ? (
-                          <div className="text-xs bg-rose-500/15 text-rose-900 dark:text-rose-200 p-2.5 rounded-xl border border-rose-500/30 font-bold flex items-center gap-2">
-                            <Ban className="h-4 w-4 text-rose-600 shrink-0" />
-                            <span>
-                              <strong>تعليمات التجهيز:</strong> لا تقم باستبدال أي صنف ناقص — احذف
-                              الصنف وعدل قيمة الفاتورة 🚫
-                            </span>
-                          </div>
-                        ) : null}
-
-                        {/* ملاحظات العميل الخاصة */}
-                        {o.notes
-                          .split("\n")
-                          .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
-                          .join("\n")
-                          .trim() && (
-                          <div className="text-xs bg-secondary/60 text-foreground p-2.5 rounded-xl border border-border/60 font-semibold flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span>
-                              <strong>ملاحظات العميل:</strong>{" "}
-                              {o.notes
-                                .split("\n")
-                                .filter((line: string) => !line.startsWith("[تفضيل البديل:"))
-                                .join("\n")
-                                .trim()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Actions Bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPreview(o)}
-                          className="rounded-xl text-xs font-bold gap-1.5 h-9"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-primary" /> تفاصيل الأصناف
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => printReceipt(o)}
-                          className="rounded-xl text-xs font-bold gap-1.5 h-9"
-                        >
-                          <Printer className="h-3.5 w-3.5 text-muted-foreground" /> طباعة الإيصال
-                        </Button>
-
-                        {o.status === "shipped" && (
-                          <Button
-                            size="sm"
-                            onClick={() => setTrackingOrder(o)}
-                            className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black gap-1.5 h-9 shadow-md animate-bounce"
-                          >
-                            <Navigation className="h-3.5 w-3.5" /> تتبع الموصل اللحظي 📍
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {s.key === "confirmed" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleStartDelivery(o)}
-                            className="rounded-xl hero-gradient text-primary-foreground font-black text-xs gap-1.5 h-9 shadow-md"
-                          >
-                            <Truck className="h-3.5 w-3.5" /> إسناد موصل وبدء التوصيل 🚚
-                          </Button>
-                        )}
-
-                        {s.next && s.key !== "confirmed" && (
-                          <Button
-                            size="sm"
-                            onClick={() => setStatus(o.id, s.next!)}
-                            className="rounded-xl hero-gradient text-primary-foreground font-black text-xs gap-1.5 h-9 shadow-md"
-                          >
-                            <ArrowRightCircle className="h-3.5 w-3.5" />
-                            نقل إلى: {STATUSES.find((x) => x.key === s.next)?.label}
-                          </Button>
-                        )}
-
-                        {o.status !== "cancelled" && o.status !== "delivered" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setStatus(o.id, "cancelled")}
-                            className="rounded-xl text-destructive hover:bg-destructive/10 font-bold text-xs h-9"
-                          >
-                            <X className="h-3.5 w-3.5" /> إلغاء الطلب
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
                 <div className="admin-orders__pagination"><span>عرض {visibleOrders.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, visibleOrders.length)} من {visibleOrders.length} طلب</span><div><Button variant="outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>السابق</Button><b>{page} / {pageCount}</b><Button variant="outline" disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>التالي</Button></div></div>
               </motion.div>
             )}
@@ -793,7 +604,7 @@ function OrderDetailsTab({
       </div>
       <div className="admin-order-details-layout">
         <aside className="admin-order-details-sidebar">
-          <section><h3>العميل</h3><b>{order?.customer_name || "بيانات العميل تظهر هنا"}</b><small>{order?.phone || "رقم الهاتف يظهر هنا"}</small><div className="admin-order-detail-pair"><span>عدد الطلبات</span><strong>—</strong></div><div className="admin-order-detail-pair"><span>إجمالي الإنفاق</span><strong>— ج.م</strong></div><div className="admin-order-detail-actions"><a href={order?.phone ? `tel:${order.phone}` : undefined}>اتصال</a><a href={order?.phone ? `https://wa.me/${order.phone.replace(/\D/g, "")}` : undefined} target="_blank" rel="noreferrer">واتساب</a><button type="button" disabled>عرض العميل</button></div></section>
+          <section><h3>العميل</h3><b>{order?.customer_name || "بيانات العميل تظهر هنا"}</b><small>{order?.phone || "رقم الهاتف يظهر هنا"}</small><div className="admin-order-detail-pair"><span>عدد الطلبات</span><strong>—</strong></div><div className="admin-order-detail-pair"><span>إجمالي الإنفاق</span><strong>— ج.م</strong></div><div className="admin-order-detail-actions"><a href={order?.phone ? `tel:${order.phone}` : undefined}>اتصال</a><a href={order?.phone ? `https://wa.me/${order.phone.replace(/\D/g, "")}` : undefined} target="_blank" rel="noreferrer">واتساب</a>{order?.phone && <a href={`/admin/customers?phone=${encodeURIComponent(order.phone)}`}>ملف العميل</a>}</div></section>
           <section><h3>التوصيل</h3><small>العنوان</small><b>{order?.address || "عنوان العميل يظهر هنا"}</b><small>المنطقة</small><b>{order?.address ? "منطقة التوصيل" : "—"}</b><small>وقت التوصيل المتوقع</small><b>—</b><hr /><small>المندوب</small><b>{order?.driver_name || "لم يتم تعيين مندوب"}</b>{order && order.status === "confirmed" && <Button className="w-full mt-3" variant="outline" onClick={onStartDelivery}>تغيير المندوب</Button>}</section>
           <section><h3>الدفع</h3><div className="admin-order-detail-pair"><span>طريقة الدفع</span><strong>{order ? paymentLabel : "الدفع عند الاستلام"}</strong></div><div className="admin-order-detail-pair"><span>حالة التحصيل</span><strong>{order ? "بانتظار التأكيد" : "غير مدفوع"}</strong></div><div className="admin-order-detail-pair"><span>المبلغ المطلوب</span><strong>{order ? `${Number(order.total_amount).toFixed(2)} ج.م` : "— ج.م"}</strong></div><Button className="w-full mt-3" disabled>تأكيد التحصيل</Button></section>
         </aside>

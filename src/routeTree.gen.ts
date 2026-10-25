@@ -28,6 +28,7 @@ import { Route as AdminBannersRouteImport } from './routes/admin.banners'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminCopilotRouteImport } from './routes/admin.copilot'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
+import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminDeliveryZonesRouteImport } from './routes/admin.delivery-zones'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
@@ -135,6 +136,11 @@ const AdminCouponsRoute = AdminCouponsRouteImport.update({
   path: '/coupons',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDeliveryZonesRoute = AdminDeliveryZonesRouteImport.update({
   id: '/delivery-zones',
   path: '/delivery-zones',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/copilot': typeof AdminCopilotRoute
   '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery-zones': typeof AdminDeliveryZonesRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -234,6 +241,7 @@ export interface FileRoutesByTo {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/copilot': typeof AdminCopilotRoute
   '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery-zones': typeof AdminDeliveryZonesRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -266,6 +274,7 @@ export interface FileRoutesById {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/copilot': typeof AdminCopilotRoute
   '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery-zones': typeof AdminDeliveryZonesRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/copilot'
     | '/admin/coupons'
+    | '/admin/customers'
     | '/admin/delivery-zones'
     | '/admin/login'
     | '/admin/orders'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/copilot'
     | '/admin/coupons'
+    | '/admin/customers'
     | '/admin/delivery-zones'
     | '/admin/login'
     | '/admin/orders'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/copilot'
     | '/admin/coupons'
+    | '/admin/customers'
     | '/admin/delivery-zones'
     | '/admin/login'
     | '/admin/orders'
@@ -525,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCouponsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/delivery-zones': {
       id: '/admin/delivery-zones'
       path: '/delivery-zones'
@@ -614,6 +633,7 @@ interface AdminRouteChildren {
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCopilotRoute: typeof AdminCopilotRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
+  AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDeliveryZonesRoute: typeof AdminDeliveryZonesRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -629,6 +649,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCopilotRoute: AdminCopilotRoute,
   AdminCouponsRoute: AdminCouponsRoute,
+  AdminCustomersRoute: AdminCustomersRoute,
   AdminDeliveryZonesRoute: AdminDeliveryZonesRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminOrdersRoute: AdminOrdersRoute,

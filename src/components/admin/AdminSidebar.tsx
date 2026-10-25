@@ -28,6 +28,7 @@ import {
   Sparkles,
   ShieldCheck,
   Database,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,11 @@ const navSections: NavSection[] = [
         title: "الطلبات والمبيعات",
         url: "/admin/orders",
         icon: Receipt,
+      },
+      {
+        title: "العملاء",
+        url: "/admin/customers",
+        icon: Users,
       },
     ],
   },
