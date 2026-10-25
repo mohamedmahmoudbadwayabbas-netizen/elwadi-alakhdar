@@ -28,8 +28,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   ResponsiveContainer,
@@ -392,9 +392,9 @@ function OverviewPage() {
     <div className="admin-dashboard space-y-6 p-4 sm:p-6 font-sans">
       <section className="admin-dashboard__hero">
         <div>
-          <span className="admin-dashboard__eyebrow"><Activity size={14} /> مركز متابعة المتجر</span>
-          <h2>نظرة شاملة على أداء الوادي</h2>
-          <p>مؤشرات تشغيلية مباشرة تساعدك على متابعة الطلبات والمبيعات والمخزون.</p>
+          <span className="admin-dashboard__eyebrow"><Activity size={14} /> لوحة المتجر اليوم</span>
+          <h2>صباح الخير، مدير المتجر</h2>
+          <p>هذه نظرة سريعة على نشاط متجرك اليوم ومؤشرات التشغيل.</p>
         </div>
         <div className="admin-dashboard__hero-meta">
           <span><i /> البيانات متصلة مباشرة</span>
@@ -406,7 +406,7 @@ function OverviewPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              لوحة المؤشرات
+              الرئيسية
             </h1>
             <span className="inline-flex items-center gap-1 px-1.5 py-0.2 text-[10px] font-medium rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
@@ -429,27 +429,21 @@ function OverviewPage() {
 
           <StockAndExpiryAlertsModal open={alertsModalOpen} onOpenChange={setAlertsModalOpen} />
 
-          <Link to="/admin/orders">
+          <Link to="/admin/products">
             <Button
               size="sm"
-              className="h-8 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium gap-1.5 shadow-xs cursor-pointer"
+              variant="outline"
+              className="h-9 rounded-xl text-xs font-bold gap-1.5"
             >
-              <Receipt className="h-3.5 w-3.5" strokeWidth={1.5} />
-              <span>إدارة الطلبات ({filteredOrders.length})</span>
+              <Package className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <span>إضافة منتج</span>
             </Button>
           </Link>
+          <Link to="/admin/orders"><Button size="sm" className="h-9 rounded-xl hero-gradient text-primary-foreground text-xs font-bold gap-1.5"><Receipt className="h-3.5 w-3.5" />طلب جديد</Button></Link>
         </div>
       </div>
 
       {/* 2. Branch Cards Overview */}
-      <BranchCardsOverview
-        branches={branches}
-        selectedBranchId={selectedBranchId}
-        onSelectBranch={(bId) => {
-          setSelectedBranchId(bId);
-        }}
-      />
-
       {/* 3. STRICT KPI CARDS (3 Elements Only: Label, Value, Delta Badge) */}
       <div className="admin-dashboard__kpis grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {/* Card 1: Revenue */}
@@ -582,7 +576,7 @@ function OverviewPage() {
 
           <div className="h-64 w-full pt-3" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" opacity={0.5} vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
@@ -596,8 +590,8 @@ function OverviewPage() {
                   }}
                   formatter={(val: any) => [`${val} ج.م`, "المبيعات"]}
                 />
-                <Area type="monotone" dataKey="value" stroke="#059669" strokeWidth={2} fill="#ecfdf5" />
-              </AreaChart>
+                <Bar dataKey="value" fill="#315f4c" radius={[8, 8, 0, 0]} maxBarSize={42} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>

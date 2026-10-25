@@ -157,6 +157,12 @@ const STATUSES = [
   },
 ] as const;
 
+const PAYMENT_LABELS: Record<string, string> = {
+  cod: "الدفع عند الاستلام",
+  instapay: "إنستا باي",
+  bank: "تحويل بنكي",
+};
+
 // تشغيل نغمة تنبيه صوتية خفيفة للطلبات الجديدة
 function playNewOrderSound() {
   try {
@@ -194,8 +200,13 @@ export const Route = createFileRoute("/admin/orders")({
 function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<string>("pending");
+  const [tab, setTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [driverFilter, setDriverFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
   const [preview, setPreview] = useState<Order | null>(null);
   const [detailsTemplateOpen, setDetailsTemplateOpen] = useState(false);
 
@@ -367,16 +378,20 @@ function OrdersPage() {
 
   // التصفية والفلترة
   const filteredOrders = useMemo(() => {
-    if (!searchQuery.trim()) return orders;
     const q = searchQuery.toLowerCase();
     return orders.filter(
-      (o) =>
-        o.customer_name?.toLowerCase().includes(q) ||
-        o.phone?.includes(q) ||
-        o.id.toLowerCase().includes(q) ||
-        o.address?.toLowerCase().includes(q),
+      (o) => {
+        const matchesSearch = !q || o.customer_name?.toLowerCase().includes(q) || o.phone?.includes(q) || o.id.toLowerCase().includes(q) || o.address?.toLowerCase().includes(q);
+        const paymentMethod = o.payment_method || "cod";
+        const matchesPayment = paymentFilter === "all" || paymentMethod === paymentFilter;
+        const matchesDriver = driverFilter === "all" || (o.driver_name || "unassigned") === driverFilter;
+        const orderDate = new Date(o.created_at);
+        const now = new Date();
+        const matchesDate = dateFilter === "all" || (dateFilter === "today" && orderDate.toDateString() === now.toDateString()) || (dateFilter === "7days" && orderDate >= new Date(now.getTime() - 7 * 86400000));
+        return Boolean(matchesSearch && matchesPayment && matchesDriver && matchesDate);
+      },
     );
-  }, [orders, searchQuery]);
+  }, [orders, searchQuery, dateFilter, paymentFilter, driverFilter]);
 
   const grouped = useMemo(() => {
     const m: Record<string, Order[]> = {};
@@ -384,6 +399,11 @@ function OrdersPage() {
     for (const o of filteredOrders) (m[o.status] ?? (m[o.status] = [])).push(o);
     return m;
   }, [filteredOrders]);
+
+  const visibleOrders = tab === "all" ? filteredOrders : grouped[tab] ?? [];
+  const pageCount = Math.max(1, Math.ceil(visibleOrders.length / pageSize));
+  const pagedOrders = visibleOrders.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => setPage(1), [tab, searchQuery, dateFilter, paymentFilter, driverFilter]);
 
   return (
     <motion.div
@@ -393,113 +413,44 @@ function OrdersPage() {
       className="admin-orders space-y-6 p-4 sm:p-6 pb-24"
       dir="rtl"
     >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl hero-gradient text-primary-foreground shadow-sm">
-            <ShoppingBag className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-2xl font-black text-foreground">
-                إدارة الطلبات وتتبع الموصل اللحظي 🚚
-              </h1>
-              <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse">
-                <Radio className="h-3 w-3" /> بَث لحظي مفعّل
-              </span>
-            </div>
-            <p className="text-xs font-bold text-muted-foreground mt-0.5">
-              متابعة الطلبات القادمة فوراً، إسناد الموصلين، والتتبع اللحظي للخرائط المظلمة
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setDetailsTemplateOpen(true)}
-            variant="outline"
-            className="rounded-2xl border-border font-bold text-xs gap-2 h-10"
-          >
-            <Eye className="h-4 w-4" />
-            <span>معاينة شاشة التفاصيل</span>
-          </Button>
-          <Button
-            onClick={() => exportXlsx(orders)}
-            variant="outline"
-            className="rounded-2xl border-border font-bold text-xs gap-2 h-10"
-          >
-            <Download className="h-4 w-4" />
-            <span>تصدير Excel</span>
-          </Button>
-          <Button
-            onClick={load}
-            variant="secondary"
-            size="icon"
-            className="rounded-2xl h-10 w-10"
-            title="تحديث البيانات"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <section className="admin-orders__overview" aria-label="ملخص الطلبات">
-        <div className="admin-orders__overview-heading">
-          <div><span>مركز الطلبات</span><h2>كل طلبات المتجر في مكان واحد</h2><p>تابع الطلبات الجديدة، حدّث حالتها، وافتح التفاصيل عند الحاجة.</p></div>
-          <span className="admin-orders__live"><i /> تحديث مباشر</span>
-        </div>
-        <div className="admin-orders__metrics">
-          <article><span>إجمالي الطلبات</span><strong>{orders.length.toLocaleString("ar-EG")}</strong><small>كل الحالات</small></article>
-          <article><span>طلبات جديدة</span><strong>{(grouped.pending?.length ?? 0).toLocaleString("ar-EG")}</strong><small>بانتظار التأكيد</small></article>
-          <article><span>قيد التوصيل</span><strong>{(grouped.shipped?.length ?? 0).toLocaleString("ar-EG")}</strong><small>مع المندوب</small></article>
-          <article><span>إجمالي المبيعات</span><strong>{orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0).toLocaleString("ar-EG", { maximumFractionDigits: 0 })}<small> ج.م</small></strong><small>للطلبات المسجلة</small></article>
-        </div>
-      </section>
+      <div className="admin-orders__page-title"><div><h1>الطلبات</h1><p>تابع كل طلبات متجرك من وصوله حتى تسليمه.</p></div><span><i /> تحديث مباشر</span></div>
 
       {/* Control Bar: Search & Stats */}
-      <div className="admin-orders__toolbar flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border border-border/70 p-3 rounded-2xl shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بحث باسم العميل، رقم الهاتف أو معرف الطلب..."
-            className="ps-9 h-10 rounded-xl font-bold text-xs bg-background"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 text-xs font-extrabold text-muted-foreground bg-secondary/60 px-4 py-2 rounded-xl border border-border/40 w-full sm:w-auto justify-between">
-          <span>
-            إجمالي الطلبات: <strong className="text-foreground">{orders.length}</strong>
-          </span>
-          <span className="text-emerald-500 font-black">
-            إجمالي المبيعات:{" "}
-            {orders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0).toFixed(2)} ج.م
-          </span>
-        </div>
-      </div>
-
-      {/* Tabs list */}
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto p-1 bg-card border border-border/70 rounded-2xl">
-          {STATUSES.map((s) => (
-            <TabsTrigger
-              key={s.key}
-              value={s.key}
-              className="text-xs font-extrabold py-2.5 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center justify-center gap-1.5"
-            >
-              <span>{s.label}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${s.color}`}
-              >
-                {grouped[s.key]?.length ?? 0}
-              </span>
-            </TabsTrigger>
+        <div className="admin-orders__list-heading">
+          <div className="admin-orders__list-actions">
+            <Button onClick={() => exportXlsx(visibleOrders)} variant="outline"><Download className="h-4 w-4" /> تصدير</Button>
+            <Button onClick={() => toast.info("إنشاء الطلب يبدأ من سلة المتجر لضمان تسجيل الأصناف وعنوان العميل بشكل صحيح.")} className="hero-gradient text-primary-foreground"><ShoppingBag className="h-4 w-4" /> طلب جديد</Button>
+          </div>
+          <div className="admin-orders__view-toggle"><button type="button" className="is-active">عرض الجدول</button><button type="button" disabled>عرض كروت</button></div>
+        </div>
+        <TabsList className="admin-orders__status-tabs">
+          <TabsTrigger value="all">الكل <span>{orders.length}</span></TabsTrigger>
+          {STATUSES.filter((s) => ["pending", "confirmed", "shipped", "delivered", "cancelled"].includes(s.key)).map((s) => (
+            <TabsTrigger key={s.key} value={s.key}>{({ pending: "جديد", confirmed: "قيد التجهيز", shipped: "جاري التوصيل", delivered: "مكتمل", cancelled: "ملغي" } as Record<string, string>)[s.key]} <span>{grouped[s.key]?.length ?? 0}</span></TabsTrigger>
           ))}
         </TabsList>
 
-        {STATUSES.map((s) => (
-          <TabsContent key={s.key} value={s.key}>
+        <div className="admin-orders__filters">
+          <button type="button" className="admin-orders__clear-filters" onClick={() => { setSearchQuery(""); setDateFilter("all"); setPaymentFilter("all"); setDriverFilter("all"); }}>مسح الفلاتر</button>
+          <select aria-label="تصفية حسب الموصل" value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)}><option value="all">كل الموصلين</option><option value="unassigned">بدون موصل</option>{Array.from(new Set(orders.map((o) => o.driver_name).filter(Boolean))).map((name) => <option key={name} value={name!}>{name}</option>)}</select>
+          <select aria-label="تصفية حسب طريقة الدفع" value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}><option value="all">طريقة الدفع</option><option value="cod">الدفع عند الاستلام</option><option value="instapay">إنستا باي</option><option value="bank">تحويل بنكي</option></select>
+          <select aria-label="تصفية حسب التاريخ" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}><option value="all">كل التواريخ</option><option value="today">اليوم</option><option value="7days">آخر ٧ أيام</option></select>
+          <div className="admin-orders__search">
+            <Search className="h-4 w-4" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="ابحث برقم الطلب أو اسم العميل أو رقم الموبايل"
+            className="h-10 rounded-xl font-bold text-xs bg-background"
+          />
+          </div>
+        </div>
+
+      {/* Tabs list */}
+        {["all", ...STATUSES.map((s) => s.key)].map((statusKey) => {
+          const s = STATUSES.find((item) => item.key === statusKey) ?? { key: "all", label: "الكل", next: null, color: "" };
+          return <TabsContent key={statusKey} value={statusKey}>
             {loading ? (
               <OrderSkeletonList />
             ) : (
@@ -516,28 +467,29 @@ function OrdersPage() {
                   <table className="admin-orders-table">
                     <thead>
                       <tr>
-                        <th>رقم الطلب</th><th>العميل</th><th>تاريخ الطلب</th><th>الأصناف</th><th>الإجمالي</th><th>الحالة</th><th>الإجراءات</th>
+                        <th>□</th><th>رقم الطلب</th><th>العميل</th><th>الحالة</th><th>الدفع</th><th>المنطقة</th><th>الموصل</th><th>الإجمالي</th><th>الوقت</th><th>الإجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(grouped[s.key] ?? []).map((order) => (
+                      {pagedOrders.filter((order) => statusKey === "all" || order.status === statusKey).map((order) => (
                         <tr key={order.id}>
+                          <td>□</td>
                           <td><bdi className="admin-orders-table__id">#{order.id.slice(0, 8)}</bdi></td>
                           <td><strong>{order.customer_name || "عميل"}</strong><small>{order.phone}</small></td>
-                          <td>{new Date(order.created_at).toLocaleString("ar-EG")}</td>
-                          <td>{order.items?.length ?? 0} أصناف</td>
+                          <td><span className={`admin-orders__status-pill status-${order.status}`}>{STATUSES.find((status) => status.key === order.status)?.label.replace(/[^\u0600-\u06FF\s]/g, "").trim() ?? order.status}</span></td>
+                          <td>{PAYMENT_LABELS[order.payment_method || "cod"] || order.payment_method}</td><td>{order.address || "—"}</td><td>{order.driver_name || "بدون موصل"}</td>
                           <td className="admin-orders-table__total">{Number(order.total_amount || 0).toFixed(2)} ج.م</td>
-                          <td><select aria-label={`حالة الطلب ${order.id.slice(0, 8)}`} value={order.status} onChange={(event) => setStatus(order.id, event.target.value)}>{STATUSES.map((status) => <option key={status.key} value={status.key}>{status.label}</option>)}</select></td>
-                          <td><div className="admin-orders-table__actions"><Button size="sm" variant="outline" onClick={() => setPreview(order)}><Eye className="h-3.5 w-3.5" /> التفاصيل</Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة الإيصال"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
+                          <td>{new Date(order.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}<small>{new Date(order.created_at).toLocaleDateString("ar-EG")}</small></td>
+                          <td><div className="admin-orders-table__actions"><Button size="icon" variant="ghost" onClick={() => setPreview(order)} title="التفاصيل"><Eye className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => printReceipt(order)} title="طباعة"><Printer className="h-4 w-4" /></Button>{order.status === "confirmed" && <Button size="icon" variant="ghost" onClick={() => handleStartDelivery(order)} title="إسناد موصل"><Truck className="h-4 w-4" /></Button>}{order.status === "shipped" && <Button size="icon" variant="ghost" onClick={() => setTrackingOrder(order)} title="تتبع التوصيل"><Navigation className="h-4 w-4" /></Button>}</div></td>
                         </tr>
                       ))}
-                      {(grouped[s.key] ?? []).length === 0 && (
-                        <tr className="admin-orders-table__empty"><td colSpan={7}><ShoppingBag size={20} /><b>لا توجد طلبات في هذه الحالة</b><span>ستظهر الطلبات هنا فور تسجيل أول طلب.</span></td></tr>
+                      {visibleOrders.length === 0 && (
+                        <tr className="admin-orders-table__empty"><td colSpan={10}><ShoppingBag size={20} /><b>لا توجد طلبات مسجلة حتى الآن</b><span>ستظهر الطلبات هنا فور تسجيل أول طلب في المتجر.</span></td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
-                {(grouped[s.key] ?? []).map((o) => (
+                {false && (grouped[s.key] ?? []).map((o) => (
                   <motion.div
                     key={o.id}
                     variants={{
@@ -721,34 +673,36 @@ function OrdersPage() {
                     </div>
                   </motion.div>
                 ))}
+                <div className="admin-orders__pagination"><span>عرض {visibleOrders.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, visibleOrders.length)} من {visibleOrders.length} طلب</span><div><Button variant="outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>السابق</Button><b>{page} / {pageCount}</b><Button variant="outline" disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>التالي</Button></div></div>
               </motion.div>
             )}
-          </TabsContent>
-        ))}
+          </TabsContent>;
+        })}
       </Tabs>
 
       <Dialog open={detailsTemplateOpen} onOpenChange={setDetailsTemplateOpen}>
-        <DialogContent dir="rtl" className="figma-admin-detail admin-orders__detail max-w-3xl rounded-3xl p-6 bg-card border-border shadow-2xl">
+        <DialogContent dir="rtl" className="figma-admin-detail admin-orders__detail max-w-6xl rounded-3xl p-6 bg-card border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between gap-3 text-lg font-black">
               <span>تفاصيل الطلب</span>
               <span className="admin-orders__template-badge">معاينة التصميم · لا يوجد طلب محدد</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="admin-order-progress">
-            <div className="admin-order-progress__heading"><b>مسار الطلب</b><span>يبدأ بعد تسجيل الطلب</span></div>
-            <ol>{["استلام الطلب", "تجهيز الطلب", "التوصيل", "تم التسليم"].map((label, index) => <li key={label}><i>{index + 1}</i><span>{label}</span></li>)}</ol>
+          <div className="admin-order-details-layout">
+            <aside className="admin-order-details-sidebar">
+              <section><h3>العميل</h3><b>اسم العميل</b><small>رقم الهاتف</small><div className="admin-order-detail-pair"><span>عدد الطلبات</span><strong>—</strong></div><div className="admin-order-detail-pair"><span>إجمالي الإنفاق</span><strong>— ج.م</strong></div><div className="admin-order-detail-actions"><Button variant="outline" disabled>اتصال</Button><Button variant="outline" disabled>واتساب</Button><Button variant="outline" disabled>عرض العميل</Button></div></section>
+              <section><h3>التوصيل</h3><small>العنوان</small><b>عنوان العميل</b><small>المنطقة</small><b>منطقة التوصيل</b><small>وقت التوصيل المتوقع</small><b>—</b><hr /><small>المندوب</small><b>لم يتم التعيين</b><Button className="w-full mt-3" variant="outline" disabled>تغيير المندوب</Button></section>
+              <section><h3>الدفع</h3><div className="admin-order-detail-pair"><span>طريقة الدفع</span><strong>الدفع عند الاستلام</strong></div><div className="admin-order-detail-pair"><span>حالة الدفع</span><strong>غير مدفوع</strong></div><div className="admin-order-detail-pair"><span>المبلغ المطلوب</span><strong>— ج.م</strong></div><Button className="w-full mt-3" disabled>تأكيد التحصيل</Button></section>
+            </aside>
+            <div className="admin-order-details-main">
+              <section className="admin-order-detail-summary"><div><bdi>#{"—"}</bdi><span className="admin-orders__status-pill">جديد</span><small>وقت الإنشاء: — · طريقة الدفع: الدفع عند الاستلام</small></div><div className="admin-order-detail-actions"><Button disabled>جاهز للتوصيل</Button><Button variant="outline" disabled>طباعة</Button><Button variant="outline" disabled>إلغاء الطلب</Button></div></section>
+              <section className="admin-order-progress"><div className="admin-order-progress__heading"><b>مسار الطلب</b></div><ol>{["جديد", "قيد التجهيز", "جاهز للتوصيل", "جاري التوصيل", "مكتمل"].map((label, index) => <li key={label}><i>{index + 1}</i><span>{label}</span><small>—</small></li>)}</ol></section>
+              <section className="admin-orders__template-items admin-order-detail-products"><div><b>المنتجات</b><span>— من — منتج</span></div><table><thead><tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th><th>إجراء</th></tr></thead><tbody><tr><td colSpan={5}>لا توجد أصناف للعرض حتى يُسجل طلب حقيقي.</td></tr></tbody></table><footer><b>المجموع الفرعي</b><strong>— ج.م</strong></footer><footer><b>رسوم التوصيل</b><strong>— ج.م</strong></footer><footer><b>الخصم</b><strong>— ج.م</strong></footer><footer><b>الإجمالي النهائي</b><strong>— ج.م</strong></footer></section>
+              <section className="admin-order-detail-notes"><h3>الملاحظات</h3><b>ملاحظات العميل</b><p>لا توجد ملاحظات من العميل.</p><b>ملاحظات الإدارة</b><textarea placeholder="أضف ملاحظة داخلية للفريق..." disabled /><Button variant="outline" disabled>حفظ</Button></section>
+              <section className="admin-order-detail-activity"><h3>سجل النشاط</h3><ol>{["تم إنشاء الطلب", "تم قبول الطلب", "بدأ التجهيز", "تم تعيين المندوب"].map((label) => <li key={label}><i /> <span>{label}</span><small>—</small></li>)}</ol></section>
+              <p className="admin-orders__template-note">هذه معاينة لتخطيط التفاصيل. لا توجد بيانات طلبات في قاعدة البيانات حتى الآن.</p>
+            </div>
           </div>
-          <div className="admin-orders__template-grid">
-            <section><span>بيانات العميل</span><b>تظهر بيانات العميل هنا</b><small>الاسم ورقم الهاتف</small></section>
-            <section><span>عنوان التوصيل</span><b>يظهر عنوان التوصيل هنا</b><small>الفرع ومنطقة التوصيل</small></section>
-          </div>
-          <section className="admin-orders__template-items">
-            <div><b>الأصناف المطلوبة</b><span>الكمية والسعر والإجمالي</span></div>
-            <p>ستظهر أصناف الطلب هنا بعد تسجيل أول طلب.</p>
-            <footer><b>إجمالي الطلب</b><strong>— ج.م</strong></footer>
-          </section>
-          <p className="admin-orders__template-note">هذه معاينة لهيكل شاشة التفاصيل. لا توجد بيانات طلبات في قاعدة البيانات حتى الآن.</p>
           <DialogFooter><Button onClick={() => setDetailsTemplateOpen(false)} className="w-full rounded-xl hero-gradient text-primary-foreground font-bold text-xs">إغلاق المعاينة</Button></DialogFooter>
         </DialogContent>
       </Dialog>
@@ -757,7 +711,7 @@ function OrdersPage() {
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent
           dir="rtl"
-          className="figma-admin-detail admin-orders__detail max-w-3xl rounded-3xl p-6 bg-card border-border shadow-2xl"
+          className="figma-admin-detail admin-orders__detail max-w-6xl rounded-3xl p-6 bg-card border-border shadow-2xl"
         >
           <DialogHeader>
             <DialogTitle className="font-display text-lg font-black flex items-center justify-between">
