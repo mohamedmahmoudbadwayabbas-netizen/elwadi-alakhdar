@@ -255,6 +255,11 @@ export function Header() {
           </div>
         </Link>
 
+        <Link to="/assistant" className="header-assistant-cta" aria-label="مساعد تخطيط قائمة التسوق">
+          <Sparkles aria-hidden="true" />
+          <span>مساعد التسوق</span>
+        </Link>
+
         {/* اليمين: زر الثيم + حساب المستخدم + السلة (مع إظهار زر الإدارة فقط للأدمن المسجل) */}
         <div className="flex items-center gap-1.5">
           {isAdmin && (

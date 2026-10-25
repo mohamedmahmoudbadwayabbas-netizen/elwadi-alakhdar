@@ -353,13 +353,36 @@
   background: #fffdf8eF;
 }
 .elwadi-cart > main { max-width: 1160px; padding-block: 2rem 5rem; }
-.elwadi-cart [data-slot="card"] {
+.elwadi-cart main .rounded-3xl.border {
   border-color: #e8e5d9;
   border-radius: 1.25rem;
   background: #fffdf8;
   box-shadow: 0 8px 24px -22px #1f4635a8;
 }
-.elwadi-cart [data-slot="card"] li { border-color: #e8e5d9; }
+.elwadi-cart main li.rounded-2xl.border { border-color: #e8e5d9; background: #fffefa; }
+.cart-recommendations { margin-top: 1.5rem; padding: 1.25rem; border: 1px solid #e8e5d9; border-radius: 1.25rem; background: #fffdf8; }
+.cart-recommendations__heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; color: #2f5d4b; }
+.cart-recommendations__heading span { font-size: .72rem; font-weight: 800; }
+.cart-recommendations__heading h2 { margin: .25rem 0 0; font-size: 1rem; font-weight: 900; }
+.cart-recommendations__grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .75rem; }
+.cart-recommendation { min-width: 0; padding: .7rem; border: 1px solid #eeece3; border-radius: 14px; background: #fff; }
+.cart-recommendation__image { display: grid; height: 112px; margin-bottom: .6rem; place-items: center; overflow: hidden; border-radius: 10px; color: #729278; background: #eef0dc; }
+.cart-recommendation__image img { width: 100%; height: 100%; object-fit: cover; }
+.cart-recommendation__copy { display: flex; justify-content: space-between; align-items: start; gap: .4rem; margin-bottom: .65rem; }
+.cart-recommendation__copy b { display: -webkit-box; overflow: hidden; color: #234536; font-size: .77rem; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cart-recommendation__copy strong { flex: 0 0 auto; color: #2f5d4b; font-size: .75rem; }
+.cart-recommendation__copy small { font-size: .65rem; }
+.cart-recommendation__add { width: 100%; height: 34px; gap: .35rem; border-color: #dce4d9; border-radius: 9px; color: #2f5d4b; font-size: .72rem; font-weight: 800; }
+.elwadi-cart-footer { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 2rem; padding: 1.5rem max(calc((100vw - 1160px)/2),1.25rem); color: #f8f5eb; background: #28513f; }
+.elwadi-cart-footer__mark { display: inline-grid; width: 34px; height: 34px; margin-inline-end: .55rem; place-items: center; vertical-align: middle; border-radius: 10px; background: #ffffff20; }
+.elwadi-cart-footer p { margin: .4rem 0 0; color: #d2dfd5; font-size: .75rem; }
+.elwadi-cart-footer a { display: inline-flex; align-items: center; gap: .45rem; color: #fff; font-size: .78rem; font-weight: 800; text-decoration: none; }
+.elwadi-cart-footer small { color: #d2dfd5; font-size: .68rem; }
+@media (max-width: 750px) { .cart-recommendations__grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .elwadi-cart-footer { grid-template-columns: 1fr auto; gap: .8rem; } .elwadi-cart-footer small { grid-column: 1/-1; } }
+
+.header-assistant-cta { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem .8rem; flex: 0 0 auto; border: 1px solid #d9e0d0; border-radius: 999px; color: #28513f; background: #f8f5eb; font-size: .75rem; font-weight: 900; text-decoration: none; }
+.header-assistant-cta svg { width: 1rem; height: 1rem; }
+@media (max-width: 600px) { .header-assistant-cta { width: 36px; height: 36px; padding: 0; justify-content: center; } .header-assistant-cta span { display: none; } }
 
 .elwadi-assistant {
   --assistant-ink: #234536;
@@ -446,9 +469,12 @@
 .figma-admin-shell [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"] svg { color: #2f5d4b !important; }
 .figma-admin-shell > [data-sidebar="inset"], .figma-admin-shell [data-sidebar="inset"] { background: #f8f5eb !important; }
 .figma-admin-shell header { border-color: #e8e5d9 !important; background: #fffdf8ed !important; }
-.figma-admin-shell [data-slot="card"] { border-color: #e8e5d9 !important; border-radius: 16px !important; background: #fffdf8 !important; box-shadow: 0 8px 24px -24px #234536 !important; }
+.figma-admin-shell main :is(div.rounded-xl.border,div.rounded-2xl.border,div.rounded-3xl.border) { border-color: #e8e5d9 !important; border-radius: 16px !important; background-color: #fffdf8 !important; box-shadow: 0 8px 24px -24px #234536 !important; }
 .figma-admin-shell input,.figma-admin-shell select { border-color: #e3e3d9 !important; }
-.figma-admin-shell [data-slot="card"] h1,.figma-admin-shell [data-slot="card"] h2,.figma-admin-shell [data-slot="card"] h3 { color: #234536; }
+.figma-admin-shell main :is(div.rounded-xl.border,div.rounded-2xl.border,div.rounded-3xl.border) :is(h1,h2,h3) { color: #234536; }
+.figma-admin-detail { border-color: #e8e5d9 !important; border-radius: 20px !important; background: #fffdf8 !important; color: #234536 !important; }
+.figma-admin-detail [class*="bg-secondary"] { background: #f1f1e8 !important; }
+.figma-admin-detail [class*="border-border"] { border-color: #e8e5d9 !important; }
 
 .elwadi-main-header {
   background: #fff !important;

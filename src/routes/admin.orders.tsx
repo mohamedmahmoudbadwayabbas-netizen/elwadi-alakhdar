@@ -696,7 +696,7 @@ function OrdersPage() {
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent
           dir="rtl"
-          className="max-w-lg rounded-3xl p-6 bg-card border-border shadow-2xl"
+          className="figma-admin-detail max-w-lg rounded-3xl p-6 bg-card border-border shadow-2xl"
         >
           <DialogHeader>
             <DialogTitle className="font-display text-lg font-black flex items-center justify-between">

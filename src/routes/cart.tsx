@@ -45,6 +45,7 @@ import {
 } from "@/components/storefront/SubstitutionPreferencePicker";
 import { ItemSubstitutionSelector } from "@/components/storefront/ItemSubstitutionSelector";
 import { StoreGoogleMapsWidget } from "@/components/storefront/StoreGoogleMapsWidget";
+import { useStoreProducts } from "@/lib/store-data-hooks";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -118,8 +119,10 @@ function CartPage() {
   const theme = useTheme();
   const settings = useSettings();
   const { user } = useAuth();
+  const { data: catalogProducts = [] } = useStoreProducts();
   const {
     items,
+    addItem,
     updateQuantity,
     removeItem,
     totalPrice,
@@ -158,6 +161,13 @@ function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   // مفتاح idempotency يبقى ثابتاً لكل محاولة دفع (بما فيها إعادة المحاولة)
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+
+  const recommendedProducts = useMemo(
+    () => catalogProducts
+      .filter((product) => (product.stock_quantity ?? 0) > 0 && !items.some((item) => item.product.id === product.id))
+      .slice(0, 4),
+    [catalogProducts, items],
+  );
 
   // كوبون الخصم
   const [couponInput, setCouponInput] = useState("");
@@ -1118,7 +1128,37 @@ function CartPage() {
             </aside>
           </div>
         )}
+
+        {items.length > 0 && recommendedProducts.length > 0 && (
+          <section className="cart-recommendations" aria-labelledby="cart-recommendations-title">
+            <div className="cart-recommendations__heading">
+              <div><span>اختيارات تناسب قائمتك</span><h2 id="cart-recommendations-title">قد تحتاج هذه المنتجات أيضًا</h2></div>
+              <BookmarkPlus aria-hidden="true" />
+            </div>
+            <div className="cart-recommendations__grid">
+              {recommendedProducts.map((product) => (
+                <article className="cart-recommendation" key={product.id}>
+                  <div className="cart-recommendation__image">
+                    {product.image_url ? <img src={product.image_url} alt="" loading="lazy" /> : <ShoppingBag aria-hidden="true" />}
+                  </div>
+                  <div className="cart-recommendation__copy">
+                    <b>{product.name_ar || product.name}</b>
+                    <strong dir="ltr">{product.price_per_unit.toFixed(2)} <small>ج.م</small></strong>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => addItem(product)} className="cart-recommendation__add">
+                    <Plus className="h-4 w-4" /> أضف للسلة
+                  </Button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
+      <footer className="elwadi-cart-footer" dir="rtl">
+        <div><span className="elwadi-cart-footer__mark"><Leaf size={19} /></span><b>سوبرماركت الوادي الأخضر</b><p>احتياجات البيت اليومية، في مكان واحد.</p></div>
+        <Link to="/">تابع التسوق <ArrowRight size={15} /></Link>
+        <small>© {new Date().getFullYear()} الوادي الأخضر</small>
+      </footer>
     </div>
   );
 }

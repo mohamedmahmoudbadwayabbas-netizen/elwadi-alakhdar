@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, LayoutGrid, ShoppingBag, User } from "lucide-react";
+import { Home, LayoutGrid, ShoppingBag, Sparkles, User } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -21,9 +21,10 @@ export function BottomNav() {
       dir="rtl"
       className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.08)] backdrop-blur-xl"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-4 gap-1 px-2 py-1.5">
+      <ul className="mx-auto grid max-w-xl grid-cols-5 gap-1 px-2 py-1.5">
         <NavItem to="/" icon={Home} label="الرئيسية" active={isHome} />
         <NavItem to="/categories" icon={LayoutGrid} label="الفئات" active={isCats} />
+        <NavItem to="/assistant" icon={Sparkles} label="مساعد التسوق" active={pathname.startsWith("/assistant")} />
 
         <li>
           <Link
