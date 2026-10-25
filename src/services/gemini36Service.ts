@@ -514,10 +514,9 @@ actually returned a confirmed success result back to you.
             });
           }
 
-          // Feed the tool result(s) back to the model so it can chain the
-          // next step (e.g. now that it knows the category_id, create the
-          // product) or conclude with a final answer.
-          loopContents.push({ role: "function", parts: functionResponseParts });
+          // Gemini's contents API accepts function responses as a user turn;
+          // the legacy "function" role is rejected by the current SDK/API.
+          loopContents.push({ role: "user", parts: functionResponseParts });
 
           if (stepIdx === MAX_TOOL_STEPS - 1) {
             // Loop budget exhausted without a conclusive natural-language
