@@ -37,6 +37,7 @@ interface SmartProductCopywriterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialProductName?: string;
+  initialProductId?: string;
   initialCategoryName?: string;
   isByWeight?: boolean;
   onApplyCopywriting?: (data: {
@@ -55,6 +56,7 @@ export function SmartProductCopywriterModal({
   open,
   onOpenChange,
   initialProductName = "",
+  initialProductId,
   initialCategoryName = "",
   isByWeight = false,
   onApplyCopywriting,
@@ -74,6 +76,7 @@ export function SmartProductCopywriterModal({
       try {
         const res = await generateProductCopywriting({
           productName: nameToUse,
+          productId: initialProductId,
           categoryName: catToUse,
           isByWeight,
         });
@@ -84,7 +87,7 @@ export function SmartProductCopywriterModal({
         setLoading(false);
       }
     },
-    [productName, categoryName, isByWeight],
+    [productName, initialProductId, categoryName, isByWeight],
   );
 
   // Sync props when modal opens

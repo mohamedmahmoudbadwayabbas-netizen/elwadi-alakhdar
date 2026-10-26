@@ -245,11 +245,11 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
     name: "sendAbandonedCartRecovery",
     group: "marketing",
     labelAr: "استرداد سلة متروكة",
-    descriptionAr: "صياغة رسالة واتساب لاسترداد سلة متروكة وفتحها للإرسال مع كود خصم تحفيزي",
+    descriptionAr: "التحقق من سلة متروكة ومنتجاتها وبيانات العميل في Supabase ثم إعداد مسودة واتساب محايدة، دون اختراع كوبون أو موعد تسليم",
     mutatesState: false,
     declaration: {
       name: "sendAbandonedCartRecovery",
-      description: "Draft and open a WhatsApp recovery message with coupon for an abandoned cart.",
+      description: "Read and verify the abandoned cart, customer, and active products from Supabase before opening a neutral WhatsApp draft. Do not invent discounts or delivery promises.",
       parameters: {
         type: "object",
         properties: {

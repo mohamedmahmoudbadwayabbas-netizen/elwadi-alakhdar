@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, LoaderCircle, Plus, Search, ShoppingBasket, Sparkles, WandSparkles } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { searchProductsFuzzy } from "@/lib/fuzzy-search";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/assistant")({ component: ShoppingAssistan
 const suggestions = ["فطار سريع", "احتياجات البيت", "سناكس للأطفال", "مستلزمات التنظيف"];
 
 function ShoppingAssistantPage() {
-  const { data: products = [], isLoading } = useStoreProducts();
+  const { data: products = [], isLoading, isFetching, isError, refetch } = useStoreProducts();
   const { items, addItem, totalPrice } = useCart();
   const [request, setRequest] = useState("");
   const [submittedRequest, setSubmittedRequest] = useState("");
@@ -24,15 +24,20 @@ function ShoppingAssistantPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
   const matches = useMemo(() => {
+    const inStockProducts = products.filter((product) => Number(product.stock_quantity) > 0);
     if (!submittedRequest.trim()) {
-      const featured = products.filter((product) => product.is_featured);
-      return (featured.length ? featured : products).slice(0, 6);
+      const featured = inStockProducts.filter((product) => product.is_featured);
+      return (featured.length ? featured : inStockProducts).slice(0, 6);
     }
     const words = submittedRequest.trim().split(/[،,\s]+/).filter((word) => word.length > 1);
     const unique = new Map<string, Product>();
     for (const word of words) {
-      for (const product of searchProductsFuzzy(products, word, 0.45).slice(0, 8)) unique.set(product.id, product);
+      for (const product of searchProductsFuzzy(inStockProducts, word, 0.45).slice(0, 8)) unique.set(product.id, product);
     }
     return [...unique.values()].slice(0, 12);
   }, [products, submittedRequest]);
@@ -56,6 +61,10 @@ function ShoppingAssistantPage() {
       timestamp: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
     };
     try {
+      const catalogRead = await refetch();
+      if (catalogRead.error || catalogRead.isError) {
+        throw new Error("تعذر تأكيد قراءة الكتالوج من Supabase.");
+      }
       const response = await runAdminCoPilotChat(cleanPrompt, chatHistory, {
         model: "gemini-2.5-flash",
         role: "copywriter",
@@ -106,10 +115,12 @@ function ShoppingAssistantPage() {
           {chatHistory.length > 0 && <div className="elwadi-assistant__conversation" aria-live="polite">{chatHistory.map((message) => <article className={`elwadi-assistant__reply is-${message.role}`} key={message.id}><div>{message.role === "assistant" ? <Sparkles size={17} /> : null}<b>{message.role === "assistant" ? "مساعد التسوق" : "أنت"}</b></div><p>{message.content}</p></article>)}</div>}
 
           <div className="elwadi-assistant__results-head">
-            <div><h2>{submittedRequest ? "نتائج من كتالوج المتجر" : "اختيارات من المتجر"}</h2><p>{matches.length} منتجات متاحة للإضافة</p></div>
-            <span className="elwadi-assistant__live"><i /> بيانات المتجر</span>
+            <div><h2>{submittedRequest ? "نتائج من كتالوج المتجر" : "اختيارات من المتجر"}</h2><p>{isError ? "تعذر التحقق من قائمة المنتجات" : `${matches.length} منتجات متاحة للإضافة`}</p></div>
+            <span className="elwadi-assistant__live"><i /> {isError ? "غير متصل" : "قراءة مباشرة من المتجر"}</span>
           </div>
-          {isLoading ? <div className="elwadi-assistant__loading"><LoaderCircle className="animate-spin" /> جارٍ تحميل المنتجات</div> : matches.length ? (
+          {isLoading || isFetching ? <div className="elwadi-assistant__loading"><LoaderCircle className="animate-spin" /> جارٍ التحقق من المنتجات من قاعدة المتجر</div> : isError ? (
+            <div className="elwadi-assistant__empty" role="status"><b>تعذر الاتصال بقاعدة المتجر</b><span>لم أتمكن من التحقق من المنتجات والأسعار، لذلك لن أعرض بيانات قديمة أو تجريبية.</span></div>
+          ) : matches.length ? (
             <div className="elwadi-assistant__products">{matches.map((product) => {
               const alreadyAdded = addedIds.includes(product.id);
               return <article className="elwadi-assistant__product" key={product.id}>

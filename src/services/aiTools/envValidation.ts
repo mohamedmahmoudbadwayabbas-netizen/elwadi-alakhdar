@@ -70,7 +70,7 @@ export function validateEnvironment(): DiagnosticEnvironmentStatus {
   const warnings: string[] = [];
 
   if (!geminiReady) {
-    const warn = "[AI Engine Diagnostics] GEMINI_API_KEY / VITE_GEMINI_API_KEY is not set. Falling back to local deterministic rule engine.";
+    const warn = "[AI Engine Diagnostics] GEMINI_API_KEY / VITE_GEMINI_API_KEY is not set. Free-form Gemini replies are unavailable; catalog actions still require verified Supabase reads.";
     console.warn(warn);
     warnings.push(warn);
   } else {
@@ -78,11 +78,11 @@ export function validateEnvironment(): DiagnosticEnvironmentStatus {
   }
 
   if (!supabaseReady) {
-    const warn = "[AI Engine Diagnostics] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing/placeholder. Falling back to local storage and state virtualization.";
+    const warn = "[AI Engine Diagnostics] Supabase configuration is missing or a placeholder. Store-data reads and database mutations fail closed; no mock catalog is used.";
     console.warn(warn);
     warnings.push(warn);
   } else {
-    console.info("[AI Engine Diagnostics] Live Supabase PostgreSQL database connection active for all 24 tools.");
+    console.info("[AI Engine Diagnostics] Supabase configuration is present; each database-backed tool must still confirm its own read or write result.");
   }
 
   let mode: "full_live" | "gemini_only" | "supabase_only" | "local_mock" = "local_mock";

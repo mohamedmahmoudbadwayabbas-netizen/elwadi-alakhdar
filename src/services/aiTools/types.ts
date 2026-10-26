@@ -170,6 +170,7 @@ export interface AbandonedCartDraftResult {
 
 export interface ProductCopywriterInput {
   productName: string;
+  productId?: string;
   categoryName?: string;
   targetAudience?: string;
   rawPrice?: number;

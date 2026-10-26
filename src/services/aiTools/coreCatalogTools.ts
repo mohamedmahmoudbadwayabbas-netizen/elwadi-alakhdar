@@ -134,7 +134,21 @@ export async function toolGenerateProductImage(
   args: { productName?: string; category?: string; productId?: string },
   ctx?: ToolExecutionContext,
 ): Promise<ToolExecutionResult> {
-  const name = (args.productName || "").trim();
+  let name = (args.productName || "").trim();
+  if (args.productId) {
+    if (!isSupabaseConfigured()) {
+      return { tool: "generateProductImage", ok: false, messageAr: "لم أتحقق من المنتج لأن Supabase غير متصل؛ لم أبدأ التوليد." };
+    }
+    const { data: product, error } = await supabase
+      .from("products")
+      .select("id,name,name_ar,image_url,is_active")
+      .eq("id", args.productId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (error) return { tool: "generateProductImage", ok: false, messageAr: `تعذر التحقق من المنتج في Supabase: ${error.message}` };
+    if (!product) return { tool: "generateProductImage", ok: false, messageAr: "المنتج غير موجود أو غير نشط في Supabase؛ لم أبدأ التوليد." };
+    name = product.name_ar || product.name;
+  }
   if (!name) {
     return { tool: "generateProductImage", ok: false, messageAr: "اسم المنتج مطلوب لتوليد الصورة." };
   }
@@ -299,11 +313,33 @@ export async function toolManageProduct(
   const pointId = createRollbackPoint("manageProduct", `إدارة منتج (${action})`, ctx?.layout || null);
 
   try {
+    if (!isSupabaseConfigured()) {
+      throw new Error("قاعدة بيانات Supabase غير متصلة؛ أوقفت العملية دون تغيير أي بيانات.");
+    }
+
     if (action === "create") {
       const name = String(data.name_ar || data.name || "").trim();
       const price = Number(data.price ?? data.price_per_unit);
       if (!name) throw new Error("اسم المنتج مطلوب.");
       if (!Number.isFinite(price) || price <= 0) throw new Error("سعر المنتج يجب أن يكون أكبر من صفر.");
+      const { data: existingProducts, error: lookupError } = await supabase
+        .from("products")
+        .select("id,name,name_ar")
+        .eq("is_active", true)
+        .limit(500);
+      if (lookupError) throw lookupError;
+      const normalizeName = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ar");
+      const duplicate = (existingProducts || []).find((product: any) =>
+        normalizeName(product.name) === normalizeName(name) || normalizeName(product.name_ar) === normalizeName(name),
+      );
+      if (duplicate) {
+        return {
+          tool: "manageProduct",
+          ok: false,
+          messageAr: `يوجد منتج مسجل بالفعل بهذا الاسم في Supabase (المعرّف: ${duplicate.id}). لم أضف نسخة مكررة.`,
+          data: { id: duplicate.id, catalogPreflight: true },
+        };
+      }
       const originalPrice = data.original_price ?? data.old_price;
       const payload = {
         name,
@@ -322,30 +358,18 @@ export async function toolManageProduct(
         is_active: data.is_active !== false,
       };
 
-      if (isSupabaseConfigured()) {
-        const { data: inserted, error } = await supabase
-          .from("products")
-          .insert(payload as never)
-          .select("id")
-          .maybeSingle();
+      const { data: inserted, error } = await supabase
+        .from("products")
+        .insert(payload as never)
+        .select("id")
+        .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (inserted?.id) {
-          attachDbUndo(pointId, { table: "products", kind: "delete-row", id: inserted.id });
-        } else {
-          throw new Error("لم تُرجع قاعدة البيانات معرّف المنتج بعد الإنشاء.");
-        }
-
-        ctx?.refresh?.();
-
-        return {
-          tool: "manageProduct",
-          ok: true,
-          rollbackPointId: pointId,
-          messageAr: `تمت إضافة المنتج «${payload.name}» بسعر ${payload.price} ج.م في الكتالوج بنجاح.`,
-          data: { id: inserted.id, name: payload.name, price: payload.price },
-        };
+      if (inserted?.id) {
+        attachDbUndo(pointId, { table: "products", kind: "delete-row", id: inserted.id });
+      } else {
+        throw new Error("لم تُرجع قاعدة البيانات معرّف المنتج بعد الإنشاء.");
       }
 
       ctx?.refresh?.();
@@ -355,7 +379,7 @@ export async function toolManageProduct(
         ok: true,
         rollbackPointId: pointId,
         messageAr: `تمت إضافة المنتج «${payload.name}» بسعر ${payload.price} ج.م في الكتالوج بنجاح.`,
-        data: { name: payload.name, price: payload.price },
+        data: { id: inserted.id, name: payload.name, price: payload.price, catalogPreflight: true },
       };
     }
 
@@ -364,41 +388,39 @@ export async function toolManageProduct(
       return { tool: "manageProduct", ok: false, messageAr: "معرّف المنتج (id) مطلوب للتعديل أو الحذف." };
     }
 
-    if (isSupabaseConfigured()) {
-      const { data: prev } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+    const { data: prev, error: readError } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+    if (readError) throw readError;
+    if (!prev) throw new Error("لم أعثر على المنتج بهذا المعرّف في Supabase؛ لم أعدل شيئاً.");
 
-      if (prev) {
-        attachDbUndo(pointId, { table: "products", kind: "restore-rows", rows: [prev as Record<string, unknown>] });
-      }
+    attachDbUndo(pointId, { table: "products", kind: "restore-rows", rows: [prev as Record<string, unknown>] });
 
-      if (action === "delete") {
-        const { error } = await supabase.from("products").delete().eq("id", id);
-        if (error) throw error;
-
-        ctx?.refresh?.();
-
-        return {
-          tool: "manageProduct",
-          ok: true,
-          rollbackPointId: pointId,
-          messageAr: `تم حذف المنتج (id: ${id}) بنجاح مع إمكانية التراجع الفوري.`,
-          data: { id },
-        };
-      }
-
-      const patchInput = data as Record<string, unknown>;
-      const patch: Record<string, unknown> = {};
-      const copy = (from: string, to = from) => { if (patchInput[from] !== undefined) patch[to] = patchInput[from]; };
-      copy("name"); copy("name_ar"); copy("description"); copy("description_ar"); copy("image_url"); copy("images");
-      copy("category_id"); copy("rating"); copy("reviews_count"); copy("is_featured"); copy("is_active");
-      if (patchInput.price !== undefined || patchInput.price_per_unit !== undefined) patch.price = Number(patchInput.price ?? patchInput.price_per_unit);
-      if (patchInput.original_price !== undefined || patchInput.old_price !== undefined) patch.original_price = patchInput.original_price ?? patchInput.old_price;
-      if (patchInput.stock !== undefined || patchInput.stock_quantity !== undefined) patch.stock = Number(patchInput.stock ?? patchInput.stock_quantity);
-      if (Object.keys(patch).length === 0) throw new Error("لا توجد حقول صالحة للتحديث في مخطط المنتجات الحالي.");
-      const { error } = await supabase.from("products").update(patch as never).eq("id", id);
-
+    if (action === "delete") {
+      const { error } = await supabase.from("products").delete().eq("id", id);
       if (error) throw error;
+
+      ctx?.refresh?.();
+
+      return {
+        tool: "manageProduct",
+        ok: true,
+        rollbackPointId: pointId,
+        messageAr: `تم حذف المنتج (id: ${id}) بنجاح مع إمكانية التراجع الفوري.`,
+        data: { id, catalogPreflight: true },
+      };
     }
+
+    const patchInput = data as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    const copy = (from: string, to = from) => { if (patchInput[from] !== undefined) patch[to] = patchInput[from]; };
+    copy("name"); copy("name_ar"); copy("description"); copy("description_ar"); copy("image_url"); copy("images");
+    copy("category_id"); copy("rating"); copy("reviews_count"); copy("is_featured"); copy("is_active");
+    if (patchInput.price !== undefined || patchInput.price_per_unit !== undefined) patch.price = Number(patchInput.price ?? patchInput.price_per_unit);
+    if (patchInput.original_price !== undefined || patchInput.old_price !== undefined) patch.original_price = patchInput.original_price ?? patchInput.old_price;
+    if (patchInput.stock !== undefined || patchInput.stock_quantity !== undefined) patch.stock = Number(patchInput.stock ?? patchInput.stock_quantity);
+    if (Object.keys(patch).length === 0) throw new Error("لا توجد حقول صالحة للتحديث في مخطط المنتجات الحالي.");
+    const { error } = await supabase.from("products").update(patch as never).eq("id", id);
+
+    if (error) throw error;
 
     ctx?.refresh?.();
 
@@ -407,7 +429,7 @@ export async function toolManageProduct(
       ok: true,
       rollbackPointId: pointId,
       messageAr: `تم تحديث بيانات المنتج «${data.name || id}» في Supabase بنجاح.`,
-      data: { id, ...data, updatedFields: Object.keys(data) },
+      data: { id, ...data, updatedFields: Object.keys(data), catalogPreflight: true },
     };
   } catch (e) {
     return {
@@ -429,9 +451,30 @@ export async function toolManageCategories(
   const pointId = createRollbackPoint("manageCategories", `إدارة قسم (${action})`, ctx?.layout || null);
 
   try {
+    if (!isSupabaseConfigured()) {
+      throw new Error("قاعدة بيانات Supabase غير متصلة؛ أوقفت العملية دون تغيير أي بيانات.");
+    }
+
     if (action === "create") {
       const name = String(data.name || "قسم جديد");
       const slug = String(data.slug || `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`);
+      const { data: existingCategories, error: lookupError } = await supabase
+        .from("categories")
+        .select("id,name,name_ar")
+        .limit(500);
+      if (lookupError) throw lookupError;
+      const normalizeName = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ar");
+      const duplicate = (existingCategories || []).find((category: any) =>
+        normalizeName(category.name) === normalizeName(name) || normalizeName(category.name_ar) === normalizeName(name),
+      );
+      if (duplicate) {
+        return {
+          tool: "manageCategories",
+          ok: false,
+          messageAr: `يوجد قسم مسجل بالفعل بهذا الاسم في Supabase (المعرّف: ${duplicate.id}). لم أضف نسخة مكررة.`,
+          data: { id: duplicate.id, categoryPreflight: true },
+        };
+      }
 
       const payload = {
         name,
@@ -440,30 +483,18 @@ export async function toolManageCategories(
         image_url: (data.image_url as string) || null,
       };
 
-      if (isSupabaseConfigured()) {
-        const { data: inserted, error } = await supabase
-          .from("categories")
-          .insert(payload as never)
-          .select("id")
-          .maybeSingle();
+      const { data: inserted, error } = await supabase
+        .from("categories")
+        .insert(payload as never)
+        .select("id")
+        .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (inserted?.id) {
-          attachDbUndo(pointId, { table: "categories", kind: "delete-row", id: inserted.id });
-        } else {
-          throw new Error("لم تُرجع قاعدة البيانات معرّف القسم بعد الإنشاء.");
-        }
-
-        ctx?.refresh?.();
-
-        return {
-          tool: "manageCategories",
-          ok: true,
-          rollbackPointId: pointId,
-          messageAr: `تمت إضافة القسم «${name}» لقاعدة البيانات بنجاح.`,
-          data: { id: inserted.id, name, name_ar: payload.name_ar, slug, image_url: payload.image_url },
-        };
+      if (inserted?.id) {
+        attachDbUndo(pointId, { table: "categories", kind: "delete-row", id: inserted.id });
+      } else {
+        throw new Error("لم تُرجع قاعدة البيانات معرّف القسم بعد الإنشاء.");
       }
 
       ctx?.refresh?.();
@@ -473,7 +504,7 @@ export async function toolManageCategories(
         ok: true,
         rollbackPointId: pointId,
         messageAr: `تمت إضافة القسم «${name}» لقاعدة البيانات بنجاح.`,
-        data: { name, slug },
+        data: { id: inserted.id, name, name_ar: payload.name_ar, slug, image_url: payload.image_url, categoryPreflight: true },
       };
     }
 
@@ -482,35 +513,34 @@ export async function toolManageCategories(
       return { tool: "manageCategories", ok: false, messageAr: "معرّف القسم (id) مطلوب." };
     }
 
-    if (isSupabaseConfigured()) {
-      const { data: prev } = await supabase.from("categories").select("*").eq("id", id).maybeSingle();
+    const { data: prev, error: readError } = await supabase.from("categories").select("*").eq("id", id).maybeSingle();
+    if (readError) throw readError;
+    if (!prev) throw new Error("لم أعثر على القسم بهذا المعرّف في Supabase؛ لم أعدل شيئاً.");
 
-      if (prev) {
-        attachDbUndo(pointId, { table: "categories", kind: "restore-rows", rows: [prev as Record<string, unknown>] });
-      }
+    attachDbUndo(pointId, { table: "categories", kind: "restore-rows", rows: [prev as Record<string, unknown>] });
 
-      if (action === "delete") {
-        const { error } = await supabase.from("categories").delete().eq("id", id);
-        if (error) throw error;
-
-        ctx?.refresh?.();
-
-        return {
-          tool: "manageCategories",
-          ok: true,
-          rollbackPointId: pointId,
-          messageAr: `تم حذف القسم بنجاح.`,
-          data: { id },
-        };
-      }
-
-      const patchInput = data as Record<string, unknown>;
-      const patch: Record<string, unknown> = {};
-      for (const key of ["name", "name_ar", "slug", "image_url"]) if (patchInput[key] !== undefined) patch[key] = patchInput[key];
-      const { error } = await supabase.from("categories").update(patch as never).eq("id", id);
-
+    if (action === "delete") {
+      const { error } = await supabase.from("categories").delete().eq("id", id);
       if (error) throw error;
+
+      ctx?.refresh?.();
+
+      return {
+        tool: "manageCategories",
+        ok: true,
+        rollbackPointId: pointId,
+        messageAr: `تم حذف القسم بنجاح.`,
+        data: { id },
+      };
     }
+
+    const patchInput = data as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    for (const key of ["name", "name_ar", "slug", "image_url"]) if (patchInput[key] !== undefined) patch[key] = patchInput[key];
+    if (Object.keys(patch).length === 0) throw new Error("لا توجد حقول صالحة للتحديث.");
+    const { error } = await supabase.from("categories").update(patch as never).eq("id", id);
+
+    if (error) throw error;
 
     ctx?.refresh?.();
 
@@ -519,7 +549,7 @@ export async function toolManageCategories(
       ok: true,
       rollbackPointId: pointId,
       messageAr: `تم تحديث بيانات القسم بنجاح.`,
-      data: { id, ...data },
+      data: { id, ...data, categoryPreflight: true },
     };
   } catch (e) {
     return {
@@ -549,7 +579,11 @@ export async function toolBulkPriceUpdate(
   );
 
   try {
-    if (isSupabaseConfigured()) {
+    if (!isSupabaseConfigured()) {
+      throw new Error("قاعدة بيانات Supabase غير متصلة؛ أوقفت العملية دون تغيير أي بيانات.");
+    }
+
+    {
       let query = supabase.from("products").select("id, price, original_price");
       if (categoryId !== "all") {
         query = query.eq("category_id", categoryId);
@@ -557,8 +591,9 @@ export async function toolBulkPriceUpdate(
 
       const { data: rows, error } = await query;
       if (error) throw error;
+      if (!rows?.length) throw new Error("لم أجد منتجات في Supabase لتطبيق تغيير الأسعار عليها.");
 
-      if (rows && rows.length > 0) {
+      {
         attachDbUndo(pointId, {
           table: "products",
           kind: "restore-rows",
@@ -566,7 +601,7 @@ export async function toolBulkPriceUpdate(
         });
 
         const factor = 1 + pct / 100;
-        await Promise.all(
+        const updates = await Promise.all(
           rows.map((r) =>
             supabase
               .from("products")
@@ -574,9 +609,12 @@ export async function toolBulkPriceUpdate(
                 price: Math.max(0.5, +(Number(r.price || 0) * factor).toFixed(2)),
                 original_price: pct < 0 ? Number(r.price || 0) : r.original_price,
               } as never)
-              .eq("id", r.id),
+              .eq("id", r.id)
+              .select("id,price"),
           ),
         );
+        const failedUpdate = updates.find((result) => result.error || !result.data?.length);
+        if (failedUpdate) throw failedUpdate.error || new Error("لم يتم تأكيد تحديث جميع الأسعار من Supabase.");
       }
     }
 
@@ -816,27 +854,57 @@ export async function toolCreateDiscountBundle(
 export async function toolSendAbandonedCartRecovery(
   args: { cartId?: string; customerName?: string; phone?: string; totalPrice?: number },
 ): Promise<ToolExecutionResult> {
-  const name = args.customerName || "عزيزنا العميل";
-  const phone = args.phone || "01000000000";
-  const total = Number(args.totalPrice ?? 0);
-  const coupon = "COMEBACK10";
+  try {
+    if (!isSupabaseConfigured()) throw new Error("Supabase غير متصل؛ لم أستخدم بيانات محلية أو تجريبية.");
+    if (!args.cartId) throw new Error("معرّف السلة مطلوب للتحقق منها في Supabase.");
 
-  const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿\nلاحظنا أنك تركت سلة التسوق بقيمة ${total.toFixed(2)} ج.م دون إتمام.\nصممنا لك كود خصم خاص 🎁 *${coupon}* يمنحك خصماً 10%!\nأكمل طلبك الآن في ثوانٍ: ${typeof window !== "undefined" ? window.location.origin : "https://alwadi-alakhdar.eg"}/cart`;
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const cartId = args.cartId;
+    const userId = cartId.startsWith("cart-") ? cartId.slice("cart-".length) : "";
+    let cartQuery = supabase.from("cart_items").select("id,user_id,product_id,quantity,created_at").lt("created_at", cutoff);
+    cartQuery = userId ? cartQuery.eq("user_id", userId) : cartQuery.eq("id", cartId);
+    const { data: cartRows, error: cartError } = await cartQuery;
+    if (cartError) throw cartError;
+    if (!cartRows?.length) throw new Error("لم أجد سلة متروكة مطابقة في Supabase.");
 
-  const cleanPhone = phone.replace(/[^0-9]/g, "");
-  const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;
-  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+    const verifiedUserId = cartRows[0].user_id;
+    if (!verifiedUserId || cartRows.some((row) => row.user_id !== verifiedUserId)) throw new Error("تعذر التحقق من مالك السلة.");
+    const lastActivity = Math.max(...cartRows.map((row) => new Date(row.created_at ?? 0).getTime()));
+    const [{ data: profile, error: profileError }, { data: products, error: productsError }, { data: orders, error: ordersError }] = await Promise.all([
+      supabase.from("profiles").select("id,full_name,phone").eq("id", verifiedUserId).maybeSingle(),
+      supabase.from("products").select("id,name,name_ar,price,is_active").in("id", cartRows.map((row) => row.product_id).filter(Boolean)).eq("is_active", true),
+      supabase.from("orders").select("id,created_at").eq("user_id", verifiedUserId).gte("created_at", new Date(lastActivity).toISOString()).limit(1),
+    ]);
+    if (profileError) throw profileError;
+    if (productsError) throw productsError;
+    if (ordersError) throw ordersError;
+    if (orders?.length) throw new Error("السلة مرتبطة بطلب أحدث؛ لم أفتح رسالة استرداد.");
+    if (!profile?.phone) throw new Error("لا يوجد رقم هاتف موثق للعميل في Supabase.");
 
-  if (typeof window !== "undefined") {
-    window.open(whatsappUrl, "_blank");
+    const productMap = new Map((products ?? []).map((product) => [product.id, product]));
+    if (cartRows.some((row) => !row.product_id || !productMap.has(row.product_id))) throw new Error("بعض منتجات السلة لم تُتحقق في Supabase.");
+    const items = cartRows.map((row) => {
+      const product = productMap.get(row.product_id!)!;
+      return { name: product.name_ar || product.name, lineTotal: Number(product.price || 0) * Number(row.quantity || 0) };
+    });
+    const total = items.reduce((sum, item) => sum + item.lineTotal, 0);
+    const name = profile.full_name || "عميل المتجر";
+    const message = `أهلاً بك يا ${name} من سوبرماركت الوادي الأخضر.\n\nوجدنا في قاعدة المتجر أن سلتك ما زالت تحتوي على: ${items.map((item) => item.name).join("، ")}، بإجمالي حالي ${total.toFixed(2)} ج.م.\n\nيمكنك مراجعة السلة وإكمال طلبك من صفحة المتجر: ${typeof window !== "undefined" ? `${window.location.origin}/cart` : "صفحة السلة"}`;
+    const cleanPhone = profile.phone.replace(/[^0-9]/g, "");
+    const formattedPhone = cleanPhone.startsWith("0") ? `2${cleanPhone}` : cleanPhone;
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+
+    if (typeof window !== "undefined") window.open(whatsappUrl, "_blank");
+
+    return {
+      tool: "sendAbandonedCartRecovery",
+      ok: true,
+      messageAr: `تم إعداد مسودة استرداد مبنية على السلة والعميل والمنتجات التي تحققت منها Supabase، دون ادعاء وجود خصم غير متحقق.`,
+      data: { whatsappUrl, messageText: message, total },
+    };
+  } catch (error) {
+    return { tool: "sendAbandonedCartRecovery", ok: false, messageAr: `لم أفتح الرسالة لأن بيانات السلة لم تُتحقق في Supabase: ${(error as Error).message}` };
   }
-
-  return {
-    tool: "sendAbandonedCartRecovery",
-    ok: true,
-    messageAr: `تم إنشاء رسالة الاسترداد وفتح رابط الواتساب للعميل «${name}» مع كود ${coupon}.`,
-    data: { whatsappUrl, messageText: message, coupon },
-  };
 }
 
 /* ───────────────────────── 10. searchProducts (READ-ONLY) ─────────────────────────
@@ -874,9 +942,8 @@ export async function toolSearchProducts(
     let dbQuery = supabase
       .from("products")
       .select("id, name, name_ar, price, original_price, stock, category_id, is_featured, is_active")
-      .ilike("name", `%${query}%`)
       .eq("is_active", true)
-      .limit(limit);
+      .limit(500);
 
     if (args.categoryId) {
       dbQuery = dbQuery.eq("category_id", args.categoryId);
@@ -885,7 +952,15 @@ export async function toolSearchProducts(
     const { data, error } = await dbQuery;
     if (error) throw error;
 
-    const rows = data || [];
+    // Read authoritative rows from Supabase first, then match both Arabic and
+    // English names locally. Searching only `name` missed Arabic catalog rows
+    // whose display name lives in `name_ar`.
+    const normalizedQuery = query.normalize("NFKC").toLocaleLowerCase("ar");
+    const terms = normalizedQuery.split(/[\s،,]+/).filter((term) => term.length > 1);
+    const rows = (data || []).filter((row: any) => {
+      const searchable = `${row.name || ""} ${row.name_ar || ""}`.normalize("NFKC").toLocaleLowerCase("ar");
+      return terms.some((term) => searchable.includes(term));
+    }).slice(0, limit);
 
     if (rows.length === 0) {
       return {
@@ -935,20 +1010,23 @@ export async function toolGetCategories(
   }
 
   try {
-    let dbQuery = supabase
+    const dbQuery = supabase
       .from("categories")
       .select("id, name, name_ar, slug, image_url, created_at")
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(500);
 
     const nameQuery = (args.nameQuery || "").trim();
-    if (nameQuery) {
-      dbQuery = dbQuery.ilike("name", `%${nameQuery}%`);
-    }
 
     const { data, error } = await dbQuery;
     if (error) throw error;
 
-    const rows = data || [];
+    const terms = nameQuery.normalize("NFKC").toLocaleLowerCase("ar").split(/[\s،,]+/).filter((term) => term.length > 1);
+    const rows = (data || []).filter((row: any) => {
+      if (terms.length === 0) return true;
+      const searchable = `${row.name || ""} ${row.name_ar || ""}`.normalize("NFKC").toLocaleLowerCase("ar");
+      return terms.some((term) => searchable.includes(term));
+    });
 
     if (rows.length === 0) {
       return {

@@ -356,6 +356,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
       const catObj = cats.find((c) => c.id === editing.category_id);
       const res = await generateProductCopywriting({
         productName: editing.name,
+        productId: editing.id,
         categoryName: catObj?.name,
         isByWeight: !!editing.is_by_weight,
       });
@@ -399,6 +400,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
       const catObj = cats.find((c) => c.id === editing.category_id);
       const res = await generateProductCopywriting({
         productName,
+        productId: editing.id,
         categoryName: catObj?.name,
         isByWeight: !!editing.is_by_weight,
       });
@@ -1468,6 +1470,7 @@ function ProductsPage({ onGenerateCookingTip }: ProductsPageProps = {}) {
         open={copywriterModalOpen}
         onOpenChange={setCopywriterModalOpen}
         initialProductName={editing?.name ?? ""}
+        initialProductId={editing?.id}
         initialCategoryName={cats.find((c) => c.id === editing?.category_id)?.name ?? ""}
         isByWeight={Boolean(editing?.is_by_weight)}
         onApplyCopywriting={(data) => {

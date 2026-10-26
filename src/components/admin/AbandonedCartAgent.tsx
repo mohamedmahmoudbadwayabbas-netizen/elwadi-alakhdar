@@ -35,7 +35,7 @@ export function AbandonedCartAgent() {
   const [selectedCart, setSelectedCart] = useState<AbandonedCartData | null>(null);
   const [draftResult, setDraftResult] = useState<AbandonedCartDraftResult | null>(null);
   const [customDraft, setCustomDraft] = useState("");
-  const [couponCode, setCouponCode] = useState("WELCOME5");
+  const [couponCode, setCouponCode] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cartStatuses, setCartStatuses] = useState<
@@ -58,15 +58,18 @@ export function AbandonedCartAgent() {
 
       const userIds = [...new Set(cartRows.map((r) => r.user_id).filter(Boolean))] as string[];
       const productIds = [...new Set(cartRows.map((r) => r.product_id).filter(Boolean))] as string[];
-      const [{ data: profiles }, { data: products }, { data: recentOrders, error: ordersError }] = await Promise.all([
+      const [profilesResult, productsResult, ordersResult] = await Promise.all([
         supabase.from("profiles").select("id,full_name,phone").in("id", userIds),
-        supabase.from("products").select("id,name,name_ar,price").in("id", productIds),
+        supabase.from("products").select("id,name,name_ar,price,is_active").in("id", productIds).eq("is_active", true),
         supabase.from("orders").select("id,user_id,created_at").in("user_id", userIds).gte("created_at", cutoff),
       ]);
-      if (ordersError) throw ordersError;
+      if (profilesResult.error) throw profilesResult.error;
+      if (productsResult.error) throw productsResult.error;
+      if (ordersResult.error) throw ordersResult.error;
 
-      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
-      const productMap = new Map((products ?? []).map((p) => [p.id, p]));
+      const profileMap = new Map((profilesResult.data ?? []).map((p) => [p.id, p]));
+      const productMap = new Map((productsResult.data ?? []).map((p) => [p.id, p]));
+      const recentOrders = ordersResult.data;
       const latestByUser = new Map<string, typeof cartRows>();
       for (const row of cartRows) {
         if (!row.user_id) continue;
@@ -82,6 +85,9 @@ export function AbandonedCartAgent() {
         if (hasOrderAfterCart) continue;
         const profile = profileMap.get(userId);
         if (!profile?.phone) continue;
+        // Never compose a recovery message with mock names or zero prices when
+        // a cart references a product that could not be verified in Supabase.
+        if (items.some((item) => !item.product_id || !productMap.has(item.product_id))) continue;
         const totalPrice = items.reduce((sum, item) => sum + Number(productMap.get(item.product_id ?? "")?.price ?? 0) * Number(item.quantity ?? 0), 0);
         mapped.push({
           id: `cart-${userId}`,
@@ -91,7 +97,6 @@ export function AbandonedCartAgent() {
           itemsList: items.map((i) => productMap.get(i.product_id ?? "")?.name_ar || productMap.get(i.product_id ?? "")?.name || "صنف"),
           totalPrice,
           lastUpdated: new Date(lastActivity).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }),
-          couponSuggested: "RECOVER10",
         });
       }
       setCarts(mapped);
@@ -279,10 +284,11 @@ export function AbandonedCartAgent() {
               </div>
               {selectedCart && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-bold">كوبون التحفيز:</span>
+                    <span className="text-xs text-muted-foreground font-bold">كوبون للتحقق:</span>
                   <Input
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="اختياري"
                     className="h-7 w-28 text-center font-mono font-black text-xs uppercase rounded-lg border-emerald-500"
                   />
                 </div>
