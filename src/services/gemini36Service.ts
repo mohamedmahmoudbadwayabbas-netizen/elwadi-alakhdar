@@ -322,6 +322,7 @@ export interface RunChatOptions {
   kpis?: ExecutiveKpiInput;
   refresh?: () => void;
   ctx?: ToolExecutionContext;
+  executionMode?: "suggest" | "approval";
 }
 
 export interface RunChatObjectParams extends RunChatOptions {
@@ -346,6 +347,7 @@ export async function runAdminCoPilotChat(
   };
   toolResult?: ToolExecutionResult;
   toolResults?: ToolExecutionResult[];
+  pendingAction?: { toolName: AiToolName; args: Record<string, unknown> };
 }> {
   let message: string;
   let history: ChatMessage[];
@@ -356,6 +358,7 @@ export async function runAdminCoPilotChat(
   let ctx: ToolExecutionContext | undefined;
   let page = "global";
   let userRole = "customer";
+  let executionMode: "suggest" | "approval" = "approval";
 
   if (typeof messageOrParams === "string") {
     message = messageOrParams;
@@ -368,6 +371,7 @@ export async function runAdminCoPilotChat(
     ctx = opts.ctx;
     page = opts.page || page;
     userRole = opts.userRole || userRole;
+    executionMode = opts.executionMode || executionMode;
   } else {
     message = messageOrParams.message;
     history = messageOrParams.history || [];
@@ -378,9 +382,11 @@ export async function runAdminCoPilotChat(
     ctx = messageOrParams.ctx;
     page = messageOrParams.page || page;
     userRole = messageOrParams.userRole || userRole;
+    executionMode = messageOrParams.executionMode || executionMode;
   }
 
   const customerExperience = page === "assistant" && userRole === "customer";
+  if (customerExperience) executionMode = "suggest";
 
   // Keep the Gemini credential on the server. The same authenticated gateway
   // is used by the customer and admin assistants.
@@ -411,19 +417,14 @@ ${ROLE_PROMPTS[selectedRole]}
 ${SUPABASE_SCHEMA_CONTEXT_INSTRUCTION}
 ${PROJECT_ENGINE_CONTEXT}
 
-=== AVAILABLE 27-TOOL SUITE ===
-You have access to 27 operational functions covering media, catalog (including the
-read-only searchProducts and getCategories lookups), UI layout, themes, marketing,
-rollback, custom CSS, JSON metadata, user roles & RBAC, analytics export, push
-notifications, delivery zones, directory scanning, source viewing, code search,
-diagnostics logs, file AST mutations, and git commits.
+=== AVAILABLE TOOL SUITE ===
+Use only the functions supplied for this request. Product, order, price, and stock
+claims must come from successful live Supabase reads. Never invent a tool result.
 
-When the user gives a direct command or request that matches any tool, you MUST
-invoke the corresponding function tool immediately. You may call multiple tools
-in sequence — for example a READ lookup (searchProducts / getCategories) followed
-by a WRITE mutation (manageProduct / manageCategories) — before giving your final
-answer. Only claim an action was completed after the matching WRITE tool has
-actually returned a confirmed success result back to you.
+${executionMode === "suggest"
+  ? "SUGGESTION-ONLY MODE: Do not invoke any state-changing tool. Read-only tools may be used to ground suggestions."
+  : "APPROVAL MODE: Read-only tools may run to prepare an exact proposal. Never execute a state-changing tool in this chat turn; return its exact function name and arguments for the admin to review and approve in the UI."}
+Only report a change as completed after its tool returns a confirmed and verified success result.
 `;
 
         const contents: any[] = history.slice(-6).map((h) => ({
@@ -442,7 +443,10 @@ actually returned a confirmed success result back to you.
         });
 
         // Execute Gemini call with dynamic tool routing
-        const activeTools = getActiveTools({ page, userRole });
+        const activeTools = getActiveTools({ page, userRole }).filter((declaration) => {
+          if (executionMode !== "suggest") return true;
+          return AI_TOOL_SUITE.find((tool) => tool.name === declaration.name)?.mutatesState !== true;
+        });
 
         const config: any = {
           systemInstruction,
@@ -519,6 +523,53 @@ actually returned a confirmed success result back to you.
             const toolName = fc.name as AiToolName;
             const toolArgs = (fc.args || {}) as Record<string, unknown>;
             const isWrite = isWriteToolName(toolName);
+            const storeReadBeforeWrite = requiredStoreRead(message, customerExperience);
+
+            if (isWrite && (storeReadBeforeWrite === "unsupported" || (storeReadBeforeWrite && isReadOnlyStoreRequest(message)))) {
+              return {
+                text: "طلبك استعلام عن بيانات المتجر فقط؛ لم أجهز أو أنفذ أي تعديل.",
+                modelUsed: currentModel,
+                roleUsed: selectedRole,
+                groundingSources: groundingSources.length ? groundingSources : undefined,
+                toolResults: steps.length ? steps.map((step) => step.res) : undefined,
+              };
+            }
+
+            if (isWrite && storeReadBeforeWrite && !hasSuccessfulSupabaseRead(steps, storeReadBeforeWrite)) {
+              functionResponseParts.push({
+                functionResponse: {
+                  name: toolName,
+                  response: {
+                    ok: false,
+                    success: false,
+                    messageAr: "لم أجهّز التعديل بعد. اقرأ مصدر Supabase المطلوب أولًا ثم أعد تقديم الإجراء للمراجعة.",
+                    verified: false,
+                  },
+                },
+              });
+              continue;
+            }
+
+            if (isWrite && executionMode === "suggest") {
+              return {
+                text: "وضع «اقتراح فقط» مفعّل؛ لم أرسل أي تغيير إلى أدوات المتجر.",
+                modelUsed: currentModel,
+                roleUsed: selectedRole,
+                groundingSources: groundingSources.length ? groundingSources : undefined,
+                toolResults: steps.length ? steps.map((step) => step.res) : undefined,
+              };
+            }
+
+            if (executionMode === "approval" && isWrite) {
+              return {
+                text: "جهّز المساعد إجراءً للمراجعة. لم تُكتب أي تغييرات بعد؛ راجع تفاصيل الإجراء ثم أكّده أو ارفضه.",
+                modelUsed: currentModel,
+                roleUsed: selectedRole,
+                groundingSources: groundingSources.length ? groundingSources : undefined,
+                toolResults: steps.length ? steps.map((step) => step.res) : undefined,
+                pendingAction: { toolName, args: toolArgs },
+              };
+            }
 
             const requiredRead = requiredStoreRead(message, customerExperience);
             if (isWrite && (requiredRead === "unsupported" || requiredRead && isReadOnlyStoreRequest(message))) {
