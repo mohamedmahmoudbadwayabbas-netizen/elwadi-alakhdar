@@ -8,6 +8,25 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
+function isUsablePublishableKey(value: string): boolean {
+  const normalized = value.trim();
+  if (normalized.startsWith("sb_publishable_")) {
+    // Supabase's newer API keys are opaque single values, never JWTs or
+    // multiple keys concatenated together.
+    return normalized.length > "sb_publishable_".length && !normalized.includes(".");
+  }
+
+  // Keep compatibility with the legacy anon JWT, but reject service_role JWTs.
+  const parts = normalized.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.role === "anon";
+  } catch {
+    return false;
+  }
+}
+
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
@@ -44,6 +63,12 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       const message = `Missing Supabase environment variable(s): ${missing.join(", ")}. Connect Supabase in Lovable Cloud.`;
       console.error(`[Supabase] ${message}`);
       throw new Error(message);
+    }
+
+    if (!isUsablePublishableKey(SUPABASE_PUBLISHABLE_KEY)) {
+      throw new Error(
+        "Invalid SUPABASE_PUBLISHABLE_KEY. Use one publishable key (sb_publishable_...) or a legacy anon JWT; never use a service_role/secret key or concatenate keys.",
+      );
     }
 
     const request = getRequest();

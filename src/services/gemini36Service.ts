@@ -5,8 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { supabase as supabaseLoose } from "@/lib/supabase-loose";
+import { generateGeminiContent } from "@/lib/gemini.functions";
 import {
-  getGenAI,
   isGeminiConfigured,
   isSupabaseConfigured,
   validateEnvironment,
@@ -401,8 +401,14 @@ export async function runAdminCoPilotChat(
 
   const customerExperience = page === "assistant" && userRole === "customer";
 
-  // 1. Check if GenAI is configured
-  const ai = getGenAI();
+  // Keep the Gemini credential on the server. The same authenticated gateway
+  // is used by the customer and admin assistants.
+  const ai = {
+    models: {
+      generateContent: (request: { model: string; contents: unknown; config?: Record<string, unknown> }) =>
+        generateGeminiContent({ data: { purpose: "chat", ...request } }),
+    },
+  };
 
   if (ai) {
     // Model fallback sequence
@@ -414,6 +420,7 @@ export async function runAdminCoPilotChat(
     }
 
     let lastError: any = null;
+    let missingServerGeminiKey = false;
 
     for (const currentModel of modelsToTry) {
       try {
@@ -636,18 +643,28 @@ actually returned a confirmed success result back to you.
         };
       } catch (err: any) {
         lastError = err;
+        const errorMessage = String(err?.message || err || "");
+        missingServerGeminiKey = /GEMINI_API_KEY is not configured/i.test(errorMessage);
         const diagnostics = diagnoseGeminiError(err);
         console.warn(`[AI Engine] Model ${currentModel} returned an issue (${diagnostics.code}). Trying fallback...`);
 
         // If it's a 401 Auth error, trying other models won't help; break to local fallback
-        if (diagnostics.isAuthError) {
+        if (diagnostics.isAuthError || missingServerGeminiKey) {
           break;
         }
       }
     }
 
+    if (missingServerGeminiKey) {
+      return {
+        text: "مفتاح Gemini غير مضبوط في أسرار خادم التطبيق باسم GEMINI_API_KEY. أضفه إلى بيئة الخادم ثم أعد نشر التطبيق.",
+        modelUsed: "gemini-server-key-missing",
+        roleUsed: selectedRole,
+      };
+    }
+
     if (lastError) {
-      console.warn("[AI Engine] All live Gemini attempts exhausted, falling back to instant NLP router:", lastError);
+      console.warn("[AI Engine] Live Gemini attempts exhausted; using the local deterministic fallback.");
     }
   }
 
