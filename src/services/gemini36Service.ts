@@ -24,7 +24,7 @@ import {
   GEMINI_TOOL_DECLARATIONS,
   getActiveTools,
 } from "./aiTools/toolDefinitions";
-import { executeAiTool, routeCommandToTool } from "./aiTools/toolRouter";
+import { executeAiTool } from "./aiTools/toolRouter";
 import {
   createRollbackPoint,
   getLastRollbackPoint,
@@ -78,9 +78,7 @@ import type {
   ProductNutritionalInfo,
   GeminiModelChoice,
   GeminiRoleChoice,
-  ParsedActionDetail,
-  ParseCommandResult,
-} from "./aiTools/types";
+  ParsedActionDetail,} from "./aiTools/types";
 import type { StoreLayoutConfig, ThemeColorPalette } from "@/types/layout-config";
 
 // Run startup environment diagnostic validation
@@ -93,9 +91,7 @@ export {
   AI_TOOL_GROUP_LABELS,
   GEMINI_TOOL_DECLARATIONS,
   getActiveTools,
-  executeAiTool,
-  routeCommandToTool,
-  createRollbackPoint,
+  executeAiTool,  createRollbackPoint,
   getLastRollbackPoint,
   getRollbackStack,
   rollbackLastAction,
@@ -148,9 +144,7 @@ export type {
   ProductNutritionalInfo,
   GeminiModelChoice,
   GeminiRoleChoice,
-  ParsedActionDetail,
-  ParseCommandResult,
-};
+  ParsedActionDetail,};
 
 /* ───────────────────────── System Instructions ───────────────────────── */
 
@@ -791,78 +785,6 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
       latencyMs: Date.now() - startTime,
     };
   }
-}
-
-/* ───────────────────────── parseAdminCommandToLayoutUpdate ───────────────────────── */
-
-export async function parseAdminCommandToLayoutUpdate(
-  command: string,
-  currentLayout: StoreLayoutConfig,
-): Promise<ParseCommandResult> {
-  const updatedLayout: StoreLayoutConfig = JSON.parse(JSON.stringify(currentLayout));
-  const changedKeys: string[] = [];
-  const executedActions: ParsedActionDetail[] = [];
-
-  const c = command.trim().toLowerCase();
-
-  if (c.includes("توهج") || c.includes("glow") || c.includes("أخضر زمردي")) {
-    updatedLayout.theme.primaryColor = "#059669";
-    updatedLayout.theme.palette = "emerald";
-    changedKeys.push("theme");
-    executedActions.push({
-      target: "Theme",
-      field: "primaryColor",
-      action: "updated",
-      label: "تطبيق التوهج الزمردي",
-      newValue: "#059669",
-    });
-  }
-
-  if (c.includes("ساعات ذهبية") || c.includes("فلاش سيل") || c.includes("flash sale")) {
-    updatedLayout.flashSaleTimer.enabled = true;
-    updatedLayout.flashSaleTimer.title = "عروض الساعات الذهبية ⚡ خصومات حتى 30%";
-    updatedLayout.flashSaleTimer.couponCode = "GOLDEN30";
-    updatedLayout.flashSaleTimer.endTime = new Date(Date.now() + 4 * 3600 * 1000).toISOString();
-    changedKeys.push("flashSaleTimer");
-    executedActions.push({
-      target: "FlashSaleTimer",
-      field: "enabled",
-      action: "toggled",
-      label: "تفعيل عداد عروض الساعات الذهبية",
-      newValue: "true",
-    });
-  }
-
-  if (c.includes("داكن") || c.includes("ليلي") || c.includes("dark")) {
-    updatedLayout.theme.mode = "dark";
-    changedKeys.push("theme");
-    executedActions.push({
-      target: "Theme",
-      field: "mode",
-      action: "updated",
-      label: "تفعيل الوضع الداكن",
-      newValue: "dark",
-    });
-  } else if (c.includes("فاتح") || c.includes("light")) {
-    updatedLayout.theme.mode = "light";
-    changedKeys.push("theme");
-    executedActions.push({
-      target: "Theme",
-      field: "mode",
-      action: "updated",
-      label: "تفعيل الوضع الفاتح",
-      newValue: "light",
-    });
-  }
-
-  return {
-    updatedLayout,
-    explanation: "تم تحليل وتطبيق تعديلات تخطيط الواجهة بنجاح.",
-    actionSummary: `تم تعديل ${executedActions.length || 1} عنصراً في الواجهة.`,
-    changedKeys: changedKeys.length > 0 ? changedKeys : ["theme"],
-    executedActions,
-    intelligenceScore: 98,
-  };
 }
 
 /* ───────────────────────── generateExecutiveSummary ───────────────────────── */

@@ -42,9 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useLayoutConfig } from "@/lib/layout-config-context";
-import {
-  parseAdminCommandToLayoutUpdate,
-  runAdminCoPilotChat,
+import {  runAdminCoPilotChat,
   ChatMessage,
   ExecutiveKpiInput,
   GeminiModelChoice,
@@ -68,9 +66,7 @@ import { ShopLivePreview } from "@/components/admin/ShopLivePreview";
 import {
   AI_TOOL_SUITE,
   AI_TOOL_GROUP_LABELS,
-  executeAiTool,
-  routeCommandToTool,
-  createRollbackPoint,
+  executeAiTool,  createRollbackPoint,
   getLastRollbackPoint,
   rollbackLastAction,
   type AiToolGroup,
