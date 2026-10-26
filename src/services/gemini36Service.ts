@@ -220,10 +220,8 @@ const UNVERIFIED_STORE_DATA_REPLY =
 
 // Production model fallback sequence
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
-  "gemini-3.7-flash",
   "gemini-2.5-flash",
-  "gemini-3.5-flash",
-  "gemini-3.1-pro-preview",
+  "gemini-2.0-flash",
 ];
 
 // Hard cap on sequential tool-calling turns per user message. Prevents runaway

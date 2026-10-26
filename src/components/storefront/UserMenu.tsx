@@ -152,6 +152,16 @@ export function UserMenu() {
                 </Link>
               </DropdownMenuItem>
 
+              <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
+                <Link
+                  to="/admin"
+                  className="flex w-full items-center gap-2 font-bold text-amber-800 dark:text-amber-300"
+                >
+                  <ShieldCheck className="h-4 w-4 text-amber-600" />
+                  <span>لوحة تحكم الإدارة</span>
+                </Link>
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={toggleLang} className="cursor-pointer rounded-xl">
                 <Languages className="h-4 w-4" />

@@ -6,12 +6,23 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const getGeminiApiKey = (): string | undefined => {
-  const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any)?.env : undefined;
-  const procEnv = typeof process !== "undefined" ? process?.env : undefined;
+  let metaKey: string | undefined;
+  try {
+    metaKey = import.meta.env.VITE_GEMINI_API_KEY;
+  } catch {
+    metaKey = undefined;
+  }
 
-  const resolved =
-    (metaEnv ? metaEnv.VITE_GEMINI_API_KEY || metaEnv.GEMINI_API_KEY : undefined) ||
-    (procEnv ? procEnv.VITE_GEMINI_API_KEY || procEnv.GEMINI_API_KEY : undefined);
+  let procKey: string | undefined;
+  try {
+    if (typeof process !== "undefined" && process?.env) {
+      procKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    }
+  } catch {
+    procKey = undefined;
+  }
+
+  const resolved = metaKey || procKey;
 
   if (typeof resolved === "string" && resolved.trim().length > 0) {
     return resolved.trim();
@@ -20,12 +31,23 @@ export const getGeminiApiKey = (): string | undefined => {
 };
 
 export const getSupabaseUrl = (): string | undefined => {
-  const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any)?.env : undefined;
-  const procEnv = typeof process !== "undefined" ? process?.env : undefined;
+  let metaUrl: string | undefined;
+  try {
+    metaUrl = import.meta.env.VITE_SUPABASE_URL;
+  } catch {
+    metaUrl = undefined;
+  }
 
-  const resolved =
-    (metaEnv ? metaEnv.VITE_SUPABASE_URL || metaEnv.SUPABASE_URL : undefined) ||
-    (procEnv ? procEnv.VITE_SUPABASE_URL || procEnv.SUPABASE_URL : undefined);
+  let procUrl: string | undefined;
+  try {
+    if (typeof process !== "undefined" && process?.env) {
+      procUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    }
+  } catch {
+    procUrl = undefined;
+  }
+
+  const resolved = metaUrl || procUrl;
 
   if (typeof resolved === "string" && resolved.trim().length > 0) {
     return resolved.trim();
@@ -34,12 +56,29 @@ export const getSupabaseUrl = (): string | undefined => {
 };
 
 export const getSupabaseAnonKey = (): string | undefined => {
-  const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any)?.env : undefined;
-  const procEnv = typeof process !== "undefined" ? process?.env : undefined;
+  let metaKey: string | undefined;
+  try {
+    metaKey =
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY;
+  } catch {
+    metaKey = undefined;
+  }
 
-  const resolved =
-    (metaEnv ? metaEnv.VITE_SUPABASE_PUBLISHABLE_KEY || metaEnv.VITE_SUPABASE_ANON_KEY || metaEnv.SUPABASE_PUBLISHABLE_KEY || metaEnv.SUPABASE_ANON_KEY : undefined) ||
-    (procEnv ? procEnv.VITE_SUPABASE_PUBLISHABLE_KEY || procEnv.VITE_SUPABASE_ANON_KEY || procEnv.SUPABASE_PUBLISHABLE_KEY || procEnv.SUPABASE_ANON_KEY : undefined);
+  let procKey: string | undefined;
+  try {
+    if (typeof process !== "undefined" && process?.env) {
+      procKey =
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        process.env.VITE_SUPABASE_ANON_KEY ||
+        process.env.SUPABASE_PUBLISHABLE_KEY ||
+        process.env.SUPABASE_ANON_KEY;
+    }
+  } catch {
+    procKey = undefined;
+  }
+
+  const resolved = metaKey || procKey;
 
   if (typeof resolved === "string" && resolved.trim().length > 0) {
     return resolved.trim();

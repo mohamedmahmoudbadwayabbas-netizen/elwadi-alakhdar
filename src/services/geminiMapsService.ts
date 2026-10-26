@@ -1,14 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Detect Gemini API Key
 const getGeminiApiKey = (): string | undefined => {
-  if (typeof process !== "undefined" && process.env?.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
+  let val: string | undefined;
+  try {
+    val = import.meta.env.VITE_GEMINI_API_KEY;
+  } catch {}
+  if (!val && typeof process !== "undefined" && process.env?.GEMINI_API_KEY) {
+    val = process.env.GEMINI_API_KEY;
   }
-  if (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) {
-    return (import.meta as any).env.VITE_GEMINI_API_KEY;
-  }
-  return undefined;
+  return val;
 };
 
 let genAIInstance: GoogleGenAI | null = null;
