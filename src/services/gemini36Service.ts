@@ -203,6 +203,20 @@ const UNVERIFIED_STORE_DATA_REPLY =
 // Production model fallback sequence
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [...GEMINI_PRODUCTION_FALLBACK_MODELS];
 
+async function generateWithTransientRetry(request: { model: string; contents: unknown; config?: Record<string, unknown> }) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await generateGeminiContent({ data: { purpose: "chat", ...request } });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : JSON.stringify(error);
+      const unavailable = /503|UNAVAILABLE|high demand|temporarily unavailable/i.test(detail);
+      if (!unavailable || attempt === 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+    }
+  }
+  throw new Error("Gemini remained unavailable after retrying.");
+}
+
 // Hard cap on sequential tool-calling turns per user message. Prevents runaway
 // loops while still allowing realistic chains like:
 // READ category -> WRITE create category -> READ product -> WRITE create product.
@@ -390,8 +404,7 @@ export async function runAdminCoPilotChat(
   // is used by the customer and admin assistants.
   const ai = {
     models: {
-      generateContent: (request: { model: string; contents: unknown; config?: Record<string, unknown> }) =>
-        generateGeminiContent({ data: { purpose: "chat", ...request } }),
+      generateContent: generateWithTransientRetry,
     },
   };
 
@@ -448,7 +461,6 @@ Only report a change as completed after its tool returns a confirmed and verifie
 
         const config: any = {
           systemInstruction,
-          temperature: 0.4,
           tools: [{ functionDeclarations: activeTools }],
           toolConfig: {
             includeServerSideToolInvocations: true,

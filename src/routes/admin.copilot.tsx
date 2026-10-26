@@ -534,7 +534,7 @@ function AdminCoPilotPage() {
           </div>
           
           {/* Input Area */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 via-background/80 to-transparent p-4 pb-[calc(env(safe-area-inset-bottom,24px)+1rem)] lg:pb-6 pt-12 z-10">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 via-background/80 to-transparent px-3 py-2 pb-[calc(env(safe-area-inset-bottom,8px)+0.5rem)] lg:pb-3 pt-5 z-10">
             <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto relative group">
               <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/10 pointer-events-none transition-colors group-focus-within:border-[#036233]/50 dark:group-focus-within:border-[#036233]/50 group-focus-within:ring-2 group-focus-within:ring-[#036233]/20" />
               <div className="relative flex flex-col p-2">
@@ -564,7 +564,7 @@ function AdminCoPilotPage() {
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder={isProcessing ? "جاري المعالجة..." : "اكتب أمرك هنا... (مثال: أضف منتج جبنة بيضاء بـ 140 جنيه)"}
-                      className="w-full bg-transparent border-0 focus:ring-0 resize-none text-sm py-2.5 px-0 min-h-[44px] max-h-[160px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 font-medium"
+                      className="w-full bg-transparent border-0 focus:ring-0 resize-none text-sm py-1.5 px-0 min-h-[38px] max-h-[96px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 font-medium"
                       rows={1}
                       disabled={isProcessing}
                       dir="auto"
@@ -577,7 +577,7 @@ function AdminCoPilotPage() {
               </div>
             </form>
             <div className="mt-3 flex items-center justify-between text-[10px] text-zinc-400 font-medium max-w-2xl mx-auto px-1">
-              <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-emerald-500" strokeWidth={1.5} /> <span>Gemini 3.1 Pro Engine</span></span>
+              <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-emerald-500" strokeWidth={1.5} /> <span>{selectedModel}</span></span>
               <span>يمكنه تنفيذ الأوامر مباشرة 🚀</span>
             </div>
           </div>

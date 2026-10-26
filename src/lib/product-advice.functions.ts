@@ -37,7 +37,7 @@ export const getProductAdvice = createServerFn({ method: "POST" })
             description: product.description_ar || product.description,
           }),
       ],
-      config: { maxOutputTokens: 160, temperature: 0.35 },
+      config: { maxOutputTokens: 160 },
     });
     const advice = response.text?.trim();
     if (!advice) throw new Error("لم تصل نصيحة من المساعد. حاول مرة أخرى.");
