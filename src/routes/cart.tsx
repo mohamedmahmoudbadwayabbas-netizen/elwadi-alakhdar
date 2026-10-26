@@ -450,15 +450,10 @@ function CartPage() {
         p_ref_source: ref,
       };
 
-      let { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
+      const { data: rpcData, error: rpcError } = await supabase.rpc("create_order", {
         ...baseArgs,
         p_idempotency_key: attemptKey,
       } as any);
-
-      // Support the currently deployed RPC signature until its migration adds idempotency.
-      if (rpcError && (rpcError.code === "PGRST202" || /p_idempotency_key|could not find|does not exist/i.test(rpcError.message ?? ""))) {
-        ({ data: rpcData, error: rpcError } = await supabase.rpc("create_order", baseArgs as any));
-      }
 
       if (rpcError) {
         console.error("create_order failed:", rpcError);
