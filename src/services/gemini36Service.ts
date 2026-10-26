@@ -699,7 +699,7 @@ Only report a change as completed after its tool returns a confirmed and verifie
       const diagnostics = diagnoseGeminiError(lastError);
       console.warn("[AI Engine] Live Gemini attempts exhausted; no tool was executed without a model decision.", diagnostics.code);
       return {
-        text: `تعذر إكمال الطلب عبر Gemini (${diagnostics.code}). لم أنفذ أي أداة احتياطيًا أو أخمّن معاملات الطلب. أصلح اتصال Gemini ثم أعد المحاولة.`,
+        text: `تعذر إكمال الطلب عبر Gemini (${diagnostics.code}).${diagnostics.safeDetail ? `\nالتفصيل: ${diagnostics.safeDetail}` : ""}\nلم أنفذ أي أداة احتياطيًا أو أخمّن معاملات الطلب.`,
         modelUsed: "gemini-request-failed",
         roleUsed: selectedRole,
       };

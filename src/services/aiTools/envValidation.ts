@@ -131,11 +131,34 @@ export interface GeminiApiErrorInfo {
   isNotFoundError: boolean;
   isRateLimitError: boolean;
   messageAr: string;
+  safeDetail: string;
+}
+
+function getSafeErrorDetail(err: any): string {
+  const candidates = [
+    err?.message,
+    err?.statusText,
+    err?.cause?.message,
+    err?.data?.message,
+    err?.response?.statusText,
+    err?.response?.data?.message,
+    typeof err === "string" ? err : "",
+  ];
+  const raw = candidates.find((value) => typeof value === "string" && value.trim())?.trim() || "";
+  if (!raw) return "";
+  return raw
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[مفتاح محجوب]")
+    .replace(/sb_(?:secret|publishable)_[0-9A-Za-z_-]+/g, "[مفتاح Supabase محجوب]")
+    .replace(/Bearer\s+\S+/gi, "Bearer [محجوب]")
+    .replace(/([?&](?:key|api_key)=)[^&\s]+/gi, "$1[محجوب]")
+    .slice(0, 240);
 }
 
 export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
-  const errorStr = String(err?.message || err?.statusText || err || "");
-  const status = Number(err?.status || err?.statusCode || (errorStr.match(/(\b401\b|\b404\b|\b429\b|\b500\b|\b503\b)/)?.[0] || 0)) || null;
+  const errorStr = [err?.message, err?.statusText, err?.cause?.message, err?.data?.message, err?.response?.statusText]
+    .filter((value) => typeof value === "string")
+    .join(" ");
+  const status = Number(err?.status || err?.statusCode || err?.response?.status || (errorStr.match(/(\b401\b|\b403\b|\b404\b|\b429\b|\b500\b|\b502\b|\b503\b)/)?.[0] || 0)) || null;
 
   const isAuthError = status === 401 || errorStr.includes("API_KEY_INVALID") || errorStr.includes("unauthenticated") || errorStr.includes("401");
   const isNotFoundError = status === 404 || errorStr.includes("models/") || errorStr.includes("not found") || errorStr.includes("404");
@@ -157,11 +180,12 @@ export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
 
   return {
     statusCode: status,
-    code: isAuthError ? "AUTH_401" : isNotFoundError ? "MODEL_404" : isRateLimitError ? "RATE_429" : "GENERIC_ERROR",
+    code: isAuthError ? "AUTH_401" : status === 403 ? "PERMISSION_403" : isNotFoundError ? "MODEL_404" : isRateLimitError ? "RATE_429" : "GENERIC_ERROR",
     isAuthError,
     isNotFoundError,
     isRateLimitError,
     messageAr,
+    safeDetail: getSafeErrorDetail(err),
   };
 }
 
