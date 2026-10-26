@@ -24,10 +24,7 @@ import {
   GEMINI_TOOL_DECLARATIONS,
   getActiveTools,
 } from "./aiTools/toolDefinitions";
-import {
-  executeAiTool,
-  routeCommandToTool,
-} from "./aiTools/toolRouter";
+import { executeAiTool, routeCommandToTool } from "./aiTools/toolRouter";
 import {
   createRollbackPoint,
   getLastRollbackPoint,
@@ -664,56 +661,19 @@ actually returned a confirmed success result back to you.
     }
 
     if (lastError) {
-      console.warn("[AI Engine] Live Gemini attempts exhausted; using the local deterministic fallback.");
+      const diagnostics = diagnoseGeminiError(lastError);
+      console.warn("[AI Engine] Live Gemini attempts exhausted; no tool was executed without a model decision.", diagnostics.code);
+      return {
+        text: `تعذر إكمال الطلب عبر Gemini (${diagnostics.code}). لم أنفذ أي أداة احتياطيًا أو أخمّن معاملات الطلب. أصلح اتصال Gemini ثم أعد المحاولة.`,
+        modelUsed: "gemini-request-failed",
+        roleUsed: selectedRole,
+      };
     }
-  }
-
-  // 2. Local Deterministic NLP Router Fallback
-  const routed = routeCommandToTool(message);
-  if (routed) {
-    const requiredRead = requiredStoreRead(message, customerExperience);
-    if (requiredRead && routed.tool !== requiredRead) {
-      return { text: UNVERIFIED_STORE_DATA_REPLY, modelUsed: "local-deterministic-engine", roleUsed: selectedRole };
-    }
-    const res = await executeAiTool(routed.tool, routed.args, ctx);
-    const isWrite = isWriteToolName(routed.tool);
-    const finalized = finalizeResponse(
-      [{ tool: routed.tool, args: routed.args, res, isWrite }],
-      "",
-    );
-
-    if (requiredRead && !res.ok) {
-      return { text: UNVERIFIED_STORE_DATA_REPLY, modelUsed: "local-deterministic-engine", roleUsed: selectedRole, toolResult: res, toolResults: [res] };
-    }
-
-    return {
-      text: finalized.text,
-      modelUsed: "local-deterministic-engine",
-      roleUsed: selectedRole,
-      toolResult: res,
-      toolResults: [res],
-    };
-  }
-
-  if (customerExperience) {
-    return {
-      text: "مساعد التخطيط بالذكاء الاصطناعي غير متاح الآن. يمكنك استخدام البحث في منتجات المتجر أدناه، وسأعرض لك المنتجات المتاحة وأسعارها الحالية.",
-      modelUsed: "customer-assistant-unavailable",
-      roleUsed: selectedRole,
-    };
-  }
-
-  if (/(?:أضف|اضف|ضيف|ضيفلي|إضافة|اضافة|سجل|أنشئ|انشئ)\s+(?:لي\s+)?(?:منتج|صنف)/i.test(message) && !/(?:بسعر|سعره|بـ|ب)\s*[٠-٩0-9]/i.test(message)) {
-    return {
-      text: "أحتاج سعر البيع قبل إضافة المنتج. أرسل الاسم والسعر (مثال: ضيف منتج جبنة بيضاء بسعر 120 جنيه). لن أخمّن سعرًا أو أُنشئ سجلًا ناقصًا.",
-      modelUsed: "local-deterministic-engine",
-      roleUsed: selectedRole,
-    };
   }
 
   return {
-    text: `مساعد الوادي جاهز للطلبات التي تدعمها الأدوات المهيأة حاليًا. أستطيع قراءة كتالوج Supabase والتحقق من بياناته، وتنفيذ بعض عمليات المتجر بعد التحقق من صلاحيتك. بعض عمليات الملفات وGit والإشعارات تحتاج موفرًا منفصلًا، لذلك لن أدّعي تنفيذها قبل تأكيد نتيجة حقيقية. اكتب طلبًا محددًا لأتحقق من توفر الأداة والبيانات أولًا.`,
-    modelUsed: "local-deterministic-engine",
+    text: "لم يصل رد من Gemini ولم يتم تنفيذ أي أداة. أعد المحاولة بعد التأكد من إعداد الاتصال بالخادم.",
+    modelUsed: "gemini-unavailable",
     roleUsed: selectedRole,
   };
 }
@@ -722,19 +682,19 @@ actually returned a confirmed success result back to you.
 
 export interface CopilotSelfTestResult {
   success: boolean;
-  step: "env_check" | "database_read" | "completed";
+  step: "env_check" | "database_read" | "gemini_request" | "completed";
   message: string;
   details?: Record<string, unknown>;
   latencyMs?: number;
 }
 
 /**
- * Performs a read-only connectivity check against the live catalog. This must
- * not write placeholder metadata or imply that unrelated tool mutations work.
+ * Performs read-only checks against the live catalog and authenticated
+ * server-side Gemini gateway. It does not mutate data or certify every tool.
  */
 export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
   const startTime = Date.now();
-  console.info("[AI Engine Self-Test] 🔍 Starting read-only catalog connectivity check...");
+  console.info("[AI Engine Self-Test] 🔍 Checking Supabase and server-side Gemini connectivity...");
 
   // Check app configuration and real catalog read access; do not mutate data.
   const env = validateEnvironment();
@@ -764,16 +724,54 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
       };
     }
 
+    try {
+      await generateGeminiContent({
+        data: {
+          purpose: "chat",
+          model: "gemini-2.5-flash",
+          contents: "Reply with OK only.",
+          config: {
+            systemInstruction: "Connectivity check. Reply with OK. Do not call any function.",
+            maxOutputTokens: 8,
+            tools: [{
+              functionDeclarations: AI_TOOL_SUITE
+                .filter((tool) => tool.name === "searchProducts" || tool.name === "getCategories")
+                .map((tool) => tool.declaration),
+            }],
+            toolConfig: {
+              functionCallingConfig: { mode: "NONE" },
+            },
+          },
+        },
+      });
+    } catch (geminiError) {
+      const diagnosis = diagnoseGeminiError(geminiError);
+      return {
+        success: false,
+        step: "gemini_request",
+        message: diagnosis.messageAr,
+        details: {
+          supabaseConfigured: true,
+          productsReadable: true,
+          categoriesReadable: true,
+          geminiConnected: false,
+          geminiErrorCode: diagnosis.code,
+        },
+        latencyMs: Date.now() - startTime,
+      };
+    }
+
     const latency = Date.now() - startTime;
-    console.info(`[AI Engine Self-Test] ✅ Read-only catalog connectivity passed in ${latency}ms.`);
+    console.info(`[AI Engine Self-Test] ✅ Supabase and Gemini connectivity passed in ${latency}ms.`);
 
     return {
       success: true,
       step: "completed",
-      message: `نجحت قراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا يختبر عمليات الكتابة أو الأدوات الأخرى (${latency}ms).`,
+      message: `نجح الاتصال بـ Gemini وقراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا ينفذ تغييرات ولا يختبر كل أداة كتابة (${latency}ms).`,
       details: {
         environmentMode: env.mode,
-        geminiConfigured: env.geminiReady,
+        geminiConfigured: true,
+        geminiConnected: true,
         supabaseConfigured: env.supabaseReady,
         productsReadable: true,
         categoriesReadable: true,
