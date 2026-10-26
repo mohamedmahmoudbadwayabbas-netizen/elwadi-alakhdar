@@ -1,20 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Minus, Plus, ShoppingBag, PackageX, SearchX, ChevronRight, Check, AlertTriangle } from "lucide-react";
+import { Minus, Plus, ShoppingBag, PackageX, SearchX, ChevronRight, Check, AlertTriangle, Sparkles, Truck, CreditCard, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-loose";
 import { useCart, type Product } from "@/lib/cart-context";
 import { PRODUCT_COLUMNS, normalizeProduct, useStoreCategories } from "@/lib/store-data-hooks";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { flyToCart } from "@/lib/fly-to-cart";
+import { useAuth } from "@/lib/auth-context";
+import { getProductAdvice } from "@/lib/product-advice.functions";
 
 type PageProduct = Product & { unit?: string | null };
 
@@ -78,7 +74,7 @@ function PriceBlock({ product, qty }: { product: PageProduct; qty: number }) {
     : 0;
   return (
     <div dir="ltr" className="flex flex-wrap items-baseline gap-2 text-left tabular-nums">
-      <span className="font-display text-3xl font-black text-primary">
+      <span className="font-display text-3xl font-black text-accent">
         {fmt(product.price_per_unit)}
       </span>
       <span className="text-sm font-bold text-muted-foreground">
@@ -226,10 +222,14 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
   const min = weighted ? 0.25 : 1;
   const cartQty = items.find((item) => item.product.id === product.id)?.quantity ?? 0;
   const remainingStock = Math.max(0, (product.stock_quantity ?? 0) - cartQty);
-  const max = Math.max(min, weighted ? product.stock_quantity ?? min : remainingStock);
-  const limitReached = !weighted && remainingStock < min;
+  const max = Math.max(min, remainingStock);
+  const limitReached = remainingStock < min;
   const [qty, setQty] = useState(weighted ? 0.5 : 1);
   const [isAdding, setIsAdding] = useState(false);
+  const { user } = useAuth();
+  const [advice, setAdvice] = useState<string | null>(null);
+  const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
+  const [adviceError, setAdviceError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const images = [...new Set([product.image_url, ...(product.images ?? [])].filter((url): url is string => Boolean(url)))];
   const visibleImages = images.filter((url) => !failedImages.includes(url));
@@ -273,8 +273,21 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
     }
   };
 
+  const askProductAssistant = async () => {
+    if (isLoadingAdvice || advice) return;
+    setIsLoadingAdvice(true);
+    setAdviceError(null);
+    try {
+      setAdvice(await getProductAdvice({ data: product.id }));
+    } catch (error) {
+      setAdviceError(error instanceof Error ? error.message : "تعذر الحصول على نصيحة الآن.");
+    } finally {
+      setIsLoadingAdvice(false);
+    }
+  };
+
   return (
-    <main dir="rtl" className="mx-auto max-w-6xl px-4 pb-40 sm:px-6 md:pb-12 lg:px-8">
+    <main dir="rtl" className="mx-auto max-w-7xl px-4 pb-44 sm:px-6 md:pb-12 lg:px-8">
       <nav aria-label="مسار الصفحة" className="flex items-center gap-1 py-4 text-xs text-muted-foreground">
         <Link to="/" className="hover:text-foreground">الرئيسية</Link>
         <ChevronRight className="h-3 w-3 rotate-180" />
@@ -282,8 +295,9 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
         <span className="truncate text-foreground">{product.name_ar || product.name}</span>
       </nav>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-10">
-      <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-border/80 bg-secondary shadow-sm">
+      <div className="grid items-start gap-5 lg:grid-cols-2 lg:gap-8">
+      <div className="lg:col-start-2">
+      <div className="relative aspect-square overflow-hidden rounded-[1.5rem] border border-border/80 bg-secondary shadow-sm lg:aspect-[1.25/1] lg:rounded-[2rem]">
         {currentImage ? (
           <img
             src={currentImage}
@@ -303,6 +317,11 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
             ))}
           </div>
         )}
+        {product.old_price != null && product.old_price > product.price_per_unit && (
+          <span className="absolute top-4 end-4 rounded-full bg-accent px-3.5 py-2 text-xs font-black text-accent-foreground shadow-lg">
+            وفر {Math.round((1 - product.price_per_unit / product.old_price) * 100)}٪
+          </span>
+        )}
         {unavailable ? (
           <span className="absolute top-4 start-4 inline-flex items-center gap-1.5 rounded-full bg-destructive px-3.5 py-2 text-xs font-black text-destructive-foreground shadow-lg">
             <PackageX className="h-4 w-4" /> نفدت الكمية
@@ -317,8 +336,9 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
           </span>
         )}
       </div>
+      </div>
 
-      <section className="space-y-5 rounded-[2rem] border border-border/80 bg-card p-5 shadow-sm sm:p-7 lg:sticky lg:top-6">
+      <section className="space-y-5 lg:col-start-1 lg:row-start-1 lg:self-center lg:px-1">
         <div className="space-y-2">
           {categoryName && <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{categoryName}</span>}
           <h1 className="font-display text-2xl font-black leading-snug sm:text-3xl">{product.name_ar || product.name}</h1>
@@ -333,7 +353,7 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
           </p>
         )}
         {!unavailable && (
-          <div className="hidden items-center gap-3 pt-1 md:flex">
+          <div className="hidden items-center gap-3 pt-1 sm:flex">
             <QuantityStepper value={qty} onChange={setQty} step={step} min={min} max={max} unit={unit} />
             <Button className="h-11 flex-1 rounded-2xl text-base font-black" onClick={(e) => void add(e.currentTarget)} disabled={isAdding || limitReached} aria-busy={isAdding}>
               <ShoppingBag className="me-2 h-5 w-5" /> {isAdding ? "جارٍ التحقق…" : "أضف إلى السلة"}
@@ -342,43 +362,55 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
         )}
         {unavailable && <p className="rounded-2xl border border-destructive/20 bg-destructive/5 p-3 text-sm font-semibold text-destructive">هذا المنتج غير متاح حاليًا. ستجد بدائل من القسم نفسه أسفل الصفحة.</p>}
         {limitReached && !unavailable && <p className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm font-semibold text-amber-800 dark:text-amber-200">أضفت بالفعل كامل الكمية المتاحة لهذا المنتج إلى سلتك.</p>}
-        <div className="grid grid-cols-2 gap-2 border-t border-border pt-4 text-xs font-semibold text-muted-foreground">
-          <div className="flex items-center gap-2 rounded-xl bg-secondary/40 p-3"><Check className="h-4 w-4 shrink-0 text-primary" /><span>وحدة البيع: {unit}</span></div>
-          <div className="flex items-center gap-2 rounded-xl bg-secondary/40 p-3"><Check className="h-4 w-4 shrink-0 text-primary" /><span>{unavailable ? "غير متوفر الآن" : "متاح للإضافة للسلة"}</span></div>
+        <div className="flex flex-wrap gap-2 border-t border-border pt-4 text-xs font-semibold text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-xl bg-secondary/40 p-3"><Truck className="h-4 w-4 shrink-0 text-primary" /><span>حدد عنوانك لمعرفة خيارات التوصيل</span></div>
+          <div className="flex items-center gap-2 rounded-xl bg-secondary/40 p-3"><CreditCard className="h-4 w-4 shrink-0 text-primary" /><span>الدفع عند الاستلام</span></div>
         </div>
       </section>
       </div>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-black text-primary">معلومات الاستخدام والتخزين</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">لا تتوفر حاليًا تعليمات موثقة لهذا المنتج.</p>
+        </section>
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-black text-primary">تفاصيل البيع</h2>
+          <dl className="space-y-3 text-sm">
+            <div className="flex justify-between gap-3"><dt className="font-bold">القسم</dt><dd className="text-muted-foreground">{categoryName || "—"}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="font-bold">وحدة البيع</dt><dd className="text-muted-foreground">{unit}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="font-bold">السعر لكل وحدة</dt><dd className="text-muted-foreground">{fmt(product.price_per_unit)} ج.م / {unit}</dd></div>
+          </dl>
+        </section>
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-black text-primary">الوصف</h2>
+          <p className="leading-relaxed text-muted-foreground">{product.description_ar || product.description || "لا يتوفر وصف لهذا المنتج حاليًا."}</p>
+        </section>
+      </div>
+
+      <section className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="mb-2 text-lg font-black text-primary">نصيحة من مساعد الوادي</h2>
+            {advice ? <p className="leading-relaxed text-muted-foreground" aria-live="polite">{advice}</p> : (
+              <>
+                <p className="text-sm leading-relaxed text-muted-foreground">يولّد Gemini نصيحة خاصة بهذا المنتج اعتمادًا على اسمه ووصفه المسجلين في المتجر.</p>
+                {adviceError && <p role="alert" className="mt-3 text-sm text-destructive">{adviceError}<button type="button" className="ms-2 underline" onClick={() => void askProductAssistant()}>أعد المحاولة</button></p>}
+              </>
+            )}
+          </div>
+          {!advice && (user ? <Button type="button" variant="outline" className="shrink-0 rounded-xl" onClick={() => void askProductAssistant()} disabled={isLoadingAdvice}>
+            {isLoadingAdvice ? <><LoaderCircle className="me-2 h-4 w-4 animate-spin" /> يفكر المساعد…</> : <><Sparkles className="me-2 h-4 w-4" /> احصل على نصيحة</>}
+          </Button> : <Button asChild variant="outline" className="shrink-0 rounded-xl"><Link to="/auth" search={{ next: `/products/${product.id}` }}><Sparkles className="me-2 h-4 w-4" /> سجل الدخول للنصيحة الذكية</Link></Button>)}
+        </div>
+      </section>
 
       {product.category_id && (
         <SimilarProducts categoryId={product.category_id} excludeId={product.id} isSubstitute={unavailable} />
       )}
 
-      <Accordion type="multiple" defaultValue={["description"]} className="mx-auto mt-8 max-w-4xl rounded-3xl border border-border bg-card px-5 sm:px-7">
-        <AccordionItem value="description">
-          <AccordionTrigger className="text-base font-bold">الوصف</AccordionTrigger>
-          <AccordionContent className="leading-relaxed text-muted-foreground">
-            {product.description_ar || product.description || "لا يوجد وصف لهذا المنتج حتى الآن."}
-          </AccordionContent>
-        </AccordionItem>
-        {product.cooking_tip && (
-          <AccordionItem value="tip">
-            <AccordionTrigger className="text-base font-bold">نصيحة الاستخدام</AccordionTrigger>
-            <AccordionContent className="leading-relaxed text-muted-foreground">
-              {product.cooking_tip}
-            </AccordionContent>
-          </AccordionItem>
-        )}
-        <AccordionItem value="details">
-          <AccordionTrigger className="text-base font-bold">تفاصيل البيع</AccordionTrigger>
-          <AccordionContent className="space-y-1 text-muted-foreground">
-            <p>وحدة البيع: {unit}</p>
-            <p>{weighted ? "يُباع بالوزن — قد يختلف الوزن الفعلي قليلاً عند التجهيز." : "يُباع بالقطعة."}</p>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
       {!unavailable && (
-        <div className="fixed inset-x-0 bottom-16 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_32px_-20px_rgba(0,0,0,0.35)] backdrop-blur md:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_32px_-20px_rgba(0,0,0,0.35)] backdrop-blur sm:hidden">
           <div className="flex items-center gap-3">
             <QuantityStepper value={qty} onChange={setQty} step={step} min={min} max={max} unit={unit} />
             <Button className="h-11 flex-1 rounded-2xl font-black" onClick={(e) => void add(e.currentTarget)} disabled={isAdding || limitReached}>
@@ -394,6 +426,7 @@ function ReadyState({ product, unavailable, categoryName }: { product: PageProdu
 }
 
 function SimilarProducts({ categoryId, excludeId, isSubstitute }: { categoryId: string; excludeId: string; isSubstitute: boolean }) {
+  const { addItem } = useCart();
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["similar", categoryId, excludeId],
     queryFn: () => fetchSimilar(categoryId, excludeId),
@@ -414,26 +447,28 @@ function SimilarProducts({ categoryId, excludeId, isSubstitute }: { categoryId: 
       ) : data.length === 0 ? (
         <p className="text-sm text-muted-foreground">لا توجد بدائل متوفرة في هذا القسم حالياً.</p>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <ul className="grid auto-cols-[82%] grid-flow-col gap-3 overflow-x-auto pb-2 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-3 sm:overflow-visible lg:grid-cols-4">
           {data.map((p) => (
             <li key={p.id}>
-              <Link
-                to="/products/$productId"
-                params={{ productId: p.id }}
-                className="block overflow-hidden rounded-2xl border border-border hover:border-primary"
-              >
-                <div className="aspect-square bg-secondary">
-                  {p.image_url && (
-                    <img src={p.image_url} alt={p.name_ar || p.name} loading="lazy" className="h-full w-full object-cover" />
-                  )}
-                </div>
+              <div className="overflow-hidden rounded-2xl border border-border bg-background hover:border-primary">
+                <Link to="/products/$productId" params={{ productId: p.id }} className="block">
+                  <div className="aspect-square bg-secondary">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name_ar || p.name} loading="lazy" className="h-full w-full object-cover" />
+                    ) : <div className="grid h-full place-items-center text-4xl">🌿</div>}
+                  </div>
+                </Link>
                 <div className="p-2">
-                  <p className="line-clamp-2 text-xs font-bold">{p.name_ar || p.name}</p>
-                  <p dir="ltr" className="text-left text-sm font-black text-primary tabular-nums">
-                    {fmt(Number(p.price_per_unit))} ج.م
-                  </p>
+                  <Link to="/products/$productId" params={{ productId: p.id }} className="block min-h-12">
+                    <p className="line-clamp-2 text-xs font-bold">{p.name_ar || p.name}</p>
+                    <p dir="ltr" className="text-left text-sm font-black text-primary tabular-nums">{fmt(Number(p.price_per_unit))} ج.م</p>
+                  </Link>
+                  <Button type="button" size="sm" className="mt-2 w-full rounded-xl" onClick={(event) => {
+                    event.preventDefault(); event.stopPropagation(); addItem(p, 1); flyToCart(event.currentTarget);
+                    toast.success("تمت الإضافة للسلة", { description: p.name_ar || p.name });
+                  }}><ShoppingBag className="me-1 h-4 w-4" /> أضف للسلة</Button>
                 </div>
-              </Link>
+              </div>
             </li>
           ))}
         </ul>
