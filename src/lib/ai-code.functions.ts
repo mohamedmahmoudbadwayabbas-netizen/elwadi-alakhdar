@@ -25,8 +25,7 @@ const SYSTEM_PROMPT = `أنت مهندس واجهات أول (Staff Frontend Eng
 {"summary":"جملة واحدة بالعربية","explanation":"شرح مختصر بالعربية","modifiedCode":"الكود الكامل بعد التعديل"}`;
 
 export const generateFileModification = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: AiCodeModificationPayload) => {
+  .validator((data: AiCodeModificationPayload) => {
     if (!data?.filePath || !data?.prompt?.trim()) throw new Error("filePath and prompt are required");
     return {
       filePath: String(data.filePath),
@@ -34,13 +33,12 @@ export const generateFileModification = createServerFn({ method: "POST" })
       currentCode: String(data.currentCode ?? "").slice(0, 120000),
     };
   })
+  .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }): Promise<AiCodeModificationResponse> => {
     // Admin-only: verified against the user_roles table with the caller's own RLS scope.
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    const { data: role, error: roleError } = await context.supabase.rpc("get_my_role");
+    const normalizedRole = String(role ?? "").toLowerCase();
+    const isAdmin = !roleError && ["admin", "super_admin"].includes(normalizedRole);
     if (!isAdmin) {
       return {
         ok: false,

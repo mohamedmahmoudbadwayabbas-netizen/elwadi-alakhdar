@@ -3,22 +3,6 @@
    Runtime Diagnostics, Live Client Instantiation & Key Validation
    ========================================================================= */
 
-import { GoogleGenAI } from "@google/genai";
-
-export const getGeminiApiKey = (): string | undefined => {
-  const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any)?.env : undefined;
-  const procEnv = typeof process !== "undefined" ? process?.env : undefined;
-
-  const resolved =
-    (metaEnv ? metaEnv.VITE_GEMINI_API_KEY || metaEnv.GEMINI_API_KEY : undefined) ||
-    (procEnv ? procEnv.VITE_GEMINI_API_KEY || procEnv.GEMINI_API_KEY : undefined);
-
-  if (typeof resolved === "string" && resolved.trim().length > 0) {
-    return resolved.trim();
-  }
-  return undefined;
-};
-
 export const getSupabaseUrl = (): string | undefined => {
   const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any)?.env : undefined;
   const procEnv = typeof process !== "undefined" ? process?.env : undefined;
@@ -38,8 +22,18 @@ export const getSupabaseAnonKey = (): string | undefined => {
   const procEnv = typeof process !== "undefined" ? process?.env : undefined;
 
   const resolved =
-    (metaEnv ? metaEnv.VITE_SUPABASE_PUBLISHABLE_KEY || metaEnv.VITE_SUPABASE_ANON_KEY || metaEnv.SUPABASE_PUBLISHABLE_KEY || metaEnv.SUPABASE_ANON_KEY : undefined) ||
-    (procEnv ? procEnv.VITE_SUPABASE_PUBLISHABLE_KEY || procEnv.VITE_SUPABASE_ANON_KEY || procEnv.SUPABASE_PUBLISHABLE_KEY || procEnv.SUPABASE_ANON_KEY : undefined);
+    (metaEnv
+      ? metaEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        metaEnv.VITE_SUPABASE_ANON_KEY ||
+        metaEnv.SUPABASE_PUBLISHABLE_KEY ||
+        metaEnv.SUPABASE_ANON_KEY
+      : undefined) ||
+    (procEnv
+      ? procEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        procEnv.VITE_SUPABASE_ANON_KEY ||
+        procEnv.SUPABASE_PUBLISHABLE_KEY ||
+        procEnv.SUPABASE_ANON_KEY
+      : undefined);
 
   if (typeof resolved === "string" && resolved.trim().length > 0) {
     return resolved.trim();
@@ -47,7 +41,10 @@ export const getSupabaseAnonKey = (): string | undefined => {
   return undefined;
 };
 
-export const isGeminiConfigured = (): boolean => Boolean(getGeminiApiKey());
+// Gemini credentials are intentionally unavailable in browser code. This
+// synchronous diagnostic therefore reports no client-side key; actual server
+// configuration is checked by the server function for each request.
+export const isGeminiConfigured = (): boolean => false;
 
 export const isSupabaseConfigured = (): boolean => {
   const url = getSupabaseUrl() || "";
@@ -70,19 +67,21 @@ export function validateEnvironment(): DiagnosticEnvironmentStatus {
   const warnings: string[] = [];
 
   if (!geminiReady) {
-    const warn = "[AI Engine Diagnostics] GEMINI_API_KEY / VITE_GEMINI_API_KEY is not set. Free-form Gemini replies are unavailable; catalog actions still require verified Supabase reads.";
-    console.warn(warn);
+    const warn =
+      "[AI Engine Diagnostics] No Gemini key is exposed to the browser. Server-side GEMINI_API_KEY availability is checked per request.";
+    console.info(warn);
     warnings.push(warn);
-  } else {
-    console.info("[AI Engine Diagnostics] Gemini Generative AI SDK key validated and active.");
   }
 
   if (!supabaseReady) {
-    const warn = "[AI Engine Diagnostics] Supabase configuration is missing or a placeholder. Store-data reads and database mutations fail closed; no mock catalog is used.";
+    const warn =
+      "[AI Engine Diagnostics] Supabase configuration is missing or a placeholder. Store-data reads and database mutations fail closed; no mock catalog is used.";
     console.warn(warn);
     warnings.push(warn);
   } else {
-    console.info("[AI Engine Diagnostics] Supabase configuration is present; each database-backed tool must still confirm its own read or write result.");
+    console.info(
+      "[AI Engine Diagnostics] Supabase configuration is present; each database-backed tool must still confirm its own read or write result.",
+    );
   }
 
   let mode: "full_live" | "gemini_only" | "supabase_only" | "local_mock" = "local_mock";
@@ -119,57 +118,64 @@ export interface GeminiApiErrorInfo {
   isNotFoundError: boolean;
   isRateLimitError: boolean;
   messageAr: string;
-  rawError: string;
 }
 
 export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
   const errorStr = String(err?.message || err?.statusText || err || "");
-  const status = Number(err?.status || err?.statusCode || (errorStr.match(/(\b401\b|\b404\b|\b429\b|\b500\b|\b503\b)/)?.[0] || 0)) || null;
+  const status =
+    Number(
+      err?.status ||
+        err?.statusCode ||
+        errorStr.match(/(\b401\b|\b404\b|\b429\b|\b500\b|\b503\b)/)?.[0] ||
+        0,
+    ) || null;
 
-  const isAuthError = status === 401 || errorStr.includes("API_KEY_INVALID") || errorStr.includes("unauthenticated") || errorStr.includes("401");
-  const isNotFoundError = status === 404 || errorStr.includes("models/") || errorStr.includes("not found") || errorStr.includes("404");
-  const isRateLimitError = status === 429 || errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("quota") || errorStr.includes("rate limit") || errorStr.includes("429");
+  const isAuthError =
+    status === 401 ||
+    errorStr.includes("API_KEY_INVALID") ||
+    errorStr.includes("unauthenticated") ||
+    errorStr.includes("401");
+  const isNotFoundError =
+    status === 404 ||
+    errorStr.includes("models/") ||
+    errorStr.includes("not found") ||
+    errorStr.includes("404");
+  const isRateLimitError =
+    status === 429 ||
+    errorStr.includes("RESOURCE_EXHAUSTED") ||
+    errorStr.includes("quota") ||
+    errorStr.includes("rate limit") ||
+    errorStr.includes("429");
 
   let messageAr = "حدث خطأ غير متوقع أثناء استدعاء نموذج Gemini.";
   if (isAuthError) {
-    messageAr = "مفتاح Gemini API غير صالح أو منتهي الصلاحية (HTTP 401). يرجى التحقق من متغير البية GEMINI_API_KEY.";
-    console.error("[AI Engine Diagnostics] 🔴 HTTP 401 Unauthorized: Invalid Gemini API key provided.", err);
+    messageAr =
+      "مفتاح Gemini API غير صالح أو منتهي الصلاحية (HTTP 401). يرجى التحقق من متغير البية GEMINI_API_KEY.";
+    console.error("[AI Engine Diagnostics] Gemini authentication failed (HTTP 401).");
   } else if (isNotFoundError) {
-    messageAr = "النموذج المطلوب غير متاح أو قديم (HTTP 404). جاري التحويل التلقائي لنموذج الإنتاج البديل (gemini-2.0-flash).";
-    console.error("[AI Engine Diagnostics] 🔴 HTTP 404 Not Found: Model endpoint not found or deprecated.", err);
+    messageAr =
+      "النموذج المطلوب غير متاح أو قديم (HTTP 404). جاري التحويل التلقائي لنموذج الإنتاج البديل (gemini-2.0-flash).";
+    console.error("[AI Engine Diagnostics] Requested Gemini model was not found (HTTP 404).");
   } else if (isRateLimitError) {
-    messageAr = "تم تجاوز حد الطلبات المسموح به لـ Gemini API مؤقتاً (HTTP 429). جاري التحويل لمحرك القواعد المحلي الفوري.";
-    console.warn("[AI Engine Diagnostics] 🟡 HTTP 429 Rate Limit / Quota Exceeded. Fallback engaged.", err);
+    messageAr =
+      "تم تجاوز حد الطلبات المسموح به لـ Gemini API مؤقتاً (HTTP 429). جاري التحويل لمحرك القواعد المحلي الفوري.";
+    console.warn("[AI Engine Diagnostics] Gemini quota or rate limit reached (HTTP 429).");
   } else {
-    console.error("[AI Engine Diagnostics] 🔴 Gemini API Error:", err);
+    console.error("[AI Engine Diagnostics] Gemini request failed.");
   }
 
   return {
     statusCode: status,
-    code: isAuthError ? "AUTH_401" : isNotFoundError ? "MODEL_404" : isRateLimitError ? "RATE_429" : "GENERIC_ERROR",
+    code: isAuthError
+      ? "AUTH_401"
+      : isNotFoundError
+        ? "MODEL_404"
+        : isRateLimitError
+          ? "RATE_429"
+          : "GENERIC_ERROR",
     isAuthError,
     isNotFoundError,
     isRateLimitError,
     messageAr,
-    rawError: errorStr,
   };
 }
-
-// Lazy initialization of GenAI SDK
-let genAIInstance: GoogleGenAI | null = null;
-export function getGenAI(): GoogleGenAI | null {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) return null;
-  if (!genAIInstance) {
-    genAIInstance = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-  }
-  return genAIInstance;
-}
-

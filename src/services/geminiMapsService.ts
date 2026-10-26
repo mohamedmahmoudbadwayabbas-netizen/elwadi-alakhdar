@@ -1,32 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-
-// Detect Gemini API Key
-const getGeminiApiKey = (): string | undefined => {
-  if (typeof process !== "undefined" && process.env?.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
-  }
-  if (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) {
-    return (import.meta as any).env.VITE_GEMINI_API_KEY;
-  }
-  return undefined;
-};
-
-let genAIInstance: GoogleGenAI | null = null;
-function getGenAI(): GoogleGenAI | null {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) return null;
-  if (!genAIInstance) {
-    genAIInstance = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-  }
-  return genAIInstance;
-}
+import { generateGeminiContent } from "@/lib/gemini.functions";
 
 export interface PlaceGroundingResult {
   title?: string;
@@ -48,20 +20,6 @@ export async function queryGoogleMapsGrounding(
   prompt: string,
   userLocation?: { latitude: number; longitude: number },
 ): Promise<MapsGroundingResponse> {
-  const ai = getGenAI();
-  if (!ai) {
-    return {
-      answer: `📍 **بيانات خرائط Google الذكية للمنطقة:**\nتم فحص وتحديد الموقع الجغرافي وتأكيد نطاق التغطية وتوفر خطوط السير والتوصيل السريع.`,
-      places: [
-        {
-          title: "موقع المتجر الرئيسي — القاهرة / الجيزة",
-          uri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Cairo, Egypt")}`,
-        },
-      ],
-      modelUsed: "offline-maps-engine",
-    };
-  }
-
   try {
     const configObj: {
       tools: Array<{ googleMaps: Record<string, never> }>;
@@ -85,10 +43,13 @@ export async function queryGoogleMapsGrounding(
       };
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: configObj,
+    const response = await generateGeminiContent({
+      data: {
+        purpose: "maps",
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: configObj,
+      },
     });
 
     const places: PlaceGroundingResult[] = [];
@@ -116,29 +77,19 @@ export async function queryGoogleMapsGrounding(
     }
 
     return {
-      answer: response.text || "تم التحقق من بيانات الخريطة وتحديد الموقع بنجاح.",
-      places:
+      answer:
         places.length > 0
-          ? places
-          : [
-              {
-                title: "استعراض الموقع على Google Maps",
-                uri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Cairo, Egypt")}`,
-              },
-            ],
-      modelUsed: "gemini-3.5-flash",
+          ? response.text || "أعادت خرائط Google المواقع الظاهرة أدناه."
+          : "لم تُرجع خرائط Google أي موقع موثق لهذا البحث، لذلك لا أستطيع تأكيد موقع أو نطاق توصيل.",
+      places,
+      modelUsed: "gemini-2.5-flash",
     };
   } catch (err) {
-    console.warn("Google Maps Grounding API error:", err);
+    console.warn("Google Maps Grounding API request failed.");
     return {
-      answer: `📍 **بيانات خرائط Google الذكية:**\nتم تحديد الموقع بنجاح واستخراج بيانات التوصيل للمنطقة المحددة.`,
-      places: [
-        {
-          title: "موقع المتجر ومسارات التوصيل",
-          uri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Cairo, Egypt")}`,
-        },
-      ],
-      modelUsed: "fallback-maps",
+      answer: "فشل الاتصال بخرائط Google، لذلك لم أتمكن من التحقق من المواقع أو التوصيل.",
+      places: [],
+      modelUsed: "unavailable",
     };
   }
 }

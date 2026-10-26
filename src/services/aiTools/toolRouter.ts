@@ -329,10 +329,18 @@ export function routeCommandToTool(
     else if (c.includes("بنفسجي") || c.includes("purple")) prim = "#7C3AED";
     return { tool: "updateThemeColors", args: { primary: prim, accent: "#B6502E", mode } };
   }
-  if (c.includes("أضف منتج") || c.includes("إضافة منتج") || c.includes("منتج جديد")) {
-    const priceMatch = command.match(/\d+/);
-    const nameMatch = command.replace(/أضف منتج|إضافة منتج|بسعر|\d+|جنية|جنيه|ج\.م/g, "").trim();
-    return { tool: "manageProduct", args: { action: "create", data: { name: nameMatch || "منتج طازج جديد", price_per_unit: priceMatch ? Number(priceMatch[0]) : 45 } } };
+  const productCreateMatch = command.match(/(?:أضف|اضف|ضيف|ضيفلي|إضافة|اضافة|سجل|أنشئ|انشئ)\s+(?:لي\s+)?(?:منتج|صنف)\s+(.+)/i);
+  if (productCreateMatch) {
+    // Never invent a selling price in the deterministic fallback. The model
+    // can request a missing field when available; otherwise ask the admin.
+    const normalized = productCreateMatch[1].replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+    const priceMatch = normalized.match(/(?:بسعر|سعره|بـ|ب)\s*(\d+(?:\.\d+)?)/i);
+    const name = normalized
+      .replace(/(?:بسعر|سعره|بـ|ب)\s*\d+(?:\.\d+)?\s*(?:جنيه|جنية|ج\.م|ج)?/i, "")
+      .replace(/\d+(?:\.\d+)?\s*(?:جنيه|جنية|ج\.م|ج)/i, "")
+      .trim();
+    if (!name || !priceMatch || Number(priceMatch[1]) <= 0) return null;
+    return { tool: "manageProduct", args: { action: "create", data: { name, price: Number(priceMatch[1]) } } };
   }
 
   // Read-only catalog lookups (checked last so they never shadow the WRITE
