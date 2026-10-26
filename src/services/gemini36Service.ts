@@ -4,6 +4,7 @@
    ========================================================================= */
 
 import { supabase } from "@/integrations/supabase/client";
+import { supabase as supabaseLoose } from "@/lib/supabase-loose";
 import {
   getGenAI,
   getGeminiApiKey,
@@ -170,10 +171,53 @@ const ROLE_PROMPTS: Record<GeminiRoleChoice, string> = {
 
 const CUSTOMER_SHOPPING_DIRECTIVE = `
 أنت مساعد تسوق ذكي لعملاء سوبرماركت الوادي الأخضر. ساعد العميل في تخطيط الوجبات وقوائم المشتريات وفق عدد الأشخاص والميزانية والتفضيلات التي يذكرها.
-استخدم أدوات البحث والقراءة المتاحة للعثور على المنتجات وأسعارها الحالية قبل اقتراحها. لا تخترع منتجاً أو سعراً أو توافراً. إذا لم تذكر الميزانية أو عدد الأشخاص وكان ذلك مهماً، اسأل سؤالاً موجزاً؛ وإلا اقترح خطة أولية واضحة.
+قبل أي إجابة تتضمن منتجات المتجر أو أسعارها أو توفرها، استدعِ searchProducts واقرأ نتيجة Supabase الفعلية. لا تعتمد على الذاكرة أو معلومات عامة أو ملفات الواجهة كمصدر للكتالوج. إذا فشل اتصال Supabase أو لم تظهر نتيجة قراءة ناجحة، قل إنك لم تستطع التحقق ولا تقترح أسماء أو أسعار منتجات. لا تخترع منتجاً أو سعراً أو توافراً.
+خطط الوجبة من المنتجات التي أعادها البحث الناجح فقط. إذا كانت النتائج فارغة، أخبر العميل بذلك واطلب أسماء بديلة أو اقترح إعادة البحث؛ لا تسرد بدائل غير مقروءة من Supabase.
+لا تعرض منتجاً على أنه متاح إذا كان مخزونه صفراً أو غير معروف؛ استخدم فقط السجلات التي تُظهر كمية مخزون موجبة.
 وازن القائمة داخل الميزانية مع ذكر الكميات التقريبية والتكلفة المحسوبة اعتماداً على نتائج المتجر، واشرح أي بدائل عند عدم توفر عنصر. لا تضف شيئاً إلى السلة ولا تنفذ أي تغيير؛ اعرض الاقتراح ودع العميل يضيف المنتجات بنفسه.
 تحدث بالعربية الطبيعية وباختصار، وقدّم الإجابة على هيئة خطة وجبة وقائمة منتجات وإجمالي تقريبي مع توضيح حدود التقدير.
 `;
+
+function requiredStoreRead(message: string, customerExperience: boolean): AiToolName | "unsupported" | null {
+  const text = message.toLowerCase();
+  if (/عميل|عملاء|بيانات المتجر|إعدادات المتجر|اعدادات المتجر|مخزن|مخازن|توصيل|منطقة|مناطق|كوبون|عروض المتجر|store settings|delivery zone|warehouse|customer details/i.test(text)) {
+    return "unsupported";
+  }
+  if (/منتج|منتجات|سلع|جبن|جبنة|لبن|سعر|أسعار|بكام|متوفر|مخزون|كمية|كتالوج|product|price|stock|available/i.test(text) ||
+    customerExperience && /فطار|إفطار|غداء|عشاء|وجبة|ميزانية|احتياجات|عايز|عايزة|محتاج|محتاجة|رشح|اقترح|قائمة|اشتري|شراء|breakfast|lunch|dinner|meal|budget|recommend|shopping/i.test(text)) {
+    return "searchProducts";
+  }
+  if (customerExperience && !/^(مرحبا|أهلاً|اهلا|السلام عليكم|شكرا|شكرًا|hi|hello|thanks)[!.؟\s]*$/i.test(text)) {
+    return "searchProducts";
+  }
+  if (/قسم|أقسام|تصنيف|فئة|category|categories/i.test(text)) return "getCategories";
+  if (/طلب|طلبات|أوردر|اوردر|مبيعات|إيراد|تقرير|order|sales|revenue/i.test(text)) {
+    return "exportReportsAndAnalytics";
+  }
+  return null;
+}
+
+function isReadOnlyStoreRequest(message: string): boolean {
+  if (/^(هل|هل يمكن|ممكن|أقدر|اقدر|should i|can i|is it possible)/i.test(message.trim())) return true;
+  if (/\b(add|create|update|delete|remove)\b|أضف|اضف|ضيف|إضافة|اضافة|أنشئ|انشئ|إنشاء|انشاء|حدّث|حدث|تعديل|عدّل|عدل|احذف|حذف|امسح/i.test(message)) return false;
+  return /\b(show|list|find|search|what|how much|is there|available|price|stock)\b|هل|ما |ماذا|كم|بكام|كام سعر|اعرض|وريني|ابحث|متوفر|عندكم|عندنا|معلومات|تفاصيل|اعرف/i.test(message);
+}
+
+function hasSuccessfulSupabaseRead(steps: ExecutedToolStep[], requiredTool: AiToolName | "unsupported"): boolean {
+  if (requiredTool === "unsupported") return false;
+  return steps.some((step) => {
+    if (step.tool === requiredTool && step.isWrite === false) return step.res.ok === true;
+    // Catalog mutation tools perform their own fail-closed Supabase preflight
+    // to prevent duplicate creation and stale-record edits.
+    const resultData = step.res.data as Record<string, unknown> | undefined;
+    if (requiredTool === "searchProducts" && step.tool === "manageProduct" && resultData?.catalogPreflight === true) return true;
+    if (requiredTool === "getCategories" && step.tool === "manageCategories" && resultData?.categoryPreflight === true) return true;
+    return false;
+  });
+}
+
+const UNVERIFIED_STORE_DATA_REPLY =
+  "لم أستطع التحقق من هذه المعلومة بقراءة ناجحة من قاعدة بيانات المتجر، لذلك لن أخمّن. تأكد من اتصال Supabase ثم أعد المحاولة.";
 
 // Production model fallback sequence
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
@@ -428,7 +472,7 @@ actually returned a confirmed success result back to you.
           },
         };
 
-        if (useGrounding) {
+        if (useGrounding && !requiredStoreRead(message, customerExperience)) {
           config.tools.push({ googleSearch: {} });
         }
 
@@ -491,6 +535,24 @@ actually returned a confirmed success result back to you.
             const toolArgs = (fc.args || {}) as Record<string, unknown>;
             const isWrite = isWriteToolName(toolName);
 
+            const requiredRead = requiredStoreRead(message, customerExperience);
+            if (isWrite && (requiredRead === "unsupported" || requiredRead && isReadOnlyStoreRequest(message))) {
+              const rejected: ToolExecutionResult = {
+                tool: toolName,
+                ok: false,
+                success: false,
+                messageAr: "هذا الطلب استعلام عن بيانات؛ لم أنفذ أي تعديل. أحتاج إلى قراءة Supabase المناسبة أولاً.",
+              };
+              steps.push({ tool: toolName, args: toolArgs, res: rejected, isWrite: true });
+              functionResponseParts.push({
+                functionResponse: {
+                  name: toolName,
+                  response: { ok: false, success: false, messageAr: rejected.messageAr, data: null, error: null, verified: false },
+                },
+              });
+              continue;
+            }
+
             console.info(
               `[AI Engine] ⚡ Step ${stepIdx + 1}/${MAX_TOOL_STEPS}: invoking ${isWrite ? "WRITE" : "READ"} tool "${toolName}"`,
               toolArgs,
@@ -526,6 +588,45 @@ actually returned a confirmed success result back to you.
           }
         }
 
+        const requiredRead = requiredStoreRead(message, customerExperience);
+        if (requiredRead && !hasSuccessfulSupabaseRead(steps, requiredRead)) {
+          return {
+            text: UNVERIFIED_STORE_DATA_REPLY,
+            modelUsed: currentModel,
+            roleUsed: selectedRole,
+            toolResults: steps.length > 0 ? steps.map((s) => s.res) : undefined,
+          };
+        }
+
+        if (requiredRead === "searchProducts") {
+          const verifiedMatches = steps.flatMap((step) => {
+            if (step.tool !== "searchProducts" || step.res.ok !== true) return [];
+            const data = step.res.data as { results?: unknown[] } | undefined;
+            return data?.results ?? [];
+          });
+          const availableMatches = verifiedMatches.filter((product: any) => Number(product.stock) > 0);
+          const verifiedCatalogPreflight = steps.some((step) =>
+            step.tool === "manageProduct" &&
+            (step.res.data as Record<string, unknown> | undefined)?.catalogPreflight === true,
+          );
+          if (customerExperience && verifiedMatches.length > 0 && availableMatches.length === 0) {
+            return {
+              text: "تحققت من نتائج البحث في Supabase، لكن المنتجات المطابقة لا يظهر لها مخزون موجب حالياً، لذلك لن أوصي بإضافتها إلى قائمتك.",
+              modelUsed: currentModel,
+              roleUsed: selectedRole,
+              toolResults: steps.map((s) => s.res),
+            };
+          }
+          if (!verifiedMatches.length && !verifiedCatalogPreflight) {
+            return {
+              text: "قرأت الكتالوج الحالي من Supabase ولم أجد منتجاً مطابقاً لهذا البحث، لذلك لن أقترح منتجاً أو سعراً من الذاكرة.",
+              modelUsed: currentModel,
+              roleUsed: selectedRole,
+              toolResults: steps.map((s) => s.res),
+            };
+          }
+        }
+
         const finalized = finalizeResponse(steps, finalModelText);
 
         return {
@@ -556,12 +657,20 @@ actually returned a confirmed success result back to you.
   // 2. Local Deterministic NLP Router Fallback
   const routed = routeCommandToTool(message);
   if (routed) {
+    const requiredRead = requiredStoreRead(message, customerExperience);
+    if (requiredRead && routed.tool !== requiredRead) {
+      return { text: UNVERIFIED_STORE_DATA_REPLY, modelUsed: "local-deterministic-engine", roleUsed: selectedRole };
+    }
     const res = await executeAiTool(routed.tool, routed.args, ctx);
     const isWrite = isWriteToolName(routed.tool);
     const finalized = finalizeResponse(
       [{ tool: routed.tool, args: routed.args, res, isWrite }],
       "",
     );
+
+    if (requiredRead && !res.ok) {
+      return { text: UNVERIFIED_STORE_DATA_REPLY, modelUsed: "local-deterministic-engine", roleUsed: selectedRole, toolResult: res, toolResults: [res] };
+    }
 
     return {
       text: finalized.text,
@@ -800,101 +909,147 @@ export async function parseAdminCommandToLayoutUpdate(
 /* ───────────────────────── generateExecutiveSummary ───────────────────────── */
 
 export async function generateExecutiveSummary(
-  kpis: ExecutiveKpiInput,
+  _kpis: ExecutiveKpiInput,
 ): Promise<ExecutiveSummaryResult> {
-  const isZeroState = (kpis.totalOrders || 0) === 0 && (kpis.totalRevenue || 0) === 0;
+  if (!isSupabaseConfigured()) throw new Error("تعذر إنشاء التقرير لأن اتصال Supabase غير مهيأ.");
 
-  if (isZeroState) {
-    return {
-      headline: "لا توجد طلبات مسجلة حالياً في قاعدة البيانات — المتجر جاهز لاستقبال الطلبات",
-      overallHealthScore: 100,
-      insights: [
-        "إجمالي الطلبات والمبيعات الحالية: 0 ج.م (قاعدة البيانات فارغة أو لا توجد طلبات اليوم).",
-        `تصنيف المنتجات الأكثر وفرة: ${kpis.topSellingCategory || "غير محدد"}.`,
-        "أضف منتجاتك وأقسامك الحقيقية ثم ستظهر كل المؤشرات الفعلية هنا تلقائياً.",
-      ],
-      actionableTips: [
-        {
-          title: "إضافة المنتجات الحقيقية للكتالوج",
-          description: "ابدأ بإدخال منتجاتك وأسعارها ومخزونها الفعلي من لوحة المنتجات.",
-          impact: "Urgent",
-          category: "Inventory",
-          quickActionLabel: "إدارة المنتجات",
-          quickActionCommand: "افتح لوحة المنتجات لإضافة منتج جديد",
-        },
-        {
-          title: "تجهيز أول حملة تسويقية",
-          description: "بعد إضافة المنتجات فعّل كود خصم أو عرض ساعات ذهبية لجذب أول الطلبات.",
-          impact: "High",
-          category: "Marketing",
-          quickActionLabel: "تفعيل عرض",
-          quickActionCommand: "فعّل عداد عروض الساعات الذهبية لمدة 4 ساعات",
-        },
-      ],
-    };
-  }
+  const readAll = async <T,>(readPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>) => {
+    const rows: T[] = [];
+    const pageSize = 500;
+    for (let from = 0; from < 50_000; from += pageSize) {
+      const { data, error } = await readPage(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < pageSize) return rows;
+    }
+    throw new Error("تجاوزت قراءة التقرير الحد الآمن؛ لم أعرض أرقاماً جزئية.");
+  };
 
-  const health = Math.max(
-    40,
-    Math.min(100, 70 + Math.min(kpis.totalOrders, 25) - (kpis.lowStockCount > 0 ? 5 : 0)),
-  );
+  const [orders, products] = await Promise.all([
+    readAll((from, to) => supabaseLoose.from("orders").select("id,total_amount,status,created_at").range(from, to)),
+    readAll((from, to) => supabaseLoose.from("products").select("id,name,name_ar,stock,is_active").eq("is_active", true).range(from, to)),
+  ]);
+  const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recentOrders = orders.filter((order: any) => order.status !== "cancelled" && new Date(order.created_at).getTime() >= since);
+  const totalRevenue = recentOrders.reduce((sum: number, order: any) => sum + (Number(order.total_amount) || 0), 0);
+  const averageOrderValue = recentOrders.length ? totalRevenue / recentOrders.length : 0;
+  const lowStockProducts = products.filter((product: any) => Number(product.stock ?? 0) > 0 && Number(product.stock) <= 10);
+  const outOfStockProducts = products.filter((product: any) => Number(product.stock ?? 0) <= 0);
+  const health = Math.max(40, Math.min(100, 70 + Math.min(recentOrders.length, 25) - (lowStockProducts.length ? 5 : 0) - outOfStockProducts.length));
 
   return {
-    headline: `أداء المتجر: ${(kpis.totalRevenue || 0).toFixed(0)} ج.م من ${kpis.totalOrders} طلب`,
+    headline: `آخر 30 يوماً في Supabase: ${recentOrders.length} طلب، بإيراد ${totalRevenue.toFixed(2)} ج.م`,
     overallHealthScore: health,
     insights: [
-      `حقق المتجر ${kpis.totalOrders} طلباً بمتوسط قيمة سلة ${(kpis.averageOrderValue || 0).toFixed(1)} ج.م.`,
-      `تصنيف «${kpis.topSellingCategory || "عام"}» يتصدر النشاط.`,
-      kpis.lowStockCount > 0
-        ? `يوجد ${kpis.lowStockCount} منتج وصل لحد إعادة الطلب ويحتاج لتجديد المخزون.`
-        : "المخزون متوازن ومستقر بالكامل دون نواقص حرجة.",
+      `متوسط قيمة الطلب في البيانات المقروءة: ${averageOrderValue.toFixed(2)} ج.م.`,
+      `قرأت ${products.length} منتجاً نشطاً من Supabase؛ منها ${lowStockProducts.length} منخفض المخزون و${outOfStockProducts.length} نافد.`,
+      recentOrders.length ? "الأرقام محسوبة من سجلات الطلبات غير الملغاة خلال آخر 30 يوماً." : "لم تُرجع Supabase طلبات غير ملغاة خلال آخر 30 يوماً.",
     ],
     actionableTips: [
       {
-        title: "إعادة تزويد الأصناف الأسرع مبيعاً",
-        description: "قم بزيادة كميات السلع الأكثر طلباً لتفادي نفاد المخزون أثناء أوقات الذروة.",
-        impact: "High",
+        title: lowStockProducts.length || outOfStockProducts.length ? "مراجعة المنتجات منخفضة المخزون" : "متابعة المخزون المسجل",
+        description: `قراءة Supabase الحالية تُظهر ${lowStockProducts.length} منتجاً منخفض المخزون و${outOfStockProducts.length} منتجاً نافداً.`,
+        impact: lowStockProducts.length || outOfStockProducts.length ? "Urgent" : "Medium",
         category: "Inventory",
-        quickActionLabel: "تحديث المخزون",
-        quickActionCommand: "افتح لوحة المنتجات لمراجعة النواقص",
+        quickActionLabel: "إدارة المنتجات",
+        quickActionCommand: "افتح لوحة المنتجات لمراجعة المخزون المسجل",
       },
       {
-        title: "إطلاق حملة تنشيط السلات",
-        description: "تفعيل كود خصم على المنتجات لرفع معدل تكرار الشراء وتفريغ السلات المتروكة.",
-        impact: "Urgent",
-        category: "Marketing",
-        quickActionLabel: "تفعيل العرض",
-        quickActionCommand: "فعّل عداد عروض الساعات الذهبية لمدة 4 ساعات",
+        title: "مراجعة أداء الطلبات",
+        description: `تعرض القراءة ${recentOrders.length} طلباً غير ملغى خلال آخر 30 يوماً، بإيراد مسجل قدره ${totalRevenue.toFixed(2)} ج.م.`,
+        impact: "Medium",
+        category: "Operations",
+        quickActionLabel: "عرض الطلبات",
+        quickActionCommand: "افتح لوحة الطلبات لمراجعة السجلات",
       },
     ],
   };
 }
-
 /* ───────────────────────── generateAbandonedCartRecovery ───────────────────────── */
 
 export async function generateAbandonedCartRecovery(
   cart: AbandonedCartData,
 ): Promise<AbandonedCartDraftResult> {
-  const coupon = cart.couponSuggested || "SAVE10";
-  const name = cart.customerName || "عزيزنا العميل";
+  if (!isSupabaseConfigured()) throw new Error("تعذر التحقق من السلة لأن Supabase غير متصل.");
+  const userId = cart.id.startsWith("cart-") ? cart.id.slice("cart-".length) : "";
+  if (!userId) throw new Error("معرّف السلة لا يشير إلى مستخدم موثق في Supabase.");
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: cartRows, error: cartError } = await supabaseLoose
+    .from("cart_items")
+    .select("id,user_id,product_id,quantity,created_at")
+    .eq("user_id", userId)
+    .lt("created_at", cutoff);
+  if (cartError) throw new Error(`تعذر إعادة قراءة السلة من Supabase: ${cartError.message}`);
+  if (!cartRows?.length) throw new Error("لم تعد هناك سلة متروكة مطابقة في Supabase.");
 
+  const productIds = [...new Set(cartRows.map((row: any) => row.product_id).filter(Boolean))];
+  const lastActivity = Math.max(...cartRows.map((row: any) => new Date(row.created_at ?? 0).getTime()));
+  const [profileResult, productsResult, ordersResult] = await Promise.all([
+    supabaseLoose.from("profiles").select("id,full_name,phone").eq("id", userId).maybeSingle(),
+    supabaseLoose.from("products").select("id,name,name_ar,price,is_active").in("id", productIds).eq("is_active", true),
+    supabaseLoose.from("orders").select("id").eq("user_id", userId).gte("created_at", new Date(lastActivity).toISOString()).limit(1),
+  ]);
+  if (profileResult.error) throw new Error(`تعذر قراءة ملف العميل من Supabase: ${profileResult.error.message}`);
+  if (productsResult.error) throw new Error(`تعذر قراءة منتجات السلة من Supabase: ${productsResult.error.message}`);
+  if (ordersResult.error) throw new Error(`تعذر التحقق من الطلبات الحديثة في Supabase: ${ordersResult.error.message}`);
+  if (ordersResult.data?.length) throw new Error("أُنشئ طلب بعد آخر نشاط للسلة؛ لم أجهز رسالة استرداد.");
+  if (!profileResult.data?.phone) throw new Error("لا يوجد رقم هاتف موثق لهذا العميل في Supabase.");
+
+  const productMap = new Map((productsResult.data ?? []).map((product: any) => [product.id, product]));
+  if (cartRows.some((row: any) => !row.product_id || !productMap.has(row.product_id))) {
+    throw new Error("بعض منتجات السلة لم تعد نشطة أو لم يمكن التحقق منها في Supabase.");
+  }
+  const items = cartRows.map((row: any) => {
+    const product = productMap.get(row.product_id)!;
+    return { name: product.name_ar || product.name, lineTotal: Number(product.price || 0) * Number(row.quantity || 0) };
+  });
+  const total = items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const name = profileResult.data.full_name || "عميل المتجر";
+  let verifiedCoupon: { code: string; discount_type: string; discount_value: number } | null = null;
+  const requestedCode = cart.couponSuggested?.trim().toUpperCase();
+  if (requestedCode) {
+    const { data: couponRow, error } = await supabaseLoose
+      .from("coupons")
+      .select("code,discount_type,discount_value,expires_at,is_active,first_order_only,max_uses,uses_count,min_order_amount")
+      .eq("code", requestedCode)
+      .maybeSingle();
+    if (error) throw new Error(`تعذر التحقق من كوبون الخصم في Supabase: ${error.message}`);
+    const isLive = couponRow?.is_active && (!couponRow.expires_at || new Date(couponRow.expires_at).getTime() > Date.now());
+    const underUseLimit = couponRow?.max_uses == null || Number(couponRow.uses_count) < Number(couponRow.max_uses);
+    const meetsMinimum = couponRow?.min_order_amount == null || total >= Number(couponRow.min_order_amount);
+    let firstOrderEligible = true;
+    if (couponRow?.first_order_only && userId) {
+      const { data: previousOrders, error: ordersError } = await supabaseLoose.from("orders").select("id").eq("user_id", userId).limit(1);
+      if (ordersError) throw new Error(`تعذر التحقق من أهلية الكوبون في Supabase: ${ordersError.message}`);
+      firstOrderEligible = !previousOrders?.length;
+    } else if (couponRow?.first_order_only) {
+      firstOrderEligible = false;
+    }
+    if (couponRow && isLive && underUseLimit && meetsMinimum && firstOrderEligible) verifiedCoupon = couponRow;
+  }
+
+  const couponLine = verifiedCoupon
+    ? `كود خصم متاح حسب بيانات المتجر: *${verifiedCoupon.code}* (${verifiedCoupon.discount_type === "percentage" ? `خصم ${verifiedCoupon.discount_value}%` : `خصم ${verifiedCoupon.discount_value} ج.م`}).`
+    : "";
+  const cartSummary = `سلتك تحتوي على (${items.slice(0, 2).map((item) => item.name).join("، ")}) بقيمة ${total.toFixed(2)} ج.م.`;
   const message = `أهلاً بك يا ${name} 👋 من سوبرماركت الوادي الأخضر 🌿
 
-سلتك تحتوي على (${cart.itemsList?.slice(0, 2).join("، ") || "منتجات طازجة مختارة"}) بقيمة ${cart.totalPrice.toFixed(2)} ج.م.
+${cartSummary}
 
-خصّصنا لك كود خصم فوري 🎁 *${coupon}* (10% خصم إضافي) عند إتمام الطلب الآن!
+${couponLine}
 
-أكمل طلبك واستلم خلال 45 دقيقة: https://alwadi-alakhdar.eg/cart?coupon=${coupon}`;
+راجع سلتك وأكمل طلبك من صفحة المتجر: ${typeof window !== "undefined" ? `${window.location.origin}/cart` : "صفحة السلة"}`;
 
-  const cleanPhone = (cart.phone || "01000000000").replace(/[^0-9]/g, "");
+  const cleanPhone = profileResult.data.phone.replace(/[^0-9]/g, "");
   const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;
   const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 
   return {
     messageText: message,
     whatsappUrl,
-    suggestedDiscountCode: coupon,
-    strategy: "استرداد قائم على الحافز السعري والسرعة اللوجستية",
+    suggestedDiscountCode: verifiedCoupon?.code || "",
+    strategy: verifiedCoupon ? "مسودة تتضمن كوبوناً تم التحقق من صلاحيته من Supabase" : "تذكير محايد بلا خصم أو موعد تسليم غير مؤكد",
   };
 }
 
@@ -903,30 +1058,49 @@ export async function generateAbandonedCartRecovery(
 export async function generateProductCopywriting(
   input: ProductCopywriterInput,
 ): Promise<ProductCopywriterResult> {
-  const title = input.productName || "جبن قريش فلاحي طازج";
-  const isWeight = Boolean(input.isByWeight);
+  if (!isSupabaseConfigured()) throw new Error("تعذر التحقق من المنتج لأن Supabase غير متصل.");
+  const normalize = (value: unknown) => String(value || "").trim().normalize("NFKC").toLocaleLowerCase("ar");
+  let product: any = null;
+  if (input.productId) {
+    const { data, error } = await supabaseLoose
+      .from("products")
+      .select("*")
+      .eq("id", input.productId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (error) throw new Error(`تعذر قراءة المنتج من Supabase: ${error.message}`);
+    product = data;
+  } else {
+    const { data: products, error } = await supabaseLoose
+      .from("products")
+      .select("*")
+      .eq("is_active", true)
+      .limit(500);
+    if (error) throw new Error(`تعذر قراءة المنتج من Supabase: ${error.message}`);
+    product = (products || []).find((row: any) => normalize(row.name) === normalize(input.productName) || normalize(row.name_ar) === normalize(input.productName));
+  }
+  if (!product) throw new Error("المنتج غير موجود أو غير نشط في Supabase؛ لم أُنشئ وصفاً أو خصائص غير موثقة.");
 
+  const title = input.productName.trim() || String(product.name_ar || product.name || "");
+  const description = String(product.description_ar || product.description || "");
+  const storedNutrition = (product.nutritional_info || product.nutritionalInfo || {}) as Record<string, unknown>;
+  const storedCharacteristics = product.characteristics;
   return {
-    enhancedTitle: `${title} فاخر طازج يومياً`,
-    shortDescription: `مختار بعناية فائقة من أجود المزارع المصرية، طبيعي 100% بدون أي مواد حافظة أو إضافات صناعية.`,
-    seoDescription: `اشتري ${title} طازج بأفضل سعر في مصر من سوبرماركت الوادي الأخضر مع توصيل سريع في أقل من 45 دقيقة.`,
-    tags: ["طازج", "بلدي", "صحي", "سوبرماركت", "عروض"],
-    cookingTip: "يُحفظ في الثلاجة في وعاء زجاجي محكم لضمان أقصى درجات النضارة والمذاق الأصيل.",
-    characteristics: ["طبيعي 100%", "خالٍ من المواد الحافظة", "توصيل طازج يومياً"],
-    storageInstructions: "يُحفظ مبرداً بين 2 و 5 درجات مئوية.",
-    originSource: "مزارع الوجه البحري المعتمدة — جمهورية مصر العربية",
+    enhancedTitle: title,
+    shortDescription: String(product.short_description || description),
+    seoDescription: description,
+    tags: Array.isArray(product.tags) ? product.tags.map(String) : [],
+    cookingTip: String(product.cooking_tip || product.cookingTip || ""),
+    characteristics: Array.isArray(storedCharacteristics) ? storedCharacteristics.map(String) : [],
+    storageInstructions: String(product.storage_instructions || product.storageInstructions || ""),
+    originSource: String(product.origin_source || product.originSource || ""),
     nutritionalInfo: {
-      calories: isWeight ? "98 سعرة / 100 جم" : "120 سعرة / حصة",
-      protein: "11 جم",
-      carbs: "3.4 جم",
-      fiber: "0 جم",
-      fats: "4.2 جم",
+      calories: String(storedNutrition.calories || ""),
+      protein: String(storedNutrition.protein || ""),
+      carbs: String(storedNutrition.carbs || ""),
+      fiber: String(storedNutrition.fiber || ""),
+      fats: String(storedNutrition.fats || ""),
     },
-    keySellingPoints: [
-      "طعم بلدي فلاحي أصيل غني بالعناصر الغذائية",
-      "معبأ وفق أعلى معايير الجودة والسلامة الغذائية",
-      "ضمان استرجاع كامل فوري في حال عدم الرضا",
-    ],
-    suggestedBadge: "الأكثر مبيعاً 🌟",
+    keySellingPoints: [],
   };
 }

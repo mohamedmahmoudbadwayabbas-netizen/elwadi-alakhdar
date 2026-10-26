@@ -69,7 +69,7 @@ export async function fetchStoreProducts(): Promise<Product[]> {
 
   if (error) {
     console.warn("Error fetching products:", error.message);
-    return [];
+    throw error;
   }
   return (data ?? []).map(normalizeProduct);
 }
