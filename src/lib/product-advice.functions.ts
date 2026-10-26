@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-config";
 
 const productIdSchema = z.string().uuid();
 
@@ -28,7 +29,7 @@ export const getProductAdvice = createServerFn({ method: "POST" })
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: DEFAULT_GEMINI_MODEL,
       contents: [
         "اكتب نصيحة قصيرة ومفيدة بالعربية المصرية لهذا المنتج اعتمادًا على بيانات المتجر الموثقة أدناه فقط. استنتج نوعه من اسمه ووصفه، وقدّم طريقة تحضير فقط إذا كان واضحًا أنه طعام يُطهى. لا تخترع مكونات أو مقادير أو أوقاتًا أو تعليمات سلامة أو حقائق عن السعر/المخزون. إذا لم تكفِ البيانات لتحديد طريقة الاستخدام، قل ذلك بوضوح وقدّم اقتراحًا عامًا آمنًا أو اطلب من العميل مراجعة ملصق المنتج. لا تذكر أنك بحثت في قاعدة بيانات. اجعل النصيحة جملتين كحد أقصى.\n\nبيانات المنتج (مصدرها سجل نشط في كتالوج المتجر):\n" +
           JSON.stringify({

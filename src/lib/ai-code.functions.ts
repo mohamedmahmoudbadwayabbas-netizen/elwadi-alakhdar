@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { DEFAULT_LOVABLE_GATEWAY_GEMINI_MODEL } from "@/lib/gemini-config";
 
 export interface AiCodeModificationPayload {
   filePath: string;
@@ -68,7 +69,7 @@ export const generateFileModification = createServerFn({ method: "POST" })
         "X-Lovable-AIG-SDK": "fetch",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: DEFAULT_LOVABLE_GATEWAY_GEMINI_MODEL,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },

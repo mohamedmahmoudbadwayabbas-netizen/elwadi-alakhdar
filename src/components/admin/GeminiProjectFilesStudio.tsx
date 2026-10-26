@@ -29,6 +29,7 @@ import {
 } from "@/services/projectFilesService";
 import { applyApprovedChanges, readProjectFile, requestChangeApproval } from "@/services/aiTools/projectEngineService";
 import { modifyProjectFileWithGemini, CodeModificationResult } from "@/services/geminiCodeService";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-config";
 import { GeminiCodeDiffViewer } from "./GeminiCodeDiffViewer";
 
 export function GeminiProjectFilesStudio() {
@@ -84,7 +85,7 @@ export function GeminiProjectFilesStudio() {
       const result = await modifyProjectFileWithGemini(
         aiPrompt,
         selectedFile.path,
-        "gemini-2.5-flash",
+        DEFAULT_GEMINI_MODEL,
       );
       setModificationResult(result);
       toast.success("قام Gemini بتوليد الكود المعدل وجاهز للمراجعة والتطبيق! ✨");

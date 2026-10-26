@@ -84,7 +84,7 @@ export function GeminiProjectFilesStudio() {
       const result = await modifyProjectFileWithGemini(
         aiPrompt,
         selectedFile.path,
-        "gemini-2.5-flash",
+        "gemini-3.8-flash",
       );
       setModificationResult(result);
       toast.success("قام Gemini بتوليد الكود المعدل وجاهز للمراجعة والتطبيق! ✨");

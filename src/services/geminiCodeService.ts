@@ -1,5 +1,6 @@
 import { readProjectFile } from "./aiTools/projectEngineService";
 import { generateFileModification } from "@/lib/ai-code.functions";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-config";
 
 export interface CodeModificationResult {
   filePath: string;
@@ -39,7 +40,7 @@ export function computeDiff(original: string, modified: string) {
 export async function modifyProjectFileWithGemini(
   userPrompt: string,
   filePath: string,
-  modelName = "gemini-2.5-flash",
+  modelName = DEFAULT_GEMINI_MODEL,
 ): Promise<CodeModificationResult> {
   const path = filePath.trim();
   if (!path || !userPrompt.trim()) throw new Error("مسار الملف وطلب التعديل مطلوبان.");

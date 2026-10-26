@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { GoogleGenAI } from "@google/genai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_TOOL_SUITE } from "@/services/aiTools/toolDefinitions";
+import {
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_GEMINI_MAPS_MODEL,
+  ALLOWED_CHAT_MODELS,
+  ALLOWED_IMAGE_MODELS,
+} from "@/lib/gemini-config";
 
 type GeminiPurpose = "chat" | "image" | "maps";
 export type GeminiJsonValue =
@@ -38,16 +44,8 @@ type GeminiRequest = {
   config?: Record<string, unknown>;
 };
 
-const CHAT_MODELS = new Set([
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-3.7-flash",
-  "gemini-3.1-pro-preview",
-  "gemini-3.5-flash",
-  "gemini-3.1-flash-lite",
-]);
-const IMAGE_MODELS = new Set(["gemini-3.1-flash-lite-image", "gemini-3.1-flash-image"]);
+const CHAT_MODELS = ALLOWED_CHAT_MODELS;
+const IMAGE_MODELS = ALLOWED_IMAGE_MODELS;
 const CUSTOMER_TOOLS = new Set(["searchProducts", "getCategories"]);
 const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 const MODERATOR_GROUPS = new Set([
@@ -156,7 +154,7 @@ export const generateGeminiContent = createServerFn({ method: "POST" })
 
     if (data.purpose === "image" && !IMAGE_MODELS.has(data.model))
       throw new Error("That image model is not allowed.");
-    if (data.purpose === "maps" && data.model !== "gemini-2.5-flash")
+    if (data.purpose === "maps" && data.model !== DEFAULT_GEMINI_MAPS_MODEL)
       throw new Error("That maps model is not allowed.");
     if (data.purpose === "chat" && !CHAT_MODELS.has(data.model))
       throw new Error("That chat model is not allowed.");

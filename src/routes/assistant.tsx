@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StickyCartBar } from "@/components/storefront/StickyCartBar";
 import { runAdminCoPilotChat, type ChatMessage } from "@/services/gemini36Service";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-config";
 
 export const Route = createFileRoute("/assistant")({ component: ShoppingAssistantPage });
 
@@ -66,7 +67,7 @@ function ShoppingAssistantPage() {
         throw new Error("تعذر تأكيد قراءة الكتالوج من Supabase.");
       }
       const response = await runAdminCoPilotChat(cleanPrompt, chatHistory, {
-        model: "gemini-2.5-flash",
+        model: DEFAULT_GEMINI_MODEL,
         role: "copywriter",
         page: "assistant",
         userRole: "customer",

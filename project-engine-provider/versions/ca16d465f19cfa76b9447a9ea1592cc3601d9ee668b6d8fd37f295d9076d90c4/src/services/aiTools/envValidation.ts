@@ -135,7 +135,7 @@ export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
     messageAr = "مفتاح Gemini API غير صالح أو منتهي الصلاحية (HTTP 401). يرجى التحقق من متغير البية GEMINI_API_KEY.";
     console.error("[AI Engine Diagnostics] 🔴 HTTP 401 Unauthorized: Invalid Gemini API key provided.", err);
   } else if (isNotFoundError) {
-    messageAr = "النموذج المطلوب غير متاح أو قديم (HTTP 404). جاري التحويل التلقائي لنموذج الإنتاج البديل (gemini-2.0-flash).";
+    messageAr = "النموذج المطلوب غير متاح أو قديم (HTTP 404). جاري التحويل التلقائي لنموذج الإنتاج البديل (gemini-3.8-flash).";
     console.error("[AI Engine Diagnostics] 🔴 HTTP 404 Not Found: Model endpoint not found or deprecated.", err);
   } else if (isRateLimitError) {
     messageAr = "تم تجاوز حد الطلبات المسموح به لـ Gemini API مؤقتاً (HTTP 429). جاري التحويل لمحرك القواعد المحلي الفوري.";

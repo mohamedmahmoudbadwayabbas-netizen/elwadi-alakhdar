@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { supabase as supabaseLoose } from "@/lib/supabase-loose";
 import { generateGeminiContent } from "@/lib/gemini.functions";
+import { DEFAULT_GEMINI_MODEL, GEMINI_PRODUCTION_FALLBACK_MODELS } from "@/lib/gemini-config";
 import {
   isGeminiConfigured,
   isSupabaseConfigured,
@@ -200,10 +201,7 @@ const UNVERIFIED_STORE_DATA_REPLY =
   "لم أستطع التحقق من هذه المعلومة بقراءة ناجحة من قاعدة بيانات المتجر، لذلك لن أخمّن. تأكد من اتصال Supabase ثم أعد المحاولة.";
 
 // Production model fallback sequence
-const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-];
+const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [...GEMINI_PRODUCTION_FALLBACK_MODELS];
 
 // Hard cap on sequential tool-calling turns per user message. Prevents runaway
 // loops while still allowing realistic chains like:
@@ -364,7 +362,7 @@ export async function runAdminCoPilotChat(
     message = messageOrParams;
     history = maybeHistory || [];
     const opts = maybeOptions || {};
-    selectedModel = opts.selectedModel || opts.model || "gemini-2.5-flash";
+    selectedModel = opts.selectedModel || opts.model || DEFAULT_GEMINI_MODEL;
     selectedRole = opts.selectedRole || opts.role || "store_architect";
     useGrounding = Boolean(opts.useGrounding || opts.enableSearchGrounding);
     attachedFile = opts.attachedFile;
@@ -375,7 +373,7 @@ export async function runAdminCoPilotChat(
   } else {
     message = messageOrParams.message;
     history = messageOrParams.history || [];
-    selectedModel = messageOrParams.selectedModel || messageOrParams.model || "gemini-2.5-flash";
+    selectedModel = messageOrParams.selectedModel || messageOrParams.model || DEFAULT_GEMINI_MODEL;
     selectedRole = messageOrParams.selectedRole || messageOrParams.role || "store_architect";
     useGrounding = Boolean(messageOrParams.useGrounding || messageOrParams.enableSearchGrounding);
     attachedFile = messageOrParams.attachedFile;
@@ -763,7 +761,7 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
       await generateGeminiContent({
         data: {
           purpose: "chat",
-          model: "gemini-2.5-flash",
+          model: DEFAULT_GEMINI_MODEL,
           contents: "Reply with OK only.",
           config: {
             systemInstruction: "Connectivity check. Reply with OK. Do not call any function.",

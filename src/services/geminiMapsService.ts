@@ -1,4 +1,5 @@
 import { generateGeminiContent } from "@/lib/gemini.functions";
+import { DEFAULT_GEMINI_MAPS_MODEL } from "@/lib/gemini-config";
 
 export interface PlaceGroundingResult {
   title?: string;
@@ -46,7 +47,7 @@ export async function queryGoogleMapsGrounding(
     const response = await generateGeminiContent({
       data: {
         purpose: "maps",
-        model: "gemini-2.5-flash",
+        model: DEFAULT_GEMINI_MAPS_MODEL,
         contents: prompt,
         config: configObj,
       },
@@ -82,7 +83,7 @@ export async function queryGoogleMapsGrounding(
           ? response.text || "أعادت خرائط Google المواقع الظاهرة أدناه."
           : "لم تُرجع خرائط Google أي موقع موثق لهذا البحث، لذلك لا أستطيع تأكيد موقع أو نطاق توصيل.",
       places,
-      modelUsed: "gemini-2.5-flash",
+      modelUsed: DEFAULT_GEMINI_MAPS_MODEL,
     };
   } catch (err) {
     console.warn("Google Maps Grounding API request failed.");
