@@ -1,6 +1,6 @@
 /* =========================================================================
    GEMINI AI ADMIN ENGINE — UNIFIED TOOL ENGINE BRIDGE
-   Re-exports from unified 24-Tool Suite for backwards compatibility
+   Re-exports from the unified tool suite for backwards compatibility
    ========================================================================= */
 
 export {
@@ -31,11 +31,6 @@ export {
   getFileContentTool,
   searchCodebase,
   getAppErrors,
-  writeNewFile,
-  updateFileAST,
-  deleteFileTool,
-  gitCommitAndPush,
-  gitRollbackCommit,
   verifyCopilotExecution,
 } from "./gemini36Service";
 

@@ -14,7 +14,6 @@ import {
   Zap,
   CheckCircle2,
   Paperclip,
-  FileCode,
   Globe,
   Search,
   Bot,
@@ -48,18 +47,15 @@ import {  runAdminCoPilotChat,
   GeminiModelChoice,
   GeminiRoleChoice,
 } from "@/services/gemini36Service";
-import { modifyProjectFileWithGemini } from "@/services/geminiCodeService";
 import {
   ProjectFileMeta,
   PROJECT_FILES_REGISTRY,
 } from "@/services/projectFilesService";
 import { GeminiFileAttachmentPicker } from "@/components/admin/GeminiFileAttachmentPicker";
-import { GeminiCodeDiffViewer } from "@/components/admin/GeminiCodeDiffViewer";
 import { DEFAULT_LAYOUT_CONFIG, StoreLayoutConfig } from "@/types/layout-config";
 import { StoreEngineBuilder } from "@/components/admin/StoreEngineBuilder";
 import { ExecutiveSummaryWidget } from "@/components/admin/ExecutiveSummaryWidget";
 import { LiveStorefrontPreview } from "@/components/admin/LiveStorefrontPreview";
-import { GeminiProjectFilesStudio } from "@/components/admin/GeminiProjectFilesStudio";
 import { AbandonedCartAgent } from "@/components/admin/AbandonedCartAgent";
 import { SmartProductCopywriterModal } from "@/components/admin/SmartProductCopywriterModal";
 import { ShopLivePreview } from "@/components/admin/ShopLivePreview";
@@ -139,7 +135,7 @@ function AdminCoPilotPage() {
 
   // Active workspace mode
   const [activeMode, setActiveMode] = useState<
-    "chat" | "files-studio" | "store-engine" | "advisory" | "live-preview"
+    "chat" | "store-engine" | "advisory" | "live-preview"
   >("chat");
 
   // Prompt input and attached file
@@ -325,7 +321,6 @@ function AdminCoPilotPage() {
               {(
                 [
                   { id: "live-preview", label: "المعاينة الحية", icon: Eye },
-                  { id: "files-studio", label: "محرر الأكواد", icon: FileCode },
                   { id: "store-engine", label: "محرك الواجهة", icon: Layout },
                   { id: "advisory", label: "التقارير", icon: TrendingUp },
                 ] as const
@@ -447,18 +442,6 @@ function AdminCoPilotPage() {
                           </div>
                         )}
                         <div className="whitespace-pre-line leading-relaxed">{msg.content}</div>
-                        {msg.codeModification && (
-                          <div className="mt-3">
-                            <GeminiCodeDiffViewer
-                              filePath={msg.codeModification.filePath}
-                              originalCode={msg.codeModification.originalCode}
-                              modifiedCode={msg.codeModification.modifiedCode}
-                              summary={msg.codeModification.summary}
-                              explanation={msg.codeModification.explanation}
-                              diffSummary={msg.codeModification.diffSummary}
-                            />
-                          </div>
-                        )}
                         {msg.groundingSources && msg.groundingSources.length > 0 && (
                           <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800 space-y-1.5">
                             <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
@@ -585,11 +568,6 @@ function AdminCoPilotPage() {
           {activeMode === 'live-preview' && (
             <div className="h-full overflow-y-auto">
               <LiveStorefrontPreview s={settings} />
-            </div>
-          )}
-          {activeMode === 'files-studio' && (
-            <div className="h-full overflow-y-auto p-4">
-              <GeminiProjectFilesStudio />
             </div>
           )}
           {activeMode === 'store-engine' && (

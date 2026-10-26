@@ -1,6 +1,6 @@
 /* =========================================================================
    GEMINI AI ADMIN ENGINE — UNIFIED TOOL ROUTER & NLP DISPATCHER
-   Routes all 26 tool executions and provides local NLP fallback routing
+   Routes the enabled tool suite and provides local NLP fallback routing
    ========================================================================= */
 
 import type {
@@ -35,11 +35,6 @@ import {
   getFileContentTool,
   searchCodebase,
   getAppErrors,
-  writeNewFile,
-  updateFileAST,
-  deleteFileTool,
-  gitCommitAndPush,
-  gitRollbackCommit,
 } from "./devopsTools";
 import { AI_TOOL_SUITE } from "./toolDefinitions";
 import { executeAIAction } from "./aiActionGateway";
@@ -155,22 +150,6 @@ async function _executeAiToolInner(
     case "getAppErrors":
       result = await getAppErrors(args as any);
       break;
-    case "writeNewFile":
-      result = await writeNewFile(args as any, ctx);
-      break;
-    case "updateFileAST":
-      result = await updateFileAST(args as any, ctx);
-      break;
-    case "deleteFile":
-      result = await deleteFileTool(args as any, ctx);
-      break;
-    case "gitCommitAndPush":
-      result = await gitCommitAndPush(args as any, ctx);
-      break;
-    case "gitRollbackCommit":
-      result = await gitRollbackCommit(args as any, ctx);
-      break;
-
     default:
       result = {
         tool,

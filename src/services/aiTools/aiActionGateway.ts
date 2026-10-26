@@ -28,6 +28,9 @@ export interface AiActionResult {
 type ToolExecutor = () => Promise<ToolExecutionResult>;
 
 const DESTRUCTIVE_TOOLS = new Set<AiToolName>(["rollbackLastAction", "deleteFile", "gitRollbackCommit"]);
+const DISABLED_PROJECT_MUTATION_TOOLS = new Set<string>([
+  "writeNewFile", "updateFileAST", "deleteFile", "gitCommitAndPush", "gitRollbackCommit",
+]);
 const HIGH_WRITE_TOOLS = new Set<AiToolName>([
   // Keep bulk price changes, access-control changes, arbitrary metadata, and
   // repository mutations behind an explicit approval path. Routine, directly
@@ -130,6 +133,9 @@ export async function executeAIAction(
   const risk = classifyAiRisk(toolName, input);
   const auditId = `audit-${actionId}`;
   const base = { actionId, toolName, auditId };
+  if (DISABLED_PROJECT_MUTATION_TOOLS.has(toolName)) {
+    return { ...base, success: false, status: "rejected", error: "تم تعطيل أدوات تعديل ملفات المشروع وعمليات Git." };
+  }
   if (!actor && risk !== "READ") return { ...base, success: false, status: "rejected", error: "لا يوجد مستخدم موثق في Supabase Auth." };
   const actionActor = actor ?? { userId: "anonymous", role: "customer" };
   const action: AiAction = { ...base, actor: actionActor, input, risk, context };
