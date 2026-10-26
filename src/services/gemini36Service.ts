@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { supabase as supabaseLoose } from "@/lib/supabase-loose";
 import {
   getGenAI,
-  getGeminiApiKey,
   isGeminiConfigured,
   isSupabaseConfigured,
   validateEnvironment,
@@ -689,24 +688,16 @@ actually returned a confirmed success result back to you.
     };
   }
 
+  if (/(?:أضف|اضف|ضيف|ضيفلي|إضافة|اضافة|سجل|أنشئ|انشئ)\s+(?:لي\s+)?(?:منتج|صنف)/i.test(message) && !/(?:بسعر|سعره|بـ|ب)\s*[٠-٩0-9]/i.test(message)) {
+    return {
+      text: "أحتاج سعر البيع قبل إضافة المنتج. أرسل الاسم والسعر (مثال: ضيف منتج جبنة بيضاء بسعر 120 جنيه). لن أخمّن سعرًا أو أُنشئ سجلًا ناقصًا.",
+      modelUsed: "local-deterministic-engine",
+      roleUsed: selectedRole,
+    };
+  }
+
   return {
-    text: `أهلاً بك في **مساعد Gemini الذكي المتطور (Phase 4 Agentic 26-Tool AI Engine)** 🚀
-
-أنا متصل بقاعدة بيانات Supabase ومزود بحزمة الـ 26 أداة لإدارة المتجر وتطوير الكود والبنية التحتية مع سلسلة تنفيذ متعددة الخطوات وتحقق فوري:
-
-- 🔎 **بحث حقيقي في الكتالوج**: التحقق من توفر وسعر ومخزون أي منتج عبر searchProducts، وعرض/التحقق من الأقسام عبر getCategories قبل أي إضافة.
-- 🏗️ **تعديل كود المتجر والتخطيط فوراً**: تنفيذ أوامر مركبة فورية على التصميم والألوان والبانرات.
-- 🗄️ **إدارة المنتجات والأقسام والأسعار**: تحكم مباشر في جداول \`products\` و \`categories\` و \`store_settings\` مع تحقق قبل الإضافة لتفادي التكرار.
-- 👥 **إدارة المستخدمين والصلاحيات**: تعيين أدوار المشرفين والسائقين والعملاء في \`user_roles\` و \`profiles\`.
-- 📊 **تصدير التقارير والتحليلات**: استخراج إحصائيات المبيعات والأرباح وأعلى المنتجات مبيعاً.
-- 🔔 **بث الإشعارات الفورية (Push)**: إرسال تنبيهات وعروض مباشرة لعملاء المتجر.
-- 🚚 **إدارة مناطق التوصيل والأسعار**: تحديث رسوم الشحن والحد الأدنى في \`delivery_zones\`.
-- 💻 **فحص الكود وشجرة المجلدات**: استعراض \`getDirectoryTree\` وقراءة \`getFileContent\` والبحث \`searchCodebase\`.
-- 🛠️ **إنشاء وتعديل ملفات المشروع**: كتابة ملفات جديدة \`writeNewFile\` وتطبيق تعديلات AST \`updateFileAST\` وحذف الملفات.
-- 🛡️ **فحص أخطاء وتشخيص النظام**: استرجاع سجلات الأخطاء \`getAppErrors\` ونقاط استرجاع الأمان.
-- 🚀 **إدارة الإصدارات و Git**: تسجيل \`gitCommitAndPush\` والتراجع \`gitRollbackCommit\` ومزامنة السحابة.
-
-أخبرني بما تريد وسأتحقق من البيانات وأنفذه وأؤكد لك النتيجة الفعلية فوراً! 😊`,
+    text: `مساعد الوادي جاهز للطلبات التي تدعمها الأدوات المهيأة حاليًا. أستطيع قراءة كتالوج Supabase والتحقق من بياناته، وتنفيذ بعض عمليات المتجر بعد التحقق من صلاحيتك. بعض عمليات الملفات وGit والإشعارات تحتاج موفرًا منفصلًا، لذلك لن أدّعي تنفيذها قبل تأكيد نتيجة حقيقية. اكتب طلبًا محددًا لأتحقق من توفر الأداة والبيانات أولًا.`,
     modelUsed: "local-deterministic-engine",
     roleUsed: selectedRole,
   };
@@ -716,109 +707,64 @@ actually returned a confirmed success result back to you.
 
 export interface CopilotSelfTestResult {
   success: boolean;
-  step: "env_check" | "prompt_resolution" | "tool_call" | "mutation_verify" | "realtime_sync" | "completed";
+  step: "env_check" | "database_read" | "completed";
   message: string;
   details?: Record<string, unknown>;
   latencyMs?: number;
 }
 
 /**
- * Automatically simulates a test command through the complete flow:
- * Prompt -> Tool Call -> Mutation -> Database Verification Read -> UI Event Sync
+ * Performs a read-only connectivity check against the live catalog. This must
+ * not write placeholder metadata or imply that unrelated tool mutations work.
  */
 export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
   const startTime = Date.now();
-  console.info("[AI Engine Self-Test] 🔍 Starting Automated End-to-End Self-Verification Engine...");
+  console.info("[AI Engine Self-Test] 🔍 Starting read-only catalog connectivity check...");
 
-  // Step 1: Environment & Keys Validation
+  // Check app configuration and real catalog read access; do not mutate data.
   const env = validateEnvironment();
-  const apiKey = getGeminiApiKey();
-
-  // Step 2: Execute Test Tool Call
-  const testKey = "_copilot_selftest_timestamp";
-  const testId = `test-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-  const testValue = {
-    testId,
-    status: "verified",
-    timestamp: new Date().toISOString(),
-    agent: "Live Autonomous Admin Copilot",
-  };
 
   try {
-    const execRes = await executeAiTool("updateRawJsonMetadata", {
-      key: testKey,
-      value: testValue,
-    });
-
-    if (!execRes.ok) {
+    if (!env.supabaseReady) {
       return {
         success: false,
-        step: "tool_call",
-        message: `فشل استدعاء الأداة في الاختبار الذاتي: ${execRes.messageAr}`,
-        details: { execRes, env },
+        step: "env_check",
+        message: "إعدادات Supabase غير مكتملة؛ لم يتم إجراء أي تعديل.",
+        details: { supabaseConfigured: false, geminiConfigured: env.geminiReady },
         latencyMs: Date.now() - startTime,
       };
     }
 
-    // Step 3: Mandatory Post-Mutation Database / State Verification Read
-    let verifiedValue: unknown = null;
-    let readSuccess = false;
-
-    if (isSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from("store_settings")
-        .select("id")
-        .limit(1)
-        .maybeSingle();
-
-      if (!error && data) {
-        // Assume read success if we can fetch settings at all. (raw_metadata doesn't exist).
-        const meta = { [testKey]: { testId } };
-        if (meta && meta[testKey] && meta[testKey].testId === testId) {
-          readSuccess = true;
-          verifiedValue = meta[testKey];
-        }
-      }
-    } else {
-      // Local state fallback verification
-      try {
-        const raw = localStorage.getItem("smartstore_ai_metadata");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed[testKey] && parsed[testKey].testId === testId) {
-            readSuccess = true;
-            verifiedValue = parsed[testKey];
-          }
-        }
-      } catch (storageErr) {
-        console.warn("[AI Engine Self-Test] Local storage read error:", storageErr);
-      }
-    }
-
-    if (!readSuccess) {
+    const [{ data: products, error: productsError }, { data: categories, error: categoriesError }] = await Promise.all([
+      supabase.from("products").select("id").eq("is_active", true).limit(1),
+      supabase.from("categories").select("id").limit(1),
+    ]);
+    if (productsError || categoriesError) {
       return {
         success: false,
-        step: "mutation_verify",
-        message: "فشلت قراءة التحقق بعد تنفيذ التعديل: السجل غير موجود بالقيمة المحدثة في قاعدة البيانات أو التخزين المحلي.",
-        details: { expectedId: testId, verifiedValue, envMode: env.mode },
+        step: "database_read",
+        message: "فشل اختبار القراءة من جداول المنتجات أو الأقسام في Supabase.",
+        details: { productsError: productsError?.message, categoriesError: categoriesError?.message, geminiConfigured: env.geminiReady },
         latencyMs: Date.now() - startTime,
       };
     }
 
     const latency = Date.now() - startTime;
-    console.info(`[AI Engine Self-Test] ✅ Self-Verification Engine PASSED in ${latency}ms.`);
+    console.info(`[AI Engine Self-Test] ✅ Read-only catalog connectivity passed in ${latency}ms.`);
 
     return {
       success: true,
       step: "completed",
-      message: `تم التحقق بنجاح من الدورة الكاملة (Prompt -> Tool Call -> Mutation -> Database Verification Read -> UI Event Sync) في ${latency}ms.`,
+      message: `نجحت قراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا يختبر عمليات الكتابة أو الأدوات الأخرى (${latency}ms).`,
       details: {
         environmentMode: env.mode,
-        geminiConfigured: Boolean(apiKey),
+        geminiConfigured: env.geminiReady,
         supabaseConfigured: env.supabaseReady,
-        testId,
+        productsReadable: true,
+        categoriesReadable: true,
+        productRowsReturned: products?.length ?? 0,
+        categoryRowsReturned: categories?.length ?? 0,
         latencyMs: latency,
-        verifiedData: verifiedValue,
       },
       latencyMs: latency,
     };
@@ -826,8 +772,8 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
     console.error("[AI Engine Self-Test] ❌ Unhandled error during self-verification:", err);
     return {
       success: false,
-      step: "tool_call",
-      message: `حدث خطأ أثناء فحص التحقق الذاتي: ${err.message || String(err)}`,
+      step: "database_read",
+      message: `حدث خطأ أثناء اختبار اتصال قراءة Supabase: ${err.message || String(err)}`,
       details: { error: String(err) },
       latencyMs: Date.now() - startTime,
     };
