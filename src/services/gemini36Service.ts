@@ -204,14 +204,15 @@ const UNVERIFIED_STORE_DATA_REPLY =
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [...GEMINI_PRODUCTION_FALLBACK_MODELS];
 
 async function generateWithTransientRetry(request: { model: string; contents: unknown; config?: Record<string, unknown> }) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const maxAttempts = 4;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       return await generateGeminiContent({ data: { purpose: "chat", ...request } });
     } catch (error) {
-      const detail = error instanceof Error ? error.message : JSON.stringify(error);
-      const unavailable = /503|UNAVAILABLE|high demand|temporarily unavailable/i.test(detail);
-      if (!unavailable || attempt === 2) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+      const status = diagnoseGeminiError(error).statusCode;
+      if (status !== 503 || attempt === maxAttempts - 1) throw error;
+      const backoffMs = 1000 * 2 ** attempt + Math.floor(Math.random() * 350);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
     }
   }
   throw new Error("Gemini remained unavailable after retrying.");
@@ -1036,3 +1037,4 @@ export async function generateProductCopywriting(
     keySellingPoints: [],
   };
 }
+
