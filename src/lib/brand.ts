@@ -15,8 +15,8 @@ export const BRAND_DESCRIPTION_AR =
 
 export const ADMIN_PRIMARY_EMAIL = "adminstoresupermarketinvo@gmail.com";
 
-/** Public site origin, used for canonical URLs, Open Graph and the sitemap. */
 export const SITE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SITE_URL) ||
+  (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
+  import.meta.env.VITE_SITE_URL ||
   "https://elwadi-alakhdar.lovable.app";
 

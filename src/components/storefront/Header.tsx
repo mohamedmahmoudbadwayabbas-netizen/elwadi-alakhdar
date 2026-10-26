@@ -158,8 +158,8 @@ export function Header() {
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </Link>
 
-                {/* Only display admin link if verified admin is logged in */}
-                {isAdmin && (
+                {/* Display admin controls if logged in, or portal link if not */}
+                {isAdmin ? (
                   <>
                     <div className="pt-3 border-t border-border/50 text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 px-2 py-1 flex items-center gap-1">
                       <ShieldCheck className="h-3.5 w-3.5" />
@@ -194,6 +194,18 @@ export function Header() {
                       </Badge>
                     </Link>
                   </>
+                ) : (
+                  <Link
+                    to="/admin"
+                    onClick={() => setDrawerOpen(false)}
+                    className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="h-4 w-4 text-amber-600" />
+                      <span>دخول لوحة الإدارة</span>
+                    </div>
+                    <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                  </Link>
                 )}
               </div>
 

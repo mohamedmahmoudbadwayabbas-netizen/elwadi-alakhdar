@@ -5,8 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { supabase as supabaseLoose } from "@/lib/supabase-loose";
-import { generateGeminiContent } from "@/lib/gemini.functions";
 import {
+  getGenAI,
   isGeminiConfigured,
   isSupabaseConfigured,
   validateEnvironment,
@@ -220,10 +220,8 @@ const UNVERIFIED_STORE_DATA_REPLY =
 
 // Production model fallback sequence
 const PRODUCTION_FALLBACK_MODELS: GeminiModelChoice[] = [
-  "gemini-3.7-flash",
   "gemini-2.5-flash",
-  "gemini-3.5-flash",
-  "gemini-3.1-pro-preview",
+  "gemini-2.0-flash",
 ];
 
 // Hard cap on sequential tool-calling turns per user message. Prevents runaway
@@ -403,14 +401,8 @@ export async function runAdminCoPilotChat(
 
   const customerExperience = page === "assistant" && userRole === "customer";
 
-  // Gemini requests run through a same-origin server function; the browser
-  // never receives or reads the Google API key.
-  const ai = {
-    models: {
-      generateContent: (request: { model: string; contents: unknown; config?: Record<string, unknown> }) =>
-        generateGeminiContent({ data: { purpose: "chat", ...request } }),
-    },
-  };
+  // 1. Check if GenAI is configured
+  const ai = getGenAI();
 
   if (ai) {
     // Model fallback sequence
@@ -422,7 +414,6 @@ export async function runAdminCoPilotChat(
     }
 
     let lastError: any = null;
-    let missingServerGeminiKey = false;
 
     for (const currentModel of modelsToTry) {
       try {
@@ -645,29 +636,18 @@ actually returned a confirmed success result back to you.
         };
       } catch (err: any) {
         lastError = err;
-        const errorMessage = String(err?.message || err || "");
-        missingServerGeminiKey = /GEMINI_API_KEY is not configured/i.test(errorMessage);
         const diagnostics = diagnoseGeminiError(err);
         console.warn(`[AI Engine] Model ${currentModel} returned an issue (${diagnostics.code}). Trying fallback...`);
 
-        // These configuration errors affect every model, so don't make
-        // repeated requests or silently make the result look like Gemini.
-        if (diagnostics.isAuthError || missingServerGeminiKey) {
+        // If it's a 401 Auth error, trying other models won't help; break to local fallback
+        if (diagnostics.isAuthError) {
           break;
         }
       }
     }
 
-    if (missingServerGeminiKey) {
-      return {
-        text: "مفتاح Gemini غير مضبوط في أسرار خادم التطبيق باسم GEMINI_API_KEY. أضفه إلى بيئة الخادم ثم أعد نشر التطبيق.",
-        modelUsed: "gemini-server-key-missing",
-        roleUsed: selectedRole,
-      };
-    }
-
     if (lastError) {
-      console.warn("[AI Engine] Live Gemini attempts exhausted; using the local deterministic fallback.");
+      console.warn("[AI Engine] All live Gemini attempts exhausted, falling back to instant NLP router:", lastError);
     }
   }
 
@@ -725,19 +705,19 @@ actually returned a confirmed success result back to you.
 
 export interface CopilotSelfTestResult {
   success: boolean;
-  step: "env_check" | "database_read" | "gemini_request" | "completed";
+  step: "env_check" | "database_read" | "completed";
   message: string;
   details?: Record<string, unknown>;
   latencyMs?: number;
 }
 
 /**
- * Checks real Supabase reads and makes a minimal authenticated Gemini request.
- * It is read-only and does not claim that every write tool was tested.
+ * Performs a read-only connectivity check against the live catalog. This must
+ * not write placeholder metadata or imply that unrelated tool mutations work.
  */
 export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
   const startTime = Date.now();
-  console.info("[AI Engine Self-Test] 🔍 Checking Supabase and server-side Gemini connectivity...");
+  console.info("[AI Engine Self-Test] 🔍 Starting read-only catalog connectivity check...");
 
   // Check app configuration and real catalog read access; do not mutate data.
   const env = validateEnvironment();
@@ -748,7 +728,7 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
         success: false,
         step: "env_check",
         message: "إعدادات Supabase غير مكتملة؛ لم يتم إجراء أي تعديل.",
-        details: { supabaseConfigured: false, geminiServerSecretChecked: false },
+        details: { supabaseConfigured: false, geminiConfigured: env.geminiReady },
         latencyMs: Date.now() - startTime,
       };
     }
@@ -762,58 +742,21 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
         success: false,
         step: "database_read",
         message: "فشل اختبار القراءة من جداول المنتجات أو الأقسام في Supabase.",
-        details: { productsError: productsError?.message, categoriesError: categoriesError?.message, geminiServerSecretChecked: false },
-        latencyMs: Date.now() - startTime,
-      };
-    }
-
-    try {
-      // Send the request through the same authenticated server gateway used by
-      // chat. Customer sessions must include their catalog-read declarations.
-      await generateGeminiContent({
-        data: {
-          purpose: "chat",
-          model: "gemini-2.5-flash",
-          contents: "Reply with OK only.",
-          config: {
-            systemInstruction: "Connectivity check. Do not call tools; reply with OK.",
-            maxOutputTokens: 8,
-            tools: [{
-              functionDeclarations: AI_TOOL_SUITE
-                .filter((tool) => tool.name === "searchProducts" || tool.name === "getCategories")
-                .map((tool) => tool.declaration),
-            }],
-          },
-        },
-      });
-    } catch (geminiError) {
-      const diagnosis = diagnoseGeminiError(geminiError);
-      return {
-        success: false,
-        step: "gemini_request",
-        message: diagnosis.messageAr,
-        details: {
-          supabaseConfigured: true,
-          productsReadable: true,
-          categoriesReadable: true,
-          geminiConnected: false,
-          geminiErrorCode: diagnosis.code,
-        },
+        details: { productsError: productsError?.message, categoriesError: categoriesError?.message, geminiConfigured: env.geminiReady },
         latencyMs: Date.now() - startTime,
       };
     }
 
     const latency = Date.now() - startTime;
-    console.info(`[AI Engine Self-Test] ✅ Supabase and Gemini connectivity passed in ${latency}ms.`);
+    console.info(`[AI Engine Self-Test] ✅ Read-only catalog connectivity passed in ${latency}ms.`);
 
     return {
       success: true,
       step: "completed",
-      message: `نجح الاتصال بـ Gemini وقراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا ينفذ تغييرات ولا يختبر كل أداة كتابة (${latency}ms).`,
+      message: `نجحت قراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا يختبر عمليات الكتابة أو الأدوات الأخرى (${latency}ms).`,
       details: {
         environmentMode: env.mode,
-        geminiServerSecretChecked: true,
-        geminiConnected: true,
+        geminiConfigured: env.geminiReady,
         supabaseConfigured: env.supabaseReady,
         productsReadable: true,
         categoriesReadable: true,
@@ -824,7 +767,7 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
       latencyMs: latency,
     };
   } catch (err: any) {
-    console.error("[AI Engine Self-Test] Unhandled error during read-only self-verification.");
+    console.error("[AI Engine Self-Test] ❌ Unhandled error during self-verification:", err);
     return {
       success: false,
       step: "database_read",

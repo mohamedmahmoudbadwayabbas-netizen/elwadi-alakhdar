@@ -5,26 +5,22 @@
 
 export const getGoogleMapsBrowserKey = (): string => {
   try {
-    if (typeof import.meta !== "undefined" && import.meta.env) {
-      return (
-        import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY ||
-        import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
-        ""
-      );
-    }
+    return (
+      import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY ||
+      import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+      ""
+    );
   } catch {}
   return "";
 };
 
 export const getGoogleMapsTrackingId = (): string => {
   try {
-    if (typeof import.meta !== "undefined" && import.meta.env) {
-      return (
-        import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID ||
-        import.meta.env.VITE_GOOGLE_MAPS_CHANNEL ||
-        ""
-      );
-    }
+    return (
+      import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID ||
+      import.meta.env.VITE_GOOGLE_MAPS_CHANNEL ||
+      ""
+    );
   } catch {}
   return "";
 };
