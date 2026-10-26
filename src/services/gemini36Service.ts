@@ -5,8 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { supabase as supabaseLoose } from "@/lib/supabase-loose";
+import { generateGeminiContent } from "@/lib/gemini.functions";
 import {
-  getGenAI,
   isGeminiConfigured,
   isSupabaseConfigured,
   validateEnvironment,
@@ -24,10 +24,7 @@ import {
   GEMINI_TOOL_DECLARATIONS,
   getActiveTools,
 } from "./aiTools/toolDefinitions";
-import {
-  executeAiTool,
-  routeCommandToTool,
-} from "./aiTools/toolRouter";
+import { executeAiTool } from "./aiTools/toolRouter";
 import {
   createRollbackPoint,
   getLastRollbackPoint,
@@ -58,11 +55,6 @@ import {
   getFileContentTool,
   searchCodebase,
   getAppErrors,
-  writeNewFile,
-  updateFileAST,
-  deleteFileTool,
-  gitCommitAndPush,
-  gitRollbackCommit,
 } from "./aiTools/devopsTools";
 import type {
   AiToolName,
@@ -81,9 +73,7 @@ import type {
   ProductNutritionalInfo,
   GeminiModelChoice,
   GeminiRoleChoice,
-  ParsedActionDetail,
-  ParseCommandResult,
-} from "./aiTools/types";
+  ParsedActionDetail,} from "./aiTools/types";
 import type { StoreLayoutConfig, ThemeColorPalette } from "@/types/layout-config";
 
 // Run startup environment diagnostic validation
@@ -96,9 +86,7 @@ export {
   AI_TOOL_GROUP_LABELS,
   GEMINI_TOOL_DECLARATIONS,
   getActiveTools,
-  executeAiTool,
-  routeCommandToTool,
-  createRollbackPoint,
+  executeAiTool,  createRollbackPoint,
   getLastRollbackPoint,
   getRollbackStack,
   rollbackLastAction,
@@ -123,11 +111,6 @@ export {
   getFileContentTool,
   searchCodebase,
   getAppErrors,
-  writeNewFile,
-  updateFileAST,
-  deleteFileTool,
-  gitCommitAndPush,
-  gitRollbackCommit,
   validateEnvironment,
   getAiEngineStatus,
   isGeminiConfigured,
@@ -151,9 +134,7 @@ export type {
   ProductNutritionalInfo,
   GeminiModelChoice,
   GeminiRoleChoice,
-  ParsedActionDetail,
-  ParseCommandResult,
-};
+  ParsedActionDetail,};
 
 /* ───────────────────────── System Instructions ───────────────────────── */
 
@@ -341,6 +322,7 @@ export interface RunChatOptions {
   kpis?: ExecutiveKpiInput;
   refresh?: () => void;
   ctx?: ToolExecutionContext;
+  executionMode?: "suggest" | "approval";
 }
 
 export interface RunChatObjectParams extends RunChatOptions {
@@ -365,6 +347,7 @@ export async function runAdminCoPilotChat(
   };
   toolResult?: ToolExecutionResult;
   toolResults?: ToolExecutionResult[];
+  pendingAction?: { toolName: AiToolName; args: Record<string, unknown> };
 }> {
   let message: string;
   let history: ChatMessage[];
@@ -375,6 +358,7 @@ export async function runAdminCoPilotChat(
   let ctx: ToolExecutionContext | undefined;
   let page = "global";
   let userRole = "customer";
+  let executionMode: "suggest" | "approval" = "approval";
 
   if (typeof messageOrParams === "string") {
     message = messageOrParams;
@@ -387,6 +371,7 @@ export async function runAdminCoPilotChat(
     ctx = opts.ctx;
     page = opts.page || page;
     userRole = opts.userRole || userRole;
+    executionMode = opts.executionMode || executionMode;
   } else {
     message = messageOrParams.message;
     history = messageOrParams.history || [];
@@ -397,12 +382,20 @@ export async function runAdminCoPilotChat(
     ctx = messageOrParams.ctx;
     page = messageOrParams.page || page;
     userRole = messageOrParams.userRole || userRole;
+    executionMode = messageOrParams.executionMode || executionMode;
   }
 
   const customerExperience = page === "assistant" && userRole === "customer";
+  if (customerExperience) executionMode = "suggest";
 
-  // 1. Check if GenAI is configured
-  const ai = getGenAI();
+  // Keep the Gemini credential on the server. The same authenticated gateway
+  // is used by the customer and admin assistants.
+  const ai = {
+    models: {
+      generateContent: (request: { model: string; contents: unknown; config?: Record<string, unknown> }) =>
+        generateGeminiContent({ data: { purpose: "chat", ...request } }),
+    },
+  };
 
   if (ai) {
     // Model fallback sequence
@@ -414,6 +407,7 @@ export async function runAdminCoPilotChat(
     }
 
     let lastError: any = null;
+    let missingServerGeminiKey = false;
 
     for (const currentModel of modelsToTry) {
       try {
@@ -423,19 +417,14 @@ ${ROLE_PROMPTS[selectedRole]}
 ${SUPABASE_SCHEMA_CONTEXT_INSTRUCTION}
 ${PROJECT_ENGINE_CONTEXT}
 
-=== AVAILABLE 27-TOOL SUITE ===
-You have access to 27 operational functions covering media, catalog (including the
-read-only searchProducts and getCategories lookups), UI layout, themes, marketing,
-rollback, custom CSS, JSON metadata, user roles & RBAC, analytics export, push
-notifications, delivery zones, directory scanning, source viewing, code search,
-diagnostics logs, file AST mutations, and git commits.
+=== AVAILABLE TOOL SUITE ===
+Use only the functions supplied for this request. Product, order, price, and stock
+claims must come from successful live Supabase reads. Never invent a tool result.
 
-When the user gives a direct command or request that matches any tool, you MUST
-invoke the corresponding function tool immediately. You may call multiple tools
-in sequence — for example a READ lookup (searchProducts / getCategories) followed
-by a WRITE mutation (manageProduct / manageCategories) — before giving your final
-answer. Only claim an action was completed after the matching WRITE tool has
-actually returned a confirmed success result back to you.
+${executionMode === "suggest"
+  ? "SUGGESTION-ONLY MODE: Do not invoke any state-changing tool. Read-only tools may be used to ground suggestions."
+  : "APPROVAL MODE: Read-only tools may run to prepare an exact proposal. Never execute a state-changing tool in this chat turn; return its exact function name and arguments for the admin to review and approve in the UI."}
+Only report a change as completed after its tool returns a confirmed and verified success result.
 `;
 
         const contents: any[] = history.slice(-6).map((h) => ({
@@ -454,7 +443,10 @@ actually returned a confirmed success result back to you.
         });
 
         // Execute Gemini call with dynamic tool routing
-        const activeTools = getActiveTools({ page, userRole });
+        const activeTools = getActiveTools({ page, userRole }).filter((declaration) => {
+          if (executionMode !== "suggest") return true;
+          return AI_TOOL_SUITE.find((tool) => tool.name === declaration.name)?.mutatesState !== true;
+        });
 
         const config: any = {
           systemInstruction,
@@ -531,6 +523,53 @@ actually returned a confirmed success result back to you.
             const toolName = fc.name as AiToolName;
             const toolArgs = (fc.args || {}) as Record<string, unknown>;
             const isWrite = isWriteToolName(toolName);
+            const storeReadBeforeWrite = requiredStoreRead(message, customerExperience);
+
+            if (isWrite && (storeReadBeforeWrite === "unsupported" || (storeReadBeforeWrite && isReadOnlyStoreRequest(message)))) {
+              return {
+                text: "طلبك استعلام عن بيانات المتجر فقط؛ لم أجهز أو أنفذ أي تعديل.",
+                modelUsed: currentModel,
+                roleUsed: selectedRole,
+                groundingSources: groundingSources.length ? groundingSources : undefined,
+                toolResults: steps.length ? steps.map((step) => step.res) : undefined,
+              };
+            }
+
+            if (isWrite && storeReadBeforeWrite && !hasSuccessfulSupabaseRead(steps, storeReadBeforeWrite)) {
+              functionResponseParts.push({
+                functionResponse: {
+                  name: toolName,
+                  response: {
+                    ok: false,
+                    success: false,
+                    messageAr: "لم أجهّز التعديل بعد. اقرأ مصدر Supabase المطلوب أولًا ثم أعد تقديم الإجراء للمراجعة.",
+                    verified: false,
+                  },
+                },
+              });
+              continue;
+            }
+
+            if (isWrite && executionMode === "suggest") {
+              return {
+                text: "وضع «اقتراح فقط» مفعّل؛ لم أرسل أي تغيير إلى أدوات المتجر.",
+                modelUsed: currentModel,
+                roleUsed: selectedRole,
+                groundingSources: groundingSources.length ? groundingSources : undefined,
+                toolResults: steps.length ? steps.map((step) => step.res) : undefined,
+              };
+            }
+
+            if (executionMode === "approval" && isWrite) {
+              return {
+                text: "جهّز المساعد إجراءً للمراجعة. لم تُكتب أي تغييرات بعد؛ راجع تفاصيل الإجراء ثم أكّده أو ارفضه.",
+                modelUsed: currentModel,
+                roleUsed: selectedRole,
+                groundingSources: groundingSources.length ? groundingSources : undefined,
+                toolResults: steps.length ? steps.map((step) => step.res) : undefined,
+                pendingAction: { toolName, args: toolArgs },
+              };
+            }
 
             const requiredRead = requiredStoreRead(message, customerExperience);
             if (isWrite && (requiredRead === "unsupported" || requiredRead && isReadOnlyStoreRequest(message))) {
@@ -636,67 +675,40 @@ actually returned a confirmed success result back to you.
         };
       } catch (err: any) {
         lastError = err;
+        const errorMessage = String(err?.message || err || "");
+        missingServerGeminiKey = /GEMINI_API_KEY is not configured/i.test(errorMessage);
         const diagnostics = diagnoseGeminiError(err);
         console.warn(`[AI Engine] Model ${currentModel} returned an issue (${diagnostics.code}). Trying fallback...`);
 
         // If it's a 401 Auth error, trying other models won't help; break to local fallback
-        if (diagnostics.isAuthError) {
+        if (diagnostics.isAuthError || missingServerGeminiKey) {
           break;
         }
       }
     }
 
+    if (missingServerGeminiKey) {
+      return {
+        text: "مفتاح Gemini غير مضبوط في أسرار خادم التطبيق باسم GEMINI_API_KEY. أضفه إلى بيئة الخادم ثم أعد نشر التطبيق.",
+        modelUsed: "gemini-server-key-missing",
+        roleUsed: selectedRole,
+      };
+    }
+
     if (lastError) {
-      console.warn("[AI Engine] All live Gemini attempts exhausted, falling back to instant NLP router:", lastError);
+      const diagnostics = diagnoseGeminiError(lastError);
+      console.warn("[AI Engine] Live Gemini attempts exhausted; no tool was executed without a model decision.", diagnostics.code);
+      return {
+        text: `تعذر إكمال الطلب عبر Gemini (${diagnostics.code}). لم أنفذ أي أداة احتياطيًا أو أخمّن معاملات الطلب. أصلح اتصال Gemini ثم أعد المحاولة.`,
+        modelUsed: "gemini-request-failed",
+        roleUsed: selectedRole,
+      };
     }
-  }
-
-  // 2. Local Deterministic NLP Router Fallback
-  const routed = routeCommandToTool(message);
-  if (routed) {
-    const requiredRead = requiredStoreRead(message, customerExperience);
-    if (requiredRead && routed.tool !== requiredRead) {
-      return { text: UNVERIFIED_STORE_DATA_REPLY, modelUsed: "local-deterministic-engine", roleUsed: selectedRole };
-    }
-    const res = await executeAiTool(routed.tool, routed.args, ctx);
-    const isWrite = isWriteToolName(routed.tool);
-    const finalized = finalizeResponse(
-      [{ tool: routed.tool, args: routed.args, res, isWrite }],
-      "",
-    );
-
-    if (requiredRead && !res.ok) {
-      return { text: UNVERIFIED_STORE_DATA_REPLY, modelUsed: "local-deterministic-engine", roleUsed: selectedRole, toolResult: res, toolResults: [res] };
-    }
-
-    return {
-      text: finalized.text,
-      modelUsed: "local-deterministic-engine",
-      roleUsed: selectedRole,
-      toolResult: res,
-      toolResults: [res],
-    };
-  }
-
-  if (customerExperience) {
-    return {
-      text: "مساعد التخطيط بالذكاء الاصطناعي غير متاح الآن. يمكنك استخدام البحث في منتجات المتجر أدناه، وسأعرض لك المنتجات المتاحة وأسعارها الحالية.",
-      modelUsed: "customer-assistant-unavailable",
-      roleUsed: selectedRole,
-    };
-  }
-
-  if (/(?:أضف|اضف|ضيف|ضيفلي|إضافة|اضافة|سجل|أنشئ|انشئ)\s+(?:لي\s+)?(?:منتج|صنف)/i.test(message) && !/(?:بسعر|سعره|بـ|ب)\s*[٠-٩0-9]/i.test(message)) {
-    return {
-      text: "أحتاج سعر البيع قبل إضافة المنتج. أرسل الاسم والسعر (مثال: ضيف منتج جبنة بيضاء بسعر 120 جنيه). لن أخمّن سعرًا أو أُنشئ سجلًا ناقصًا.",
-      modelUsed: "local-deterministic-engine",
-      roleUsed: selectedRole,
-    };
   }
 
   return {
-    text: `مساعد الوادي جاهز للطلبات التي تدعمها الأدوات المهيأة حاليًا. أستطيع قراءة كتالوج Supabase والتحقق من بياناته، وتنفيذ بعض عمليات المتجر بعد التحقق من صلاحيتك. بعض عمليات الملفات وGit والإشعارات تحتاج موفرًا منفصلًا، لذلك لن أدّعي تنفيذها قبل تأكيد نتيجة حقيقية. اكتب طلبًا محددًا لأتحقق من توفر الأداة والبيانات أولًا.`,
-    modelUsed: "local-deterministic-engine",
+    text: "لم يصل رد من Gemini ولم يتم تنفيذ أي أداة. أعد المحاولة بعد التأكد من إعداد الاتصال بالخادم.",
+    modelUsed: "gemini-unavailable",
     roleUsed: selectedRole,
   };
 }
@@ -705,19 +717,19 @@ actually returned a confirmed success result back to you.
 
 export interface CopilotSelfTestResult {
   success: boolean;
-  step: "env_check" | "database_read" | "completed";
+  step: "env_check" | "database_read" | "gemini_request" | "completed";
   message: string;
   details?: Record<string, unknown>;
   latencyMs?: number;
 }
 
 /**
- * Performs a read-only connectivity check against the live catalog. This must
- * not write placeholder metadata or imply that unrelated tool mutations work.
+ * Performs read-only checks against the live catalog and authenticated
+ * server-side Gemini gateway. It does not mutate data or certify every tool.
  */
 export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
   const startTime = Date.now();
-  console.info("[AI Engine Self-Test] 🔍 Starting read-only catalog connectivity check...");
+  console.info("[AI Engine Self-Test] 🔍 Checking Supabase and server-side Gemini connectivity...");
 
   // Check app configuration and real catalog read access; do not mutate data.
   const env = validateEnvironment();
@@ -747,16 +759,54 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
       };
     }
 
+    try {
+      await generateGeminiContent({
+        data: {
+          purpose: "chat",
+          model: "gemini-2.5-flash",
+          contents: "Reply with OK only.",
+          config: {
+            systemInstruction: "Connectivity check. Reply with OK. Do not call any function.",
+            maxOutputTokens: 8,
+            tools: [{
+              functionDeclarations: AI_TOOL_SUITE
+                .filter((tool) => tool.name === "searchProducts" || tool.name === "getCategories")
+                .map((tool) => tool.declaration),
+            }],
+            toolConfig: {
+              functionCallingConfig: { mode: "NONE" },
+            },
+          },
+        },
+      });
+    } catch (geminiError) {
+      const diagnosis = diagnoseGeminiError(geminiError);
+      return {
+        success: false,
+        step: "gemini_request",
+        message: diagnosis.messageAr,
+        details: {
+          supabaseConfigured: true,
+          productsReadable: true,
+          categoriesReadable: true,
+          geminiConnected: false,
+          geminiErrorCode: diagnosis.code,
+        },
+        latencyMs: Date.now() - startTime,
+      };
+    }
+
     const latency = Date.now() - startTime;
-    console.info(`[AI Engine Self-Test] ✅ Read-only catalog connectivity passed in ${latency}ms.`);
+    console.info(`[AI Engine Self-Test] ✅ Supabase and Gemini connectivity passed in ${latency}ms.`);
 
     return {
       success: true,
       step: "completed",
-      message: `نجحت قراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا يختبر عمليات الكتابة أو الأدوات الأخرى (${latency}ms).`,
+      message: `نجح الاتصال بـ Gemini وقراءة جداول المنتجات والأقسام من Supabase. هذا الفحص لا ينفذ تغييرات ولا يختبر كل أداة كتابة (${latency}ms).`,
       details: {
         environmentMode: env.mode,
-        geminiConfigured: env.geminiReady,
+        geminiConfigured: true,
+        geminiConnected: true,
         supabaseConfigured: env.supabaseReady,
         productsReadable: true,
         categoriesReadable: true,
@@ -776,78 +826,6 @@ export async function verifyCopilotExecution(): Promise<CopilotSelfTestResult> {
       latencyMs: Date.now() - startTime,
     };
   }
-}
-
-/* ───────────────────────── parseAdminCommandToLayoutUpdate ───────────────────────── */
-
-export async function parseAdminCommandToLayoutUpdate(
-  command: string,
-  currentLayout: StoreLayoutConfig,
-): Promise<ParseCommandResult> {
-  const updatedLayout: StoreLayoutConfig = JSON.parse(JSON.stringify(currentLayout));
-  const changedKeys: string[] = [];
-  const executedActions: ParsedActionDetail[] = [];
-
-  const c = command.trim().toLowerCase();
-
-  if (c.includes("توهج") || c.includes("glow") || c.includes("أخضر زمردي")) {
-    updatedLayout.theme.primaryColor = "#059669";
-    updatedLayout.theme.palette = "emerald";
-    changedKeys.push("theme");
-    executedActions.push({
-      target: "Theme",
-      field: "primaryColor",
-      action: "updated",
-      label: "تطبيق التوهج الزمردي",
-      newValue: "#059669",
-    });
-  }
-
-  if (c.includes("ساعات ذهبية") || c.includes("فلاش سيل") || c.includes("flash sale")) {
-    updatedLayout.flashSaleTimer.enabled = true;
-    updatedLayout.flashSaleTimer.title = "عروض الساعات الذهبية ⚡ خصومات حتى 30%";
-    updatedLayout.flashSaleTimer.couponCode = "GOLDEN30";
-    updatedLayout.flashSaleTimer.endTime = new Date(Date.now() + 4 * 3600 * 1000).toISOString();
-    changedKeys.push("flashSaleTimer");
-    executedActions.push({
-      target: "FlashSaleTimer",
-      field: "enabled",
-      action: "toggled",
-      label: "تفعيل عداد عروض الساعات الذهبية",
-      newValue: "true",
-    });
-  }
-
-  if (c.includes("داكن") || c.includes("ليلي") || c.includes("dark")) {
-    updatedLayout.theme.mode = "dark";
-    changedKeys.push("theme");
-    executedActions.push({
-      target: "Theme",
-      field: "mode",
-      action: "updated",
-      label: "تفعيل الوضع الداكن",
-      newValue: "dark",
-    });
-  } else if (c.includes("فاتح") || c.includes("light")) {
-    updatedLayout.theme.mode = "light";
-    changedKeys.push("theme");
-    executedActions.push({
-      target: "Theme",
-      field: "mode",
-      action: "updated",
-      label: "تفعيل الوضع الفاتح",
-      newValue: "light",
-    });
-  }
-
-  return {
-    updatedLayout,
-    explanation: "تم تحليل وتطبيق تعديلات تخطيط الواجهة بنجاح.",
-    actionSummary: `تم تعديل ${executedActions.length || 1} عنصراً في الواجهة.`,
-    changedKeys: changedKeys.length > 0 ? changedKeys : ["theme"],
-    executedActions,
-    intelligenceScore: 98,
-  };
 }
 
 /* ───────────────────────── generateExecutiveSummary ───────────────────────── */

@@ -111,8 +111,33 @@ export const generateGeminiContent = createServerFn({ method: "POST" })
   .validator(assertValidRequest)
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }): Promise<GeminiClientResponse> => {
-    const { data: roleValue, error: roleError } = await context.supabase.rpc("get_my_role");
-    if (roleError) throw new Error("Could not verify the signed-in user's store role.");
+    let roleValue: unknown = null;
+    const { data: rpcRole, error: roleError } = await context.supabase.rpc("get_my_role");
+    if (!roleError && rpcRole) {
+      roleValue = rpcRole;
+    } else {
+      // Some deployed schemas expose an own-row RLS policy for user_roles but
+      // do not have the optional convenience RPC. Fall back to that same
+      // caller-scoped table read; never trust a role supplied by the browser.
+      const { data: roles, error: rolesError } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId);
+      if (rolesError) throw new Error("Could not verify the signed-in user's store role.");
+      roleValue = roles?.some((row) => row.role === "super_admin")
+        ? "super_admin"
+        : roles?.some((row) => row.role === "admin")
+          ? "admin"
+          : roles?.some((row) => row.role === "moderator")
+            ? "moderator"
+            : roles?.some((row) => row.role === "staff")
+              ? "staff"
+              : roles?.some((row) => row.role === "driver")
+                ? "driver"
+                : roles?.some((row) => row.role === "customer")
+                  ? "customer"
+                  : null;
+    }
     const role = String(roleValue ?? "").toLowerCase();
     const isAdmin = ADMIN_ROLES.has(role);
     const isModerator = role === "moderator";

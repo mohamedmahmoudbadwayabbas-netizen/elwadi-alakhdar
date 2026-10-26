@@ -19,7 +19,12 @@ const READ_OPERATIONS = new Set([
   "getDirectoryTree",
   "searchCodebase",
   "getAppErrors",
-  "validateChanges",
+]);
+
+// Block project writes on the server too, so old clients cannot bypass the UI.
+const DISABLED_MUTATIONS = new Set([
+  "createFile", "updateFile", "deleteFile", "validateChanges", "applyChanges",
+  "rollback", "gitCommitAndPush", "gitRollback", "prepareChangeSet",
 ]);
 
 const WRITE_OPERATIONS = new Set([
@@ -218,6 +223,10 @@ Deno.serve(async (req) => {
 
   const operation = String(body.operation || "").trim();
   const args = body.args && typeof body.args === "object" ? body.args : {};
+
+  if (DISABLED_MUTATIONS.has(operation)) {
+    return result("NOT_IMPLEMENTED", "تم تعطيل تعديل ملفات المشروع وعمليات Git من أدوات المساعد.", undefined, "PROJECT_MUTATIONS_DISABLED", id);
+  }
 
   if (!READ_OPERATIONS.has(operation) && !WRITE_OPERATIONS.has(operation) && operation !== "prepareChangeSet") {
     return result("NOT_IMPLEMENTED", `العملية «${operation || "غير معروفة"}» غير مدعومة في محرك المشروع.`, undefined, "UNSUPPORTED_OPERATION", id);

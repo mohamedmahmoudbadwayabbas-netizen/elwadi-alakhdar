@@ -3,33 +3,6 @@
    Runtime Diagnostics, Live Client Instantiation & Key Validation
    ========================================================================= */
 
-import { GoogleGenAI } from "@google/genai";
-
-export const getGeminiApiKey = (): string | undefined => {
-  let metaKey: string | undefined;
-  try {
-    metaKey = import.meta.env.VITE_GEMINI_API_KEY;
-  } catch {
-    metaKey = undefined;
-  }
-
-  let procKey: string | undefined;
-  try {
-    if (typeof process !== "undefined" && process?.env) {
-      procKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    }
-  } catch {
-    procKey = undefined;
-  }
-
-  const resolved = metaKey || procKey;
-
-  if (typeof resolved === "string" && resolved.trim().length > 0) {
-    return resolved.trim();
-  }
-  return undefined;
-};
-
 export const getSupabaseUrl = (): string | undefined => {
   let metaUrl: string | undefined;
   try {
@@ -86,7 +59,9 @@ export const getSupabaseAnonKey = (): string | undefined => {
   return undefined;
 };
 
-export const isGeminiConfigured = (): boolean => Boolean(getGeminiApiKey());
+// Gemini credentials are server-only. The browser can confirm connectivity
+// only by making an authenticated request through the Gemini server function.
+export const isGeminiConfigured = (): boolean => false;
 
 export const isSupabaseConfigured = (): boolean => {
   const url = getSupabaseUrl() || "";
@@ -109,11 +84,9 @@ export function validateEnvironment(): DiagnosticEnvironmentStatus {
   const warnings: string[] = [];
 
   if (!geminiReady) {
-    const warn = "[AI Engine Diagnostics] GEMINI_API_KEY / VITE_GEMINI_API_KEY is not set. Free-form Gemini replies are unavailable; catalog actions still require verified Supabase reads.";
-    console.warn(warn);
+    const warn = "[AI Engine Diagnostics] No Gemini key is exposed to the browser. Server-side GEMINI_API_KEY availability is checked per request.";
+    console.info(warn);
     warnings.push(warn);
-  } else {
-    console.info("[AI Engine Diagnostics] Gemini Generative AI SDK key validated and active.");
   }
 
   if (!supabaseReady) {
@@ -158,7 +131,6 @@ export interface GeminiApiErrorInfo {
   isNotFoundError: boolean;
   isRateLimitError: boolean;
   messageAr: string;
-  rawError: string;
 }
 
 export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
@@ -172,15 +144,15 @@ export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
   let messageAr = "حدث خطأ غير متوقع أثناء استدعاء نموذج Gemini.";
   if (isAuthError) {
     messageAr = "مفتاح Gemini API غير صالح أو منتهي الصلاحية (HTTP 401). يرجى التحقق من متغير البية GEMINI_API_KEY.";
-    console.error("[AI Engine Diagnostics] 🔴 HTTP 401 Unauthorized: Invalid Gemini API key provided.", err);
+    console.error("[AI Engine Diagnostics] Gemini authentication failed (HTTP 401).");
   } else if (isNotFoundError) {
-    messageAr = "النموذج المطلوب غير متاح أو قديم (HTTP 404). جاري التحويل التلقائي لنموذج الإنتاج البديل (gemini-2.0-flash).";
-    console.error("[AI Engine Diagnostics] 🔴 HTTP 404 Not Found: Model endpoint not found or deprecated.", err);
+    messageAr = "النموذج المطلوب غير متاح أو قديم (HTTP 404). سيتم تجربة النماذج البديلة المهيأة؛ إذا فشلت فلن تُنفذ أي أداة.";
+    console.error("[AI Engine Diagnostics] Requested Gemini model was not found (HTTP 404).");
   } else if (isRateLimitError) {
-    messageAr = "تم تجاوز حد الطلبات المسموح به لـ Gemini API مؤقتاً (HTTP 429). جاري التحويل لمحرك القواعد المحلي الفوري.";
-    console.warn("[AI Engine Diagnostics] 🟡 HTTP 429 Rate Limit / Quota Exceeded. Fallback engaged.", err);
+    messageAr = "تم تجاوز حد الطلبات المسموح به لـ Gemini API مؤقتاً (HTTP 429). لم يتم تشغيل محرك ردود محلي أو تنفيذ أدوات بدونه.";
+    console.warn("[AI Engine Diagnostics] Gemini quota or rate limit reached (HTTP 429).");
   } else {
-    console.error("[AI Engine Diagnostics] 🔴 Gemini API Error:", err);
+    console.error("[AI Engine Diagnostics] Gemini request failed.");
   }
 
   return {
@@ -190,25 +162,6 @@ export function diagnoseGeminiError(err: any): GeminiApiErrorInfo {
     isNotFoundError,
     isRateLimitError,
     messageAr,
-    rawError: errorStr,
   };
-}
-
-// Lazy initialization of GenAI SDK
-let genAIInstance: GoogleGenAI | null = null;
-export function getGenAI(): GoogleGenAI | null {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) return null;
-  if (!genAIInstance) {
-    genAIInstance = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-  }
-  return genAIInstance;
 }
 

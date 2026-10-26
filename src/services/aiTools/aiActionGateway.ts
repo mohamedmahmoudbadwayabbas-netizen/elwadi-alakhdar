@@ -28,9 +28,16 @@ export interface AiActionResult {
 type ToolExecutor = () => Promise<ToolExecutionResult>;
 
 const DESTRUCTIVE_TOOLS = new Set<AiToolName>(["rollbackLastAction", "deleteFile", "gitRollbackCommit"]);
+const DISABLED_PROJECT_MUTATION_TOOLS = new Set<string>([
+  "writeNewFile", "updateFileAST", "deleteFile", "gitCommitAndPush", "gitRollbackCommit",
+]);
 const HIGH_WRITE_TOOLS = new Set<AiToolName>([
-  "manageProduct", "manageCategories", "bulkPriceUpdate", "createDiscountBundle", "manageUsersAndRoles",
-  "manageDeliveryZones", "updateLayoutConfig", "updateThemeColors", "updateRawJsonMetadata", "writeNewFile", "updateFileAST", "deleteFile", "gitCommitAndPush", "gitRollbackCommit",
+  // Keep bulk price changes, access-control changes, arbitrary metadata, and
+  // repository mutations behind an explicit approval path. Routine, directly
+  // requested store edits are allowed for a verified admin and still must
+  // report a confirmed database result.
+  "bulkPriceUpdate", "manageUsersAndRoles", "updateRawJsonMetadata",
+  "writeNewFile", "updateFileAST", "deleteFile", "gitCommitAndPush", "gitRollbackCommit",
 ]);
 const READ_TOOLS = new Set<AiToolName>([
   "searchProducts", "getCategories", "exportReportsAndAnalytics", "getDirectoryTree", "getFileContent", "searchCodebase", "getAppErrors",
@@ -39,9 +46,8 @@ const READ_TOOLS = new Set<AiToolName>([
 export function classifyAiRisk(toolName: AiToolName, input: Record<string, unknown>): AiRiskLevel {
   if (DESTRUCTIVE_TOOLS.has(toolName) || input.action === "delete") return "DESTRUCTIVE";
   if (READ_TOOLS.has(toolName)) return "READ";
-  // Direct admin catalog changes are routine write operations. Deletion stays
-  // destructive and behind explicit approval.
-  if (toolName === "manageProduct" || toolName === "manageCategories") return "LOW_WRITE";
+  // Direct admin store configuration and catalog actions are routine writes.
+  // Deletion is still destructive regardless of tool name.
   if (HIGH_WRITE_TOOLS.has(toolName)) return "HIGH_WRITE";
   return "LOW_WRITE";
 }
@@ -51,7 +57,21 @@ async function resolveActor(): Promise<{ userId: string; role: string } | null> 
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
   const { data: role, error: roleError } = await supabase.rpc("get_my_role");
-  return { userId: data.user.id, role: roleError ? "customer" : String(role || "customer").toLowerCase() };
+  if (!roleError && role) {
+    return { userId: data.user.id, role: String(role).toLowerCase() };
+  }
+
+  // Keep deployed schemas without get_my_role working using the existing
+  // caller-owned RLS policy on user_roles. Do not trust the UI's claimed role.
+  const { data: roles, error: rolesError } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", data.user.id);
+  if (rolesError) return { userId: data.user.id, role: "customer" };
+  const grantedRoles = new Set((roles ?? []).map((row) => String(row.role).toLowerCase()));
+  const resolvedRole = ["super_admin", "admin", "moderator", "staff", "driver", "customer"]
+    .find((candidate) => grantedRoles.has(candidate));
+  return { userId: data.user.id, role: resolvedRole ?? "customer" };
 }
 
 async function verifyAction(action: AiAction, result: ToolExecutionResult): Promise<{ verified: boolean; details: string }> {
@@ -113,6 +133,9 @@ export async function executeAIAction(
   const risk = classifyAiRisk(toolName, input);
   const auditId = `audit-${actionId}`;
   const base = { actionId, toolName, auditId };
+  if (DISABLED_PROJECT_MUTATION_TOOLS.has(toolName)) {
+    return { ...base, success: false, status: "rejected", error: "تم تعطيل أدوات تعديل ملفات المشروع وعمليات Git." };
+  }
   if (!actor && risk !== "READ") return { ...base, success: false, status: "rejected", error: "لا يوجد مستخدم موثق في Supabase Auth." };
   const actionActor = actor ?? { userId: "anonymous", role: "customer" };
   const action: AiAction = { ...base, actor: actionActor, input, risk, context };

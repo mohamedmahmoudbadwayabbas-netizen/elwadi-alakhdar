@@ -1,5 +1,5 @@
 /* =========================================================================
-   GEMINI AI ADMIN ENGINE — UNIFIED 27-TOOL SUITE DECLARATIONS
+   GEMINI AI ADMIN ENGINE — UNIFIED TOOL SUITE DECLARATIONS
    Precise JSON Schema declarations for Gemini Function Calling & UI Labels
    ========================================================================= */
 
@@ -14,6 +14,10 @@ const enumStr = (description: string, values: string[]) => ({
   enum: values,
 });
 
+const DISABLED_PROJECT_MUTATIONS = new Set([
+  "writeNewFile", "updateFileAST", "deleteFile", "gitCommitAndPush", "gitRollbackCommit",
+]);
+
 export const AI_TOOL_GROUP_LABELS: Record<AiToolGroup, { labelAr: string; icon: string }> = {
   media: { labelAr: "الوسائط والصور", icon: "Image" },
   catalog: { labelAr: "الكتالوج والأسعار", icon: "Layers" },
@@ -25,7 +29,7 @@ export const AI_TOOL_GROUP_LABELS: Record<AiToolGroup, { labelAr: string; icon: 
   devops: { labelAr: "الكود والبنية التحتية", icon: "Terminal" },
 };
 
-export const AI_TOOL_SUITE: AiToolDefinition[] = [
+const ALL_AI_TOOL_SUITE: AiToolDefinition[] = [
   // ── CORE 1: MEDIA ──
   {
     name: "generateProductImage",
@@ -406,7 +410,7 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
     },
   },
 
-  // ── PHASE 3: CODEBASE, INFRASTRUCTURE & GIT TOOLS ──
+  // ── PHASE 3: READ-ONLY CODEBASE TOOLS ──
   {
     name: "getDirectoryTree",
     group: "devops",
@@ -578,6 +582,8 @@ export const AI_TOOL_SUITE: AiToolDefinition[] = [
     },
   },
 ];
+
+export const AI_TOOL_SUITE = ALL_AI_TOOL_SUITE.filter((tool) => !DISABLED_PROJECT_MUTATIONS.has(tool.name));
 
 export const GEMINI_TOOL_DECLARATIONS = AI_TOOL_SUITE.map((t) => t.declaration);
 
