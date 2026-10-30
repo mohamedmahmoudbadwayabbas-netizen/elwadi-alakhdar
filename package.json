@@ -14,6 +14,7 @@
     "project-engine:provider:test": "node scripts/test-project-engine-provider.mjs"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.105",
     "@google/genai": "^2.17.1",
     "@hookform/resolvers": "^5.4.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
@@ -50,6 +51,7 @@
     "@tanstack/react-router": "^1.170.18",
     "@tanstack/react-start": "^1.168.34",
     "@tanstack/router-plugin": "^1.168.23",
+    "ai": "^7.0.157",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
