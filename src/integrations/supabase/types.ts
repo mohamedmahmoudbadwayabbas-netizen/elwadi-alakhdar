@@ -10,157 +10,101 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      ai_audit_log: {
+      addresses: {
         Row: {
-          action: string
-          actor: string | null
-          actor_type: string
-          after: Json | null
-          before: Json | null
+          apartment: string | null
+          area: string
+          building: string
           created_at: string
-          id: number
-          proposal_id: string | null
-          record_id: string | null
-          table_affected: string | null
-        }
-        Insert: {
-          action: string
-          actor?: string | null
-          actor_type: string
-          after?: Json | null
-          before?: Json | null
-          created_at?: string
-          id?: never
-          proposal_id?: string | null
-          record_id?: string | null
-          table_affected?: string | null
-        }
-        Update: {
-          action?: string
-          actor?: string | null
-          actor_type?: string
-          after?: Json | null
-          before?: Json | null
-          created_at?: string
-          id?: never
-          proposal_id?: string | null
-          record_id?: string | null
-          table_affected?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_audit_log_proposal_id_fkey"
-            columns: ["proposal_id"]
-            isOneToOne: false
-            referencedRelation: "ai_proposals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_proposals: {
-        Row: {
-          action_type: string
-          agent_type: string
-          created_at: string
+          full_name: string
           id: string
-          payload: Json
-          requested_by: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          reviewer_note: string | null
-          risk_flag: string
-          status: string
+          is_default: boolean
+          label: string
+          notes: string | null
+          phone: string
+          street: string
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          action_type: string
-          agent_type: string
+          apartment?: string | null
+          area: string
+          building: string
           created_at?: string
+          full_name: string
           id?: string
-          payload: Json
-          requested_by?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          reviewer_note?: string | null
-          risk_flag?: string
-          status?: string
+          is_default?: boolean
+          label: string
+          notes?: string | null
+          phone: string
+          street: string
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          action_type?: string
-          agent_type?: string
+          apartment?: string | null
+          area?: string
+          building?: string
           created_at?: string
+          full_name?: string
           id?: string
-          payload?: Json
-          requested_by?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          reviewer_note?: string | null
-          risk_flag?: string
-          status?: string
+          is_default?: boolean
+          label?: string
+          notes?: string | null
+          phone?: string
+          street?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
-      }
-      cart_items: {
-        Row: {
-          created_at: string | null
-          id: string
-          product_id: string | null
-          quantity: number | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          product_id?: string | null
-          quantity?: number | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          product_id?: string | null
-          quantity?: number | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cart_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       categories: {
         Row: {
-          created_at: string | null
+          created_at: string
+          icon: string | null
           id: string
           image_url: string | null
           name: string
-          name_ar: string | null
+          parent_id: string | null
           slug: string
+          sort_order: number
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
+          icon?: string | null
           id?: string
           image_url?: string | null
           name: string
-          name_ar?: string | null
+          parent_id?: string | null
           slug: string
+          sort_order?: number
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
+          icon?: string | null
           id?: string
           image_url?: string | null
           name?: string
-          name_ar?: string | null
+          parent_id?: string | null
           slug?: string
+          sort_order?: number
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coupons: {
         Row: {
@@ -169,11 +113,13 @@ export type Database = {
           discount_type: string
           discount_value: number
           expires_at: string | null
+          first_order_only: boolean
           id: string
           is_active: boolean
+          max_uses: number | null
           min_order_amount: number | null
-          usage_limit: number | null
-          used_count: number
+          updated_at: string
+          uses_count: number
         }
         Insert: {
           code: string
@@ -181,11 +127,13 @@ export type Database = {
           discount_type: string
           discount_value: number
           expires_at?: string | null
+          first_order_only?: boolean
           id?: string
           is_active?: boolean
+          max_uses?: number | null
           min_order_amount?: number | null
-          usage_limit?: number | null
-          used_count?: number
+          updated_at?: string
+          uses_count?: number
         }
         Update: {
           code?: string
@@ -193,11 +141,13 @@ export type Database = {
           discount_type?: string
           discount_value?: number
           expires_at?: string | null
+          first_order_only?: boolean
           id?: string
           is_active?: boolean
+          max_uses?: number | null
           min_order_amount?: number | null
-          usage_limit?: number | null
-          used_count?: number
+          updated_at?: string
+          uses_count?: number
         }
         Relationships: []
       }
@@ -207,245 +157,230 @@ export type Database = {
           city: string | null
           country: string
           created_at: string
-          estimated_minutes: number | null
+          estimated_minutes: number
           fee: number
           governorate: string | null
           id: string
           is_active: boolean
-          min_order_amount: number | null
+          min_order_amount: number
           name: string
           sort_order: number
+          updated_at: string
         }
         Insert: {
           area?: string | null
           city?: string | null
           country?: string
           created_at?: string
-          estimated_minutes?: number | null
+          estimated_minutes?: number
           fee?: number
           governorate?: string | null
           id?: string
           is_active?: boolean
-          min_order_amount?: number | null
+          min_order_amount?: number
           name: string
           sort_order?: number
+          updated_at?: string
         }
         Update: {
           area?: string | null
           city?: string | null
           country?: string
           created_at?: string
-          estimated_minutes?: number | null
+          estimated_minutes?: number
           fee?: number
           governorate?: string | null
           id?: string
           is_active?: boolean
-          min_order_amount?: number | null
+          min_order_amount?: number
           name?: string
           sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
-      order_items: {
+      hero_banners: {
         Row: {
+          created_at: string
+          cta_text: string | null
           id: string
-          order_id: string | null
-          price: number
-          product_id: string | null
-          quantity: number
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          sort_order: number
+          subtitle: string | null
+          title: string | null
+          updated_at: string
         }
         Insert: {
+          created_at?: string
+          cta_text?: string | null
           id?: string
-          order_id?: string | null
-          price: number
-          product_id?: string | null
-          quantity: number
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
         }
         Update: {
+          created_at?: string
+          cta_text?: string | null
           id?: string
-          order_id?: string | null
-          price?: number
-          product_id?: string | null
-          quantity?: number
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       orders: {
         Row: {
-          address: string | null
-          coupon_code: string | null
-          created_at: string | null
-          customer_name: string | null
-          delivery_fee: number | null
-          delivery_method: string | null
+          address: string
+          created_at: string
+          customer_name: string
+          delivery_fee: number
+          delivery_method: string
           delivery_zone_id: string | null
-          discount_amount: number | null
           id: string
-          idempotency_key: string | null
+          items: Json
           notes: string | null
-          payment_method: string | null
+          payment_method: string
           payment_reference: string | null
-          phone: string | null
+          phone: string
           ref_source: string | null
-          shipping_address: Json | null
-          status: string | null
-          total_amount: number
+          status: string
+          total_price: number
+          updated_at: string
           user_id: string | null
         }
         Insert: {
-          address?: string | null
-          coupon_code?: string | null
-          created_at?: string | null
-          customer_name?: string | null
-          delivery_fee?: number | null
-          delivery_method?: string | null
+          address: string
+          created_at?: string
+          customer_name: string
+          delivery_fee?: number
+          delivery_method?: string
           delivery_zone_id?: string | null
-          discount_amount?: number | null
           id?: string
-          idempotency_key?: string | null
+          items?: Json
           notes?: string | null
-          payment_method?: string | null
+          payment_method?: string
           payment_reference?: string | null
-          phone?: string | null
+          phone: string
           ref_source?: string | null
-          shipping_address?: Json | null
-          status?: string | null
-          total_amount: number
+          status?: string
+          total_price: number
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
-          address?: string | null
-          coupon_code?: string | null
-          created_at?: string | null
-          customer_name?: string | null
-          delivery_fee?: number | null
-          delivery_method?: string | null
+          address?: string
+          created_at?: string
+          customer_name?: string
+          delivery_fee?: number
+          delivery_method?: string
           delivery_zone_id?: string | null
-          discount_amount?: number | null
           id?: string
-          idempotency_key?: string | null
+          items?: Json
           notes?: string | null
-          payment_method?: string | null
+          payment_method?: string
           payment_reference?: string | null
-          phone?: string | null
+          phone?: string
           ref_source?: string | null
-          shipping_address?: Json | null
-          status?: string | null
-          total_amount?: number
+          status?: string
+          total_price?: number
+          updated_at?: string
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      payments: {
-        Row: {
-          amount: number
-          created_at: string
-          gateway_reference: string | null
-          id: string
-          method: string
-          order_id: string
-          reconciled_at: string | null
-          status: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          gateway_reference?: string | null
-          id?: string
-          method: string
-          order_id: string
-          reconciled_at?: string | null
-          status?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          gateway_reference?: string | null
-          id?: string
-          method?: string
-          order_id?: string
-          reconciled_at?: string | null
-          status?: string
         }
         Relationships: [
           {
-            foreignKeyName: "payments_order_id_fkey"
-            columns: ["order_id"]
+            foreignKeyName: "orders_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
             isOneToOne: false
-            referencedRelation: "orders"
+            referencedRelation: "delivery_zones"
             referencedColumns: ["id"]
           },
         ]
       }
       products: {
         Row: {
+          avg_rating: number
           category_id: string | null
-          created_at: string | null
+          cooking_tip: string | null
+          created_at: string
           description: string | null
-          description_ar: string | null
           id: string
           image_url: string | null
-          images: string[] | null
-          is_active: boolean | null
-          is_featured: boolean | null
+          is_by_weight: boolean
+          is_featured: boolean
+          is_on_sale: boolean
+          is_popular: boolean
+          is_top_seller: boolean
+          low_stock_threshold: number
           name: string
-          name_ar: string | null
-          original_price: number | null
-          price: number
-          rating: number | null
-          reviews_count: number | null
-          stock: number | null
+          old_price: number | null
+          price_per_unit: number
+          purchase_count: number
+          reviews_count: number
+          stock_quantity: number
+          unit: string | null
+          unit_label: string
+          updated_at: string
+          views_count: number
         }
         Insert: {
+          avg_rating?: number
           category_id?: string | null
-          created_at?: string | null
+          cooking_tip?: string | null
+          created_at?: string
           description?: string | null
-          description_ar?: string | null
           id?: string
           image_url?: string | null
-          images?: string[] | null
-          is_active?: boolean | null
-          is_featured?: boolean | null
+          is_by_weight?: boolean
+          is_featured?: boolean
+          is_on_sale?: boolean
+          is_popular?: boolean
+          is_top_seller?: boolean
+          low_stock_threshold?: number
           name: string
-          name_ar?: string | null
-          original_price?: number | null
-          price: number
-          rating?: number | null
-          reviews_count?: number | null
-          stock?: number | null
+          old_price?: number | null
+          price_per_unit: number
+          purchase_count?: number
+          reviews_count?: number
+          stock_quantity?: number
+          unit?: string | null
+          unit_label?: string
+          updated_at?: string
+          views_count?: number
         }
         Update: {
+          avg_rating?: number
           category_id?: string | null
-          created_at?: string | null
+          cooking_tip?: string | null
+          created_at?: string
           description?: string | null
-          description_ar?: string | null
           id?: string
           image_url?: string | null
-          images?: string[] | null
-          is_active?: boolean | null
-          is_featured?: boolean | null
+          is_by_weight?: boolean
+          is_featured?: boolean
+          is_on_sale?: boolean
+          is_popular?: boolean
+          is_top_seller?: boolean
+          low_stock_threshold?: number
           name?: string
-          name_ar?: string | null
-          original_price?: number | null
-          price?: number
-          rating?: number | null
-          reviews_count?: number | null
-          stock?: number | null
+          old_price?: number | null
+          price_per_unit?: number
+          purchase_count?: number
+          reviews_count?: number
+          stock_quantity?: number
+          unit?: string | null
+          unit_label?: string
+          updated_at?: string
+          views_count?: number
         }
         Relationships: [
           {
@@ -459,200 +394,100 @@ export type Database = {
       }
       profiles: {
         Row: {
-          address: string | null
-          city: string | null
+          birth_date: string | null
+          created_at: string
           full_name: string | null
           id: string
           phone: string | null
-          role: string | null
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
-          address?: string | null
-          city?: string | null
+          birth_date?: string | null
+          created_at?: string
           full_name?: string | null
           id: string
           phone?: string | null
-          role?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
-          address?: string | null
-          city?: string | null
+          birth_date?: string | null
+          created_at?: string
           full_name?: string | null
           id?: string
           phone?: string | null
-          role?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
-      project_engine_approvals: {
+      reviews: {
         Row: {
-          actor_user_id: string
-          applying_at: string | null
-          approved_at: string
-          change_set: Json
-          change_set_hash: string
-          consumed_at: string | null
+          author_name: string
+          comment: string
           created_at: string
-          expires_at: string
           id: string
-          source_id: string
-          status: string
+          product_id: string
+          rating: number
+          user_id: string | null
         }
         Insert: {
-          actor_user_id: string
-          applying_at?: string | null
-          approved_at?: string
-          change_set: Json
-          change_set_hash: string
-          consumed_at?: string | null
+          author_name: string
+          comment: string
           created_at?: string
-          expires_at: string
           id?: string
-          source_id: string
-          status?: string
+          product_id: string
+          rating: number
+          user_id?: string | null
         }
         Update: {
-          actor_user_id?: string
-          applying_at?: string | null
-          approved_at?: string
-          change_set?: Json
-          change_set_hash?: string
-          consumed_at?: string | null
+          author_name?: string
+          comment?: string
           created_at?: string
-          expires_at?: string
           id?: string
-          source_id?: string
-          status?: string
-        }
-        Relationships: []
-      }
-      project_engine_audit: {
-        Row: {
-          actor_user_id: string | null
-          approval_id: string | null
-          change_set_hash: string | null
-          created_at: string
-          event_type: string
-          id: number
-          metadata: Json | null
-          provider_result: Json | null
-          source_id: string | null
-          validation_result: Json | null
-        }
-        Insert: {
-          actor_user_id?: string | null
-          approval_id?: string | null
-          change_set_hash?: string | null
-          created_at?: string
-          event_type: string
-          id?: never
-          metadata?: Json | null
-          provider_result?: Json | null
-          source_id?: string | null
-          validation_result?: Json | null
-        }
-        Update: {
-          actor_user_id?: string | null
-          approval_id?: string | null
-          change_set_hash?: string | null
-          created_at?: string
-          event_type?: string
-          id?: never
-          metadata?: Json | null
-          provider_result?: Json | null
-          source_id?: string | null
-          validation_result?: Json | null
+          product_id?: string
+          rating?: number
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "project_engine_audit_approval_id_fkey"
-            columns: ["approval_id"]
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "project_engine_approvals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      return_requests: {
-        Row: {
-          admin_note: string | null
-          created_at: string
-          customer_note: string | null
-          id: string
-          order_item_id: string
-          reason_category: string
-          resolution_type: string | null
-          resolved_at: string | null
-          status: string
-        }
-        Insert: {
-          admin_note?: string | null
-          created_at?: string
-          customer_note?: string | null
-          id?: string
-          order_item_id: string
-          reason_category: string
-          resolution_type?: string | null
-          resolved_at?: string | null
-          status?: string
-        }
-        Update: {
-          admin_note?: string | null
-          created_at?: string
-          customer_note?: string | null
-          id?: string
-          order_item_id?: string
-          reason_category?: string
-          resolution_type?: string | null
-          resolved_at?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "return_requests_order_item_id_fkey"
-            columns: ["order_item_id"]
-            isOneToOne: false
-            referencedRelation: "order_items"
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
       }
       store_settings: {
         Row: {
-          accent_color: string
-          announcement_bg_color: string
-          announcement_enabled: boolean
-          announcement_text: string
-          background_color: string
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
           bank_account_info: string | null
           cart_empty_bg: string | null
           created_at: string
-          default_delivery_fee: number
+          default_delivery_fee: number | null
           favicon_url: string | null
           first_order_coupon_code: string | null
-          first_order_coupon_enabled: boolean
-          first_order_discount_percent: number
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
           floating_element_image: string | null
-          font_family: string
-          foreground_color: string
-          free_shipping_threshold: number
+          foreground_color: string | null
           ga4_id: string | null
           hero_bg_image: string | null
-          hero_cta_text: string | null
+          hero_cta_text: string
           hero_image_url: string | null
-          hero_subtitle: string | null
-          hero_title: string | null
+          hero_subtitle: string
+          hero_title: string
           id: string
           instapay_handle: string | null
           login_bg_pattern: string | null
           logo_url: string | null
           meta_pixel_id: string | null
-          min_order_amount: number
-          primary_color: string
-          site_name: string
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
           store_address: string | null
           store_lat: number | null
           store_lng: number | null
@@ -660,37 +495,35 @@ export type Database = {
           whatsapp_number: string | null
         }
         Insert: {
-          accent_color?: string
-          announcement_bg_color?: string
-          announcement_enabled?: boolean
-          announcement_text?: string
-          background_color?: string
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
           bank_account_info?: string | null
           cart_empty_bg?: string | null
           created_at?: string
-          default_delivery_fee?: number
+          default_delivery_fee?: number | null
           favicon_url?: string | null
           first_order_coupon_code?: string | null
-          first_order_coupon_enabled?: boolean
-          first_order_discount_percent?: number
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
           floating_element_image?: string | null
-          font_family?: string
-          foreground_color?: string
-          free_shipping_threshold?: number
+          foreground_color?: string | null
           ga4_id?: string | null
           hero_bg_image?: string | null
-          hero_cta_text?: string | null
+          hero_cta_text?: string
           hero_image_url?: string | null
-          hero_subtitle?: string | null
-          hero_title?: string | null
+          hero_subtitle?: string
+          hero_title?: string
           id?: string
           instapay_handle?: string | null
           login_bg_pattern?: string | null
           logo_url?: string | null
           meta_pixel_id?: string | null
-          min_order_amount?: number
-          primary_color?: string
-          site_name?: string
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
           store_address?: string | null
           store_lat?: number | null
           store_lng?: number | null
@@ -698,37 +531,35 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Update: {
-          accent_color?: string
-          announcement_bg_color?: string
-          announcement_enabled?: boolean
-          announcement_text?: string
-          background_color?: string
+          accent_color?: string | null
+          announcement_bg_color?: string | null
+          announcement_enabled?: boolean | null
+          announcement_text?: string | null
+          background_color?: string | null
           bank_account_info?: string | null
           cart_empty_bg?: string | null
           created_at?: string
-          default_delivery_fee?: number
+          default_delivery_fee?: number | null
           favicon_url?: string | null
           first_order_coupon_code?: string | null
-          first_order_coupon_enabled?: boolean
-          first_order_discount_percent?: number
+          first_order_coupon_enabled?: boolean | null
+          first_order_discount_percent?: number | null
           floating_element_image?: string | null
-          font_family?: string
-          foreground_color?: string
-          free_shipping_threshold?: number
+          foreground_color?: string | null
           ga4_id?: string | null
           hero_bg_image?: string | null
-          hero_cta_text?: string | null
+          hero_cta_text?: string
           hero_image_url?: string | null
-          hero_subtitle?: string | null
-          hero_title?: string | null
+          hero_subtitle?: string
+          hero_title?: string
           id?: string
           instapay_handle?: string | null
           login_bg_pattern?: string | null
           logo_url?: string | null
           meta_pixel_id?: string | null
-          min_order_amount?: number
-          primary_color?: string
-          site_name?: string
+          min_order_amount?: number | null
+          primary_color?: string | null
+          site_name?: string | null
           store_address?: string | null
           store_lat?: number | null
           store_lng?: number | null
@@ -737,26 +568,121 @@ export type Database = {
         }
         Relationships: []
       }
+      store_settings_pulse: {
+        Row: {
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      theme_settings: {
+        Row: {
+          accent_hex: string
+          auth_bg_url: string | null
+          card_radius_px: number
+          cart_empty_bg_url: string | null
+          created_at: string
+          dark_marble_bg_url: string | null
+          hero_cta_text: string | null
+          hero_grid_images: Json
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          marble_bg_url: string | null
+          primary_hex: string
+          updated_at: string
+        }
+        Insert: {
+          accent_hex?: string
+          auth_bg_url?: string | null
+          card_radius_px?: number
+          cart_empty_bg_url?: string | null
+          created_at?: string
+          dark_marble_bg_url?: string | null
+          hero_cta_text?: string | null
+          hero_grid_images?: Json
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          marble_bg_url?: string | null
+          primary_hex?: string
+          updated_at?: string
+        }
+        Update: {
+          accent_hex?: string
+          auth_bg_url?: string | null
+          card_radius_px?: number
+          cart_empty_bg_url?: string | null
+          created_at?: string
+          dark_marble_bg_url?: string | null
+          hero_cta_text?: string | null
+          hero_grid_images?: Json
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          marble_bg_url?: string | null
+          primary_hex?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
-          id: number
-          role: string | null
-          user_id: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
         }
         Insert: {
           created_at?: string
-          id?: number
-          role?: string | null
-          user_id?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
         }
         Update: {
           created_at?: string
-          id?: number
-          role?: string | null
-          user_id?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -775,10 +701,7 @@ export type Database = {
           first_order_coupon_enabled: boolean | null
           first_order_discount_percent: number | null
           floating_element_image: string | null
-          font_family: string | null
           foreground_color: string | null
-          free_shipping_threshold: number | null
-          ga4_id: string | null
           hero_bg_image: string | null
           hero_cta_text: string | null
           hero_image_url: string | null
@@ -787,7 +710,6 @@ export type Database = {
           id: string | null
           login_bg_pattern: string | null
           logo_url: string | null
-          meta_pixel_id: string | null
           min_order_amount: number | null
           primary_color: string | null
           site_name: string | null
@@ -797,117 +719,26 @@ export type Database = {
           updated_at: string | null
           whatsapp_number: string | null
         }
-        Insert: {
-          accent_color?: string | null
-          announcement_bg_color?: string | null
-          announcement_enabled?: boolean | null
-          announcement_text?: string | null
-          background_color?: string | null
-          cart_empty_bg?: string | null
-          created_at?: string | null
-          default_delivery_fee?: number | null
-          favicon_url?: string | null
-          first_order_coupon_code?: string | null
-          first_order_coupon_enabled?: boolean | null
-          first_order_discount_percent?: number | null
-          floating_element_image?: string | null
-          font_family?: string | null
-          foreground_color?: string | null
-          free_shipping_threshold?: number | null
-          ga4_id?: string | null
-          hero_bg_image?: string | null
-          hero_cta_text?: string | null
-          hero_image_url?: string | null
-          hero_subtitle?: string | null
-          hero_title?: string | null
-          id?: string | null
-          login_bg_pattern?: string | null
-          logo_url?: string | null
-          meta_pixel_id?: string | null
-          min_order_amount?: number | null
-          primary_color?: string | null
-          site_name?: string | null
-          store_address?: string | null
-          store_lat?: number | null
-          store_lng?: number | null
-          updated_at?: string | null
-          whatsapp_number?: string | null
-        }
-        Update: {
-          accent_color?: string | null
-          announcement_bg_color?: string | null
-          announcement_enabled?: boolean | null
-          announcement_text?: string | null
-          background_color?: string | null
-          cart_empty_bg?: string | null
-          created_at?: string | null
-          default_delivery_fee?: number | null
-          favicon_url?: string | null
-          first_order_coupon_code?: string | null
-          first_order_coupon_enabled?: boolean | null
-          first_order_discount_percent?: number | null
-          floating_element_image?: string | null
-          font_family?: string | null
-          foreground_color?: string | null
-          free_shipping_threshold?: number | null
-          ga4_id?: string | null
-          hero_bg_image?: string | null
-          hero_cta_text?: string | null
-          hero_image_url?: string | null
-          hero_subtitle?: string | null
-          hero_title?: string | null
-          id?: string | null
-          login_bg_pattern?: string | null
-          logo_url?: string | null
-          meta_pixel_id?: string | null
-          min_order_amount?: number | null
-          primary_color?: string | null
-          site_name?: string | null
-          store_address?: string | null
-          store_lat?: number | null
-          store_lng?: number | null
-          updated_at?: string | null
-          whatsapp_number?: string | null
-        }
         Relationships: []
       }
     }
     Functions: {
-      create_order:
-        | {
-            Args: {
-              p_address: string
-              p_coupon_code: string
-              p_customer_name: string
-              p_delivery_method: string
-              p_delivery_zone_id: string
-              p_items: Json
-              p_notes: string
-              p_payment_method: string
-              p_payment_reference: string
-              p_phone: string
-              p_ref_source: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_address: string
-              p_coupon_code: string
-              p_customer_name: string
-              p_delivery_method: string
-              p_delivery_zone_id: string
-              p_idempotency_key?: string
-              p_items: Json
-              p_notes: string
-              p_payment_method: string
-              p_payment_reference: string
-              p_phone: string
-              p_ref_source: string
-            }
-            Returns: string
-          }
-      get_my_role: { Args: never; Returns: string }
+      create_order: {
+        Args: {
+          p_address: string
+          p_coupon_code: string
+          p_customer_name: string
+          p_delivery_method: string
+          p_delivery_zone_id: string
+          p_items: Json
+          p_notes: string
+          p_payment_method: string
+          p_payment_reference: string
+          p_phone: string
+          p_ref_source: string
+        }
+        Returns: string
+      }
       get_payment_config: {
         Args: never
         Returns: {
@@ -916,31 +747,67 @@ export type Database = {
           store_address: string
         }[]
       }
-      is_admin: { Args: never; Returns: boolean }
-      is_ai_agent: { Args: never; Returns: boolean }
-      propose_ai_action: {
-        Args: { p_action_type: string; p_agent_type: string; p_payload: Json }
-        Returns: string
-      }
-      review_ai_proposal: {
-        Args: {
-          p_decision: string
-          p_proposal_id: string
-          p_reviewer_note?: string
+      get_store_settings_admin: {
+        Args: never
+        Returns: {
+          accent_color: string | null
+          announcement_bg_color: string | null
+          announcement_enabled: boolean | null
+          announcement_text: string | null
+          background_color: string | null
+          bank_account_info: string | null
+          cart_empty_bg: string | null
+          created_at: string
+          default_delivery_fee: number | null
+          favicon_url: string | null
+          first_order_coupon_code: string | null
+          first_order_coupon_enabled: boolean | null
+          first_order_discount_percent: number | null
+          floating_element_image: string | null
+          foreground_color: string | null
+          ga4_id: string | null
+          hero_bg_image: string | null
+          hero_cta_text: string
+          hero_image_url: string | null
+          hero_subtitle: string
+          hero_title: string
+          id: string
+          instapay_handle: string | null
+          login_bg_pattern: string | null
+          logo_url: string | null
+          meta_pixel_id: string | null
+          min_order_amount: number | null
+          primary_color: string | null
+          site_name: string | null
+          store_address: string | null
+          store_lat: number | null
+          store_lng: number | null
+          updated_at: string
+          whatsapp_number: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "store_settings"
+          isOneToOne: false
+          isSetofReturn: true
         }
+      }
+      increment_product_views: {
+        Args: { p_product_id: string }
         Returns: undefined
       }
       validate_coupon: {
         Args: { p_code: string; p_subtotal: number }
         Returns: {
           code: string
+          discount_amount: number
           discount_type: string
           discount_value: number
         }[]
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1067,6 +934,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff", "user"],
+    },
   },
 } as const
